@@ -19,31 +19,22 @@
 # the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Algorithms that rely on the ACE data models.
+''' This tool wraps the pyang package CLI with local plugins.
 '''
-import logging
-import string
-import sqlalchemy.orm
-from . import ari
+import subprocess
+import os
+import sys
 
-LOGGER = logging.getLogger(__name__)
-
-
-def is_printable(name: bytes) -> bool:
-    return (
-        name and name[:1].isalpha()
-        and all([chr(char) in string.printable for char in name])
-    )
+SELFDIR = os.path.dirname(__file__)
+''' Directory containing this file '''
 
 
-def normalize_ident(text: str) -> str:
-    ''' Normalize an identity component (namespace or name) to make
-    lookup in the database consistent and output in tools like CAmp
-    consistent.
+def main():
+    env = os.environ
+    env['PYANG_PLUGINPATH'] = os.path.abspath(os.path.join(SELFDIR, '..', 'pyang'))
+    env['YANG_MODPATH'] = os.environ.get('ADM_PATH', '')
+    return subprocess.call(['pyang'] + sys.argv[1:], env=env)
 
-    :param text: The text to normalize.
-    :return: Normalized text.
-    '''
 
-    return text.casefold()
-
+if __name__ == '__main__':
+    sys.exit(main())

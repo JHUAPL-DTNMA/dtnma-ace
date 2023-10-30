@@ -35,7 +35,6 @@ import os
 import sys
 from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -141,8 +140,6 @@ def run(args: argparse.Namespace):
     '''
     adms = AdmSet()
     adms.load_default_dirs()
-    if 'ADM_PATH' in os.environ:
-        adms.load_from_dir(os.environ['ADM_PATH'])
     LOGGER.info('Loaded %d ADMs', len(adms))
 
     eng = Checker(adms.db_session())
