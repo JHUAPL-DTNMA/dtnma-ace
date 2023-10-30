@@ -52,6 +52,7 @@ stages:
 cache:
   paths:
     - .cache/pip
+    - .cache/ccache
 
 .prep-repos: &prep-repos |
   # Use local repo mirrors

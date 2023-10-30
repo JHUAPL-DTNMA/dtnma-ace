@@ -28,44 +28,36 @@ from ace import models
 from ace.ari import ReferenceARI, AC, EXPR, TNVC, StructType
 from ace.adm_set import AdmSet
 
-
 LOGGER = logging.getLogger(__name__)
 
-#: ORM relationship attribute for each ARI reference type
+# : ORM relationship attribute for each ARI reference type
 ORM_TYPE = {
-    StructType.MDAT: models.Mdat,
     StructType.CONST: models.Const,
     StructType.CTRL: models.Ctrl,
     StructType.EDD: models.Edd,
-    StructType.MAC: models.Mac,
     StructType.OPER: models.Oper,
-    StructType.RPTT: models.Rptt,
-    StructType.TBLT: models.Tblt,
     StructType.VAR: models.Var,
 }
 
-#: Map from draft-birrane-dtn-amp-08, Table 1
+
+# : Map from draft-birrane-dtn-amp-08, Table 1
 @enum.unique
 class AdmObjType(enum.IntEnum):
     CONST = 0
     CTRL = 1
     EDD = 2
-    MAC = 3
     OPER = 4
-    RPTT = 5
     SBR = 6
-    TBLT = 7
     TBR = 8
     VAR = 9
-    MDAT = 10
 
 
 @enum.unique
 class Mode(enum.Enum):
     ''' The :class:`Converter` conversion direction '''
-    #: Obtain nickname enums
+    # : Obtain nickname enums
     TO_NN = enum.auto()
-    #: Interpret nickname enums
+    # : Interpret nickname enums
     FROM_NN = enum.auto()
 
 
@@ -79,7 +71,7 @@ class Converter:
     is available.
     '''
 
-    def __init__(self, mode: Mode, adms: AdmSet, must_nickname: bool = False):
+    def __init__(self, mode: Mode, adms: AdmSet, must_nickname: bool=False):
         self._mode = mode
         self._adms = adms
         self._must = must_nickname
@@ -107,7 +99,7 @@ class Converter:
             LOGGER.debug('Got ADM %s', adm)
             nn_type_enum = AdmObjType[obj_type.name]
             obj = self._adms.get_child(adm, ORM_TYPE[obj_type], norm_name=obj_name)
-            LOGGER.debug('ARI type %s name %s resolved to enums for ADM %s, type %s, obj %s', 
+            LOGGER.debug('ARI type %s name %s resolved to enums for ADM %s, type %s, obj %s',
                          obj_type, obj_name, adm.enum if adm else None,
                          nn_type_enum, obj.enum if obj else None)
 

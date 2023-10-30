@@ -19,49 +19,40 @@
 # the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' CODEC for converting ADM to and from JSON form.
+''' CODEC for converting ADM to and from YANG form.
 '''
 
 from datetime import datetime
 import io
-import json
 import logging
 import os
-from typing import BinaryIO
+import re
+from typing import TextIO, List
+import pyang
+import pyang.plugin
+import pyang.context
+import pyang.repository
 from ace.models import (
     TypeNameList, TypeNameItem, Expr, ARI, AriAP, AC,
-    AdmFile, AdmUses, 
-    Mdat, Const, Ctrl, Edd, Mac, Oper, OperParm, Rptt, Tblt, Var
+    AdmFile, AdmUses, SemType,
+    Typedef, Const, Ctrl, Edd, Oper, OperParm, Var
 )
 from ace.util import normalize_ident
 
-
 LOGGER = logging.getLogger(__name__)
+# : Directory containing this file
+SELFDIR = os.path.dirname(__file__)
 
-#: JSON key for each object type in the ADM
-SECNAMES = {
-    Mdat: 'Mdat',
-    Const: 'Const',
-    Ctrl: 'Ctrl',
-    Edd: 'Edd',
-    Mac: 'Mac',
-    Oper: 'Oper',
-    Rptt: 'Rptt',
-    Tblt: 'Tblt',
-    Var: 'Var',
-}
+AMM_MOD = 'ietf-amm'
 
-#: JSON object keys for each object class (by lower name)
-ATTRMAP = {
-    Mdat: ['name', 'enum', 'description', 'type', 'value'],
-    Const: ['name', 'enum', 'description', 'type', 'value'],
-    Ctrl: ['name', 'enum', 'description', 'parmspec'],
-    Edd: ['name', 'enum', 'description', 'parmspec', 'type'],
-    Mac: ['name', 'enum', 'description', 'parmspec', 'action'],
-    Oper: ['name', 'enum', 'description', 'result-type', 'in-type'],
-    Rptt: ['name', 'enum', 'description', 'parmspec', 'definition'],
-    Tblt: ['name', 'enum', 'description', 'columns'],
-    Var: ['name', 'enum', 'description', 'type', 'initializer'],
+# : YANG keyword for each object type in the ADM
+KEYWORDS = {
+    Typedef: (AMM_MOD, 'typedef'),
+    Const: (AMM_MOD, 'const'),
+    Ctrl: (AMM_MOD, 'ctrl'),
+    Edd: (AMM_MOD, 'edd'),
+    Oper: (AMM_MOD, 'oper'),
+    Var: (AMM_MOD, 'var'),
 }
 
 
@@ -76,46 +67,109 @@ class Decoder:
     ''' The decoder portion of this CODEC.
     '''
 
-    def __init__(self, db_sess=None):
+    def __init__(self, modpath: List[str], db_sess=None):
         self._db_sess = db_sess
+        
+        # Initializer copied from pyang.scripts.pyang_tool.run()
+        plugindirs = [os.path.join(SELFDIR, 'pyang')]
+        pyang.plugin.init(plugindirs)
 
-    @staticmethod
-    def _read_keys_insensitive(pairs):
-        return {key.casefold(): val for (key, val) in pairs}
+        import optparse
+        optparser = optparse.OptionParser('', add_help_option=False)
+        optparser.version = '%prog ' + pyang.__version__
+        for p in pyang.plugin.plugins:
+            p.add_opts(optparser)
+        (opts, args) = optparser.parse_args([])
 
-    def _get_ac(self, json_list):
-        obj = AC()
+        path = os.pathsep.join(modpath)
+        repos = pyang.repository.FileRepository(path, verbose=True)
+        self._ctx = pyang.context.Context(repos)
+        self._ctx.strict = True
+        self._ctx.opts = opts
+        for p in pyang.plugin.plugins:
+            p.setup_ctx(self._ctx)
+            p.pre_load_modules(self._ctx)
 
-        for json_obj in json_list:
-            ari = ARI(
-                ns=json_obj['ns'],
-                nm=json_obj['nm'],
-            )
-            for json_ap in json_obj.get('ap', []):
-                ari.ap.append(AriAP(
-                    type=json_ap['type'],
-                    value=json_ap['value'],
-                ))
-            obj.items.append(ari)
+    def _get_semtype(self, stmt):
+        TYPE_KYWDS = (
+            (AMM_MOD, 'type'),
+            (AMM_MOD, 'ulist'),
+            (AMM_MOD, 'dlist'),
+            (AMM_MOD, 'umap'),
+            (AMM_MOD, 'tblt'),
+            (AMM_MOD, 'union'),
+        )
+        TYPE_REFINE_KWDS = (
+            'length',
+            'pattern',
+            'range',
+            (AMM_MOD, 'int-labels'),
+            (AMM_MOD, 'cddl'),
+        )
 
-        return obj
+        # Only one type statement is valid
+        found_types = list(filter(
+            None,
+            [
+                stmt.search_one(kywd)
+                for kywd in TYPE_KYWDS
+            ]
+        ))
+        if not found_types:
+            raise RuntimeError('No type present where required')
+        elif len(found_types) > 1:
+            raise RuntimeError('Too many types present where one required')
+        type_stmt = found_types[0]
+        kywd_name = type_stmt.keyword[1]
 
-    def from_json_obj(self, cls, json_obj):
-        ''' Construct an ORM object from a decoded JSON object.
+        # Process refining substatements
+        if kywd_name == 'type':
+            refinements = list(filter(None, [
+                type_stmt.search_one(kywd)
+                for kywd in TYPE_REFINE_KWDS
+            ]))
+            if not refinements:
+                # Unrefined type use
+                if ':' in type_stmt.arg:
+                    admname, typename = type_stmt.arg.split(':', 2)
+                    semtype = (
+                        self._db_sess.query(SemType)
+                            .join(Typedef).join(AdmFile)
+                            .filter(
+                                AdmFile.name == admname,
+                                Typedef.name == typename
+                            )
+                    ).one_or_none()
+                    print('no refinement on typedef', type_stmt.arg, semtype)
+                else:
+                    print('no refinement on built-in', type_stmt.arg)
+            print(stmt, refinements)
+
+        elif kywd_name == 'tblt':
+            key_stmt = type_stmt.search_one((AMM_MOD, 'key'))
+            column_stmts = type_stmt.search((AMM_MOD, 'column'))
+            print(stmt, key_stmt, column_stmts)
+
+    def from_stmt(self, cls, stmt):
+        ''' Construct an ORM object from a decoded YANG statement.
 
         :param cls: The ORM class to instantiate.
-        :param json_obj: The decoded JSON to read from.
+        :param stmt: The decoded YANG to read from.
         :return: The ORM object.
         '''
-        obj = cls()
-    
-        json_keys = ATTRMAP[cls]
-        for key in json_keys:
-            if key not in json_obj:
-                continue
-            json_val = json_obj.get(key)
+        desc = pyang.statements.get_description(stmt)
+        if desc:
+            desc = re.sub(r'[\r\n]+s*', ' ', desc)
 
-            # Special handling of common keys
+        obj = cls(
+            name=stmt.arg,
+            description=desc
+        )
+    
+        if cls in (Const, Edd, Var):
+            obj.type = self._get_semtype(stmt)
+    
+        '''
             if key in {'parmspec', 'columns'}:
                 # Type TN pairs
                 orm_val = TypeNameList()
@@ -147,6 +201,7 @@ class Decoder:
                 orm_val = json_val
 
             setattr(obj, attr_to_member(key), orm_val)
+            '''
 
         return obj
 
@@ -159,66 +214,75 @@ class Decoder:
         '''
         return datetime.fromtimestamp(os.path.getmtime(file_path))
 
-
-    def _get_section(self, obj_list, orm_cls, json_adm):
+    def _get_section(self, obj_list, orm_cls, module):
         ''' Extract a section from the file '''
-        sec_key = SECNAMES[orm_cls].casefold()
+        sec_kywd = KEYWORDS[orm_cls]
 
         enum = 0
-        for json_obj in json_adm.get(sec_key, []):
-            obj = self.from_json_obj(orm_cls, json_obj)
+        for yang_stmt in module.search(sec_kywd):
+            obj = self.from_stmt(orm_cls, yang_stmt)
             # set derived attributes based on context
             if obj.name is not None:
                 obj.norm_name = normalize_ident(obj.name)
 
-            obj.enum = enum
+            # FIXME: check for duplicates
+            if obj.enum is None:
+                obj.enum = enum
             enum += 1
 
             obj_list.append(obj)
 
-    def decode(self, buf: BinaryIO) -> AdmFile:
+    def decode(self, buf: TextIO) -> AdmFile:
         ''' Decode a single ADM from file.
 
         :param buf: The buffer to read from.
         :return: The decoded ORM root object.
         '''
-        json_adm = json.load(buf, object_pairs_hook=Decoder._read_keys_insensitive)
+        file_path = buf.name if hasattr(buf, 'name') else None
+        module = self._ctx.add_module(file_path, buf.read(), primary_module=True)
+        LOGGER.debug('Loaded %s', module)
+        modules = [module]
+        
+        # Same post-load steps from pyang
+
+        for p in pyang.plugin.plugins:
+            p.pre_validate_ctx(self._ctx, modules)
+
+        # for obj in xform_and_emit_objs:
+        #     obj.pre_validate(ctx, modules)
+
+        self._ctx.validate()
+        for m_ in modules:
+            m_.prune()
+
+        for p in pyang.plugin.plugins:
+            p.post_validate_ctx(self._ctx, modules)
+
+        self._ctx.errors.sort(key=lambda e: (e[0].ref, e[0].line))
+        for epos, etag, eargs in self._ctx.errors:
+            elevel = pyang.error.err_level(etag)
+            if pyang.error.is_warning(elevel):
+                kind = logging.WARNING
+            else:
+                kind = logging.ERROR
+            emsg = pyang.error.err_to_str(etag, eargs)
+            LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
+
         adm = AdmFile()
 
         if hasattr(buf, 'name'):
             adm.abs_file_path = buf.name
             adm.last_modified = self.get_file_time(buf.name)
         
-        for ns in json_adm.get('uses', []):
-            adm.uses.append(AdmUses(
-                namespace=ns,
-                norm_namespace=normalize_ident(ns)
-            ))
-        
-        self._get_section(adm.mdat, Mdat, json_adm)
-        self._get_section(adm.const, Const, json_adm)
-        self._get_section(adm.ctrl, Ctrl, json_adm)
-        self._get_section(adm.edd, Edd, json_adm)
-        self._get_section(adm.mac, Mac, json_adm)
-        self._get_section(adm.oper, Oper, json_adm)
-        self._get_section(adm.rptt, Rptt, json_adm)
-        self._get_section(adm.tblt, Tblt, json_adm)
-        self._get_section(adm.var, Var, json_adm)
-         
         # Normalize the intrinsic ADM name
-        items = [mdat.value for mdat in adm.mdat if mdat.name == 'name']
-        if items:
-            adm.norm_name = normalize_ident(items[0])
-
-        items = [mdat.value for mdat in adm.mdat if mdat.name == 'namespace']
-        if items:
-            adm.norm_namespace = normalize_ident(items[0])
-            adm.adm_ns = items[0]
-
-        items = [mdat.value for mdat in adm.mdat if mdat.name == 'enum']
-        if items:
-            # coerce text if needed
-            adm.enum = int(items[0])
+        adm.norm_name = normalize_ident(module.arg)
+        adm.norm_namespace = adm.adm_ns = adm.norm_name
+        
+        self._get_section(adm.const, Const, module)
+        self._get_section(adm.ctrl, Ctrl, module)
+        self._get_section(adm.edd, Edd, module)
+        self._get_section(adm.oper, Oper, module)
+        self._get_section(adm.var, Var, module)
 
         return adm
 
@@ -226,7 +290,7 @@ class Decoder:
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def encode(self, adm: AdmFile, buf: BinaryIO, indent=None):
+    def encode(self, adm: AdmFile, buf: TextIO, indent=None):
         ''' Decode a single ADM from file.
 
         :param adm: The ORM root object.
@@ -261,7 +325,7 @@ class Encoder:
             # Don't add empty sections
             return
 
-        sec_key = SECNAMES[orm_cls]
+        sec_key = KEYWORDS[orm_cls]
         json_list = []
         for obj in obj_list:
             json_list.append(self.to_json_obj(obj))

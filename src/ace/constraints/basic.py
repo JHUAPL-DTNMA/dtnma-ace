@@ -25,9 +25,8 @@ import json
 import logging
 import os
 from sqlalchemy import inspect, orm, func
-from ace import models, ari, nickname, adm_json, util
+from ace import models, ari, nickname, util
 from .core import register, Issue
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,12 +36,9 @@ def minimal_metadata(issuelist, obj, db_sess):  # pylint: disable=invalid-name
     ''' Ensure an ADM contains minimum content. '''
     count = 0
     if obj is None:
-        for name in ('name', 'namespace', 'enum', 'version'):
-            query = db_sess.query(models.Mdat.value).filter(
-                models.Mdat.admfile == obj,
-                models.Mdat.name == name,
-            )
-            if query.count() == 0:
+        for name in ('name', 'enum', 'revision'):
+            val = getattr(obj, name)
+            if val is None:
                 issuelist.append(Issue(
                     obj=obj,
                     detail=f'ADM is missing required metadata "{name}"'
@@ -60,7 +56,7 @@ class unique_adm_names:  # pylint: disable=invalid-name
 
     def __call__(self, issuelist, obj, db_sess):
         count = 0
-        for name in ('norm_name', 'norm_namespace', 'enum'):
+        for name in ('norm_name', 'enum'):
             attr = getattr(models.AdmFile, name)
             search = (
                 db_sess.query(attr, func.count(models.AdmFile.id))
@@ -150,15 +146,15 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self._iter_call(issuelist, obj.oper, db_sess)
             count += self._iter_call(issuelist, obj.var, db_sess)
         elif isinstance(obj, models.Const):
-            count += self._check_type(issuelist, obj, obj.type)
+            count += self._check_type(issuelist, obj, obj.semtype)
         elif isinstance(obj, models.Edd):
-            count += self._check_type(issuelist, obj, obj.type)
+            count += self._check_type(issuelist, obj, obj.semtype)
         elif isinstance(obj, models.Oper):
             count += self._check_type(issuelist, obj, obj.result_type)
             for parm in obj.in_type:
-                count += self._check_type(issuelist, obj, parm.type)
+                count += self._check_type(issuelist, obj, parm.semtype)
         elif isinstance(obj, models.Var):
-            count += self._check_type(issuelist, obj, obj.type)
+            count += self._check_type(issuelist, obj, obj.semtype)
             if obj.initializer:
                 count += self._check_type(issuelist, obj, obj.initializer.type)
         return count
@@ -192,13 +188,7 @@ class valid_reference_ari:  # pylint: disable=invalid-name
         ''' Entrypoint for this functor. '''
         count = 0
         if isinstance(obj, models.AdmFile):
-            count += self._iter_call(issuelist, obj.mac, db_sess)
-            count += self._iter_call(issuelist, obj.rptt, db_sess)
             count += self._iter_call(issuelist, obj.var, db_sess)
-        elif isinstance(obj, models.Mac):
-            count += self._iter_call(issuelist, obj.action.items, db_sess, top_obj=obj)
-        elif isinstance(obj, models.Rptt):
-            count += self._iter_call(issuelist, obj.definition.items, db_sess, top_obj=obj)
         elif isinstance(obj, models.Var):
             if obj.initializer is not None:
                 items = obj.initializer.postfix.items
@@ -207,7 +197,6 @@ class valid_reference_ari:  # pylint: disable=invalid-name
             ident = util.get_ident(obj)
             ident.strip_name()
             if not util.find_ident(db_sess, ident):
-                json_obj = adm_json.Encoder().to_json_ari(obj)
                 issuelist.append(Issue(
                     obj=top_obj,
                     detail=(

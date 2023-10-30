@@ -28,8 +28,7 @@ from typing import BinaryIO, Set
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 import xdg
-from ace import models, adm_json
-import json
+from ace import models, adm_yang
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class AdmSet:
         If False, the cache is kept in-memory.
     '''
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: str=None):
         if cache_dir is False:
             self.cache_path = None
         else:
@@ -209,9 +208,7 @@ class AdmSet:
     @staticmethod
     def _is_usable(item) -> bool:
         return (
-            item.is_file()
-            and item.name != 'index.json'  # FIXME: specific magic name
-            and item.name.endswith('.json')
+            item.is_file() and item.name.endswith('.yang')
         )
 
     def load_from_dir(self, dir_path: str) -> int:
@@ -228,7 +225,7 @@ class AdmSet:
 
         adm_cnt = 0
         try:
-            dec = adm_json.Decoder()
+            dec = adm_yang.Decoder(modpath=[dir_path], db_sess=self._db_sess)
             with os.scandir(dir_path) as items:
                 items = [item for item in items if AdmSet._is_usable(item)]
                 LOGGER.debug('Attempting to read %d items', len(items))
@@ -243,7 +240,7 @@ class AdmSet:
 
         return adm_cnt
 
-    def load_from_file(self, file_path: str, del_dupe: bool = True) -> models.AdmFile:
+    def load_from_file(self, file_path: str, del_dupe: bool=True) -> models.AdmFile:
         ''' Load an ADM definition from a specific file.
         The ADM may be cached if an earlier load occurred on the same path.
 
@@ -256,7 +253,7 @@ class AdmSet:
         '''
         file_path = os.path.realpath(file_path)
         try:
-            dec = adm_json.Decoder()
+            dec = adm_yang.Decoder()
             self._db_sess.expire_on_commit = False
             adm_new = self._read_file(dec, file_path, del_dupe)
             self._db_sess.commit()
@@ -265,7 +262,7 @@ class AdmSet:
             self._db_sess.rollback()
             raise
 
-    def load_from_data(self, buf: BinaryIO, del_dupe: bool = True) -> models.AdmFile:
+    def load_from_data(self, buf: BinaryIO, del_dupe: bool=True) -> models.AdmFile:
         ''' Load an ADM definition from file content.
 
         :param buf: The file-like object to read from.
@@ -275,7 +272,7 @@ class AdmSet:
             not have a "name" metadata object.
         '''
         try:
-            dec = adm_json.Decoder()
+            dec = adm_yang.Decoder()
             self._db_sess.expire_on_commit = False
             adm_new = dec.decode(buf)
             self._post_load(adm_new, del_dupe)
@@ -285,7 +282,7 @@ class AdmSet:
             self._db_sess.rollback()
             raise
 
-    def _read_file(self, dec: adm_json.Decoder, file_path: str,
+    def _read_file(self, dec: adm_yang.Decoder, file_path: str,
                    del_dupe: bool) -> models.AdmFile:
         ''' Read an ADM from file into the DB.
         if has uses skip till later? 
@@ -303,7 +300,7 @@ class AdmSet:
 
         try:
             LOGGER.debug('Loading ADM from %s', file_path)
-            with open(file_path, 'rb') as adm_file:
+            with open(file_path, 'r') as adm_file:
                 adm_new = dec.decode(adm_file)
         except Exception as err:
             LOGGER.error(
@@ -335,7 +332,7 @@ class AdmSet:
 
         if pending:
             self.pending_adms[adm_new] = uses
-        else:    
+        else: 
             if del_dupe:
                 query = self._db_sess.query(models.AdmFile).filter(
                     models.AdmFile.norm_name == adm_new.norm_name
@@ -347,17 +344,15 @@ class AdmSet:
 
             self._db_sess.add(adm_new)
             # check all pending_adms
-            for adm,uses in self.pending_adms.items():
+            for adm, uses in self.pending_adms.items():
                 if adm_new.adm_ns in uses:
                     uses.remove(adm_new.adm_ns)
                     if uses:
                         self.pending_adms[adm] = uses
                     else:
                         self._db_sess.add(adm)
-                        
 
-
-    def get_child(self, adm: models.AdmFile, cls: type, norm_name: str = None, enum: int = None):
+    def get_child(self, adm: models.AdmFile, cls: type, norm_name: str=None, enum: int=None):
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.
         '''
         query = self._db_sess.query(cls).filter(cls.admfile == adm)
