@@ -127,8 +127,8 @@ class Converter:
             ari.ident.name = cbor2.dumps(obj.enum)
             
             # Convert parameter types from text ARI as needed
-            if hasattr(obj, 'parmspec') and obj.parmspec is not None:
-                for ix, spec in enumerate(obj.parmspec.items):
+            if isinstance(obj, models.ParamMixin) and obj.parameters is not None:
+                for ix, spec in enumerate(obj.parameters.items):
                     if spec.type == 'TNVC':
                         ari.params[ix] = TNVC(items=ari.params[ix].items)
 

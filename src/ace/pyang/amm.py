@@ -44,10 +44,10 @@ AMP_OBJ_NAMES = (
     (MODULE_NAME, 'typedef'),
     (MODULE_NAME, 'ident'),
     (MODULE_NAME, 'const'),
-    (MODULE_NAME, 'ctrl'),
     (MODULE_NAME, 'edd'),
-    (MODULE_NAME, 'oper'),
     (MODULE_NAME, 'var'),
+    (MODULE_NAME, 'ctrl'),
+    (MODULE_NAME, 'oper'),
 )
 MODULE_STMT_ALLOW = (
     '_comment',
@@ -197,6 +197,44 @@ MODULE_EXTENSIONS = (
         parents=[('module', '*')]
     ),
 
+    Ext('edd', 'identifier',
+        subs=(
+            obj_subs_pre + [
+                ((MODULE_NAME, 'parameter'), '*'),
+                ('uses', '*'),
+            ]
+            +TYPE_USE
+            +obj_subs_post
+        ),
+        parents=[('module', '*')]
+    ),
+
+    Ext(
+        'var', 'identifier',
+        subs=(
+            obj_subs_pre
+            +TYPE_USE + [
+                ((MODULE_NAME, 'parameter'), '*'),
+                ('$choice', [
+                    [((MODULE_NAME, 'init-value'), '?')],
+                    [((MODULE_NAME, 'init-expr'), '?')],
+                ]),
+                ('uses', '*'),
+            ] + obj_subs_post
+        ),
+        parents=[('module', '*')]
+    ),
+    Ext('init-value', 'ARI',
+        parents=[
+            ((MODULE_NAME, 'var'), '?'),
+        ]
+    ),
+    Ext('init-expr', 'EXPR',
+        parents=[
+            ((MODULE_NAME, 'var'), '?'),
+        ]
+    ),
+
     Ext('ctrl', 'identifier',
         subs=(
             obj_subs_pre + [
@@ -235,18 +273,6 @@ MODULE_EXTENSIONS = (
         parents=[('grouping', '*')],
     ),
     
-    Ext('edd', 'identifier',
-        subs=(
-            obj_subs_pre + [
-                ((MODULE_NAME, 'parameter'), '*'),
-                ('uses', '*'),
-            ]
-            +TYPE_USE
-            +obj_subs_post
-        ),
-        parents=[('module', '*')]
-    ),
-    
     Ext('oper', 'identifier',
         subs=(
             obj_subs_pre + [
@@ -267,32 +293,6 @@ MODULE_EXTENSIONS = (
             ]
         ),
         parents=[('grouping', '*')],
-    ),
-
-    Ext(
-        'var', 'identifier',
-        subs=(
-            obj_subs_pre
-            +TYPE_USE + [
-                ((MODULE_NAME, 'parameter'), '*'),
-                ('$choice', [
-                    [((MODULE_NAME, 'init-value'), '?')],
-                    [((MODULE_NAME, 'init-expr'), '?')],
-                ]),
-                ('uses', '*'),
-            ] + obj_subs_post
-        ),
-        parents=[('module', '*')]
-    ),
-    Ext('init-value', 'ARI',
-        parents=[
-            ((MODULE_NAME, 'var'), '?'),
-        ]
-    ),
-    Ext('init-expr', 'EXPR',
-        parents=[
-            ((MODULE_NAME, 'var'), '?'),
-        ]
     ),
 )
 
@@ -345,7 +345,8 @@ def _stmt_check_enum(ctx, stmt):
 def _stmt_check_module_objs(ctx, stmt):
     ''' Verify only AMP objects are present in the module. '''
     if stmt.keyword == 'module':
-        if stmt.search_one('namespace').arg.startswith('ari:'):
+        ns_stmt = stmt.search_one('namespace')
+        if ns_stmt and ns_stmt.arg.startswith('ari:'):
             allowed = frozenset(MODULE_STMT_ALLOW)
             for sub in stmt.substmts:
                 if sub.keyword not in allowed:

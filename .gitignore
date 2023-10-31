@@ -13,3 +13,4 @@ dist
 testresults.xml
 .coverage
 coverage.xml
+/.pytest_cache/

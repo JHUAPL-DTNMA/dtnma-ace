@@ -225,7 +225,7 @@ class AdmSet:
 
         adm_cnt = 0
         try:
-            dec = adm_yang.Decoder(modpath=[dir_path], db_sess=self._db_sess)
+            dec = adm_yang.Decoder(modpath=[dir_path])
             with os.scandir(dir_path) as items:
                 items = [item for item in items if AdmSet._is_usable(item)]
                 LOGGER.debug('Attempting to read %d items', len(items))

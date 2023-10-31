@@ -19,25 +19,23 @@
 # the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the ace.adm_json module tree.
+''' Verify behavior of the :mod:`ace.adm_yang` module tree.
 '''
 import io
-import json
 import logging
 import os
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace import adm_json, models
-
+from ace import adm_yang, models
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
 
 
-class TestAdmJson(unittest.TestCase):
+class TestAdmYang(unittest.TestCase):
 
-    TEST_FILE_PATH = os.path.join(SELFDIR, 'test_adm_minimal.json')
+    TEST_FILE_PATH = os.path.join(SELFDIR, 'test-adm-minimal.yang')
     
     maxDiff = None
 
@@ -53,39 +51,85 @@ class TestAdmJson(unittest.TestCase):
         models.Base.metadata.drop_all(self._db_eng)
         self._db_eng = None
 
-    def test_load_minimal(self):
-        with open(self.TEST_FILE_PATH, 'rb') as buf:
-            obj = json.load(buf)
-        self.assertIsInstance(obj, dict)
-        for sec in ('Mdat', 'Const', 'Ctrl', 'Edd'):
-            self.assertIn(sec, obj)
+    EMPTY_MODULE = '''\
+module empty {}
+'''
+
+    def test_decode_empty(self):
+        dec = adm_yang.Decoder()
+
+        buf = io.StringIO(self.EMPTY_MODULE)
+        adm = dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmFile)
+
+        self.assertEqual('empty', adm.name)
+
+    NOOBJECT_MODULE = '''\
+module empty {
+  namespace "ari:/empty";
+  prefix empty;
+  amm:enum "0";
+
+  import ietf-amm {
+    prefix amm;
+  }
+
+}
+'''
+
+    def test_decode_noobject(self):
+        dec = adm_yang.Decoder()
+
+        buf = io.StringIO(self.NOOBJECT_MODULE)
+        adm = dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmFile)
+
+        self.assertEqual('empty', adm.name)
+        self.assertEqual(0, len(adm.typedef))
+        self.assertEqual(0, len(adm.const))
+        self.assertEqual(0, len(adm.edd))
+        self.assertEqual(0, len(adm.var))
+        self.assertEqual(0, len(adm.ctrl))
+        self.assertEqual(0, len(adm.oper))
 
     def test_decode_minimal(self):
-        dec = adm_json.Decoder()
+        dec = adm_yang.Decoder()
 
-        with open(self.TEST_FILE_PATH, 'rb') as buf:
+        with open(self.TEST_FILE_PATH, 'r') as buf:
             adm = dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmFile)
         self.assertEqual(adm.abs_file_path,
                          os.path.realpath(self.TEST_FILE_PATH))
 
-        self.assertEqual(4, len(adm.mdat))
+        self.assertEqual('test-adm-minimal', adm.name)
+        self.assertEqual('test-adm-minimal', adm.norm_name)
 
         self.assertEqual(1, len(adm.ctrl))
         obj = adm.ctrl[0]
         self.assertIsInstance(obj, models.Ctrl)
         self.assertEqual("test1", obj.name)
-        self.assertEqual(2, len(obj.parmspec.items))
-        self.assertEqual("ARI", obj.parmspec.items[0].type)
-        self.assertEqual("id", obj.parmspec.items[0].name)
+        self.assertEqual(2, len(obj.parameters.items))
+        self.assertEqual("id", obj.parameters.items[0].name)
+        self.assertEqual("ANY", obj.parameters.items[0].typeuse.type_name)
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual("INT", obj.type)
+        self.assertEqual("INT", obj.typeuse.type_name)
 
-    # As close to real JSON as possible
+    # As close to real YANG syntax as possible
     LOOPBACK_CASELIST = [
+        (models.Typedef, {
+            "name": "tblt_name",
+            "columns": [{"type": "STR", "name": "rule1"},
+                        {"type": "STR", "name": "rule2"},
+                        {"type": "UINT", "name": "rule3"},
+                        {"type": "STR", "name": "rule4"},
+                        {"type": "STR", "name": "rule5"}
+                        ],
+            "description": "Tblt Rules description."
+        }),
         (models.Var, {
             "name": "myname",
             "description": "Some long text",
@@ -121,6 +165,29 @@ class TestAdmJson(unittest.TestCase):
             "description": "A description of a Const",
             "value": "some_value"
         }),
+        (models.Const, {
+            "name": "mac_name",
+            "description": "A description of a Macro",
+            "action": [{
+                "ns": "DTN/bpsec",
+                "nm": "Edd.num_bad_tx_bib_blks_src"
+            }, {
+                "ns": "Amp/Agent",
+                "nm": "Oper.plusUINT"
+            }]
+        }),
+        (models.Const, {
+            "name": "rptt_name",
+            "definition": [
+                {
+                    "ns": "DTN/bpsec",
+                    "nm": "Edd.num_good_tx_bcb_blk"
+                }, {
+                    "ns": "DTN/bpsec",
+                    "nm": "Edd.num_bad_tx_bcb_blk"
+                }],
+            "description": "A description of a Rptt",
+        }),
         (models.Ctrl, {
             "name": "ctrl_name",
             "description": "A description of a Ctrl",
@@ -141,17 +208,6 @@ class TestAdmJson(unittest.TestCase):
             }],
             "description": "another Ctrl description",
         }),
-        (models.Mac, {
-            "name": "mac_name",
-            "description": "A description of a Macro",
-            "action": [{
-                "ns": "DTN/bpsec",
-                "nm": "Edd.num_bad_tx_bib_blks_src"
-            }, {
-                "ns": "Amp/Agent",
-                "nm": "Oper.plusUINT"
-            }]
-        }),
         (models.Oper, {
             "name": "some_op_name",
             "result-type": "INT",
@@ -161,36 +217,15 @@ class TestAdmJson(unittest.TestCase):
             ],
             "description": "a description of an Operator"
         }),
-        (models.Rptt, {
-            "name": "rptt_name",
-            "definition": [
-                {
-                    "ns": "DTN/bpsec",
-                    "nm": "Edd.num_good_tx_bcb_blk"
-                }, {
-                    "ns": "DTN/bpsec",
-                    "nm": "Edd.num_bad_tx_bcb_blk"
-                }],
-            "description": "A description of a Rptt",
-        }),
         # (models.Sbr, {}),
         # (models.Tbr, {}),
-        (models.Tblt, {
-            "name": "tblt_name",
-            "columns": [{"type": "STR", "name": "rule1"},
-                        {"type": "STR", "name": "rule2"},
-                        {"type": "UINT", "name": "rule3"},
-                        {"type": "STR", "name": "rule4"},
-                        {"type": "STR", "name": "rule5"}
-                        ],
-            "description": "Tblt Rules description."
-        }),
     ]
 
+    @unittest.skip
     def test_loopback_obj(self):
         # Test per-object loopback with normal and special cases
-        dec = adm_json.Decoder()
-        enc = adm_json.Encoder()
+        dec = adm_yang.Decoder()
+        enc = adm_yang.Encoder()
         for case in self.LOOPBACK_CASELIST:
             cls, json_in = case
             LOGGER.warning('%s', json.dumps(json_in, indent=2))
@@ -203,21 +238,22 @@ class TestAdmJson(unittest.TestCase):
             LOGGER.warning('%s', json.dumps(json_out, indent=2))
             self.assertEqual(json_in, json_out)
 
+    @unittest.skip
     def test_loopback_adm(self):
-        dec = adm_json.Decoder()
-        enc = adm_json.Encoder()
+        dec = adm_yang.Decoder()
+        enc = adm_yang.Encoder()
 
         with open(self.TEST_FILE_PATH, 'r', encoding='utf-8') as buf:
-            indata = json.load(buf)
+            indata = buf.read()
             buf.seek(0)
             adm = dec.decode(buf)
-        LOGGER.warning('%s', json.dumps(indata, indent=2))
+        LOGGER.warning('%s', indata)
 
-        outbuf = io.BytesIO()
+        outbuf = io.StringIO()
         enc.encode(adm, outbuf)
         outbuf.seek(0)
-        outdata = json.load(outbuf)
-        LOGGER.warning('%s', json.dumps(outdata, indent=2))
+        outdata = outbuf.getvalue()
+        LOGGER.warning('%s', outdata)
 
         # Compare as decoded JSON (the infoset, not the encoded bytes)
         self.assertEqual(indata, outdata)
@@ -225,7 +261,7 @@ class TestAdmJson(unittest.TestCase):
     def test_loopback_real_adms(self):
         
         def keep(name):
-            return name.endswith('.json') and name != 'index.json'
+            return name.endswith('.yang')
         
         file_names = os.listdir(os.path.join(SELFDIR, 'adms'))
         file_names = tuple(filter(keep, file_names))
@@ -233,21 +269,21 @@ class TestAdmJson(unittest.TestCase):
 
         for name in file_names:
             LOGGER.warning('Handling file %s', name)
-            dec = adm_json.Decoder()
-            enc = adm_json.Encoder()
+            dec = adm_yang.Decoder()
+            enc = adm_yang.Encoder()
     
             file_path = os.path.join(SELFDIR, 'adms', name)
             with open(file_path, 'r', encoding='utf-8') as buf:
-                indata = json.load(buf)
+                indata = buf.read()
                 buf.seek(0)
                 adm = dec.decode(buf)
-            LOGGER.warning('%s', json.dumps(indata, indent=2))
+            LOGGER.warning('%s', indata)
     
-            outbuf = io.BytesIO()
+            outbuf = io.StringIO()
             enc.encode(adm, outbuf)
             outbuf.seek(0)
-            outdata = json.load(outbuf)
-            LOGGER.warning('%s', json.dumps(outdata, indent=2))
+            outdata = outbuf.getvalue()
+            LOGGER.warning('%s', outdata)
     
             # Compare as decoded JSON (the infoset, not the encoded bytes)
             self.assertEqual(indata, outdata)

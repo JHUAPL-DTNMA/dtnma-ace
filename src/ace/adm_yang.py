@@ -25,6 +25,7 @@
 from datetime import datetime
 import io
 import logging
+import optparse
 import os
 import re
 from typing import TextIO, List
@@ -32,10 +33,12 @@ import pyang
 import pyang.plugin
 import pyang.context
 import pyang.repository
+import pyang.translators.yang
 from ace.models import (
     TypeNameList, TypeNameItem, Expr, ARI, AriAP, AC,
-    AdmFile, AdmUses, SemType,
-    Typedef, Const, Ctrl, Edd, Oper, OperParm, Var
+    MetadataList, MetadataItem, AdmRevision,
+    AdmFile, AdmUses, TypeUse, ParamMixin, TypeUseMixin, AdmObjMixin,
+    Typedef, Const, Ctrl, Edd, Oper, Var
 )
 from ace.util import normalize_ident
 
@@ -55,32 +58,32 @@ KEYWORDS = {
     Var: (AMM_MOD, 'var'),
 }
 
-
-def attr_to_member(name):
-    ''' Convert a JSON attribute name into a valid python instance variable
-    name using underscores.
-    '''
-    return name.replace('-', '_')
+MOD_META_KYWDS = {
+    'prefix',
+    'organization',
+    'contact',
+    'description',
+    'reference',
+}
 
 
 class Decoder:
     ''' The decoder portion of this CODEC.
     '''
 
-    def __init__(self, modpath: List[str], db_sess=None):
-        self._db_sess = db_sess
-        
+    def __init__(self, modpath: List[str]=None):
         # Initializer copied from pyang.scripts.pyang_tool.run()
-        plugindirs = [os.path.join(SELFDIR, 'pyang')]
-        pyang.plugin.init(plugindirs)
+        if not pyang.plugin.plugins:
+            plugindirs = [os.path.join(SELFDIR, 'pyang')]
+            pyang.plugin.init(plugindirs)
 
-        import optparse
         optparser = optparse.OptionParser('', add_help_option=False)
-        optparser.version = '%prog ' + pyang.__version__
         for p in pyang.plugin.plugins:
             p.add_opts(optparser)
-        (opts, args) = optparser.parse_args([])
+        (opts, _args) = optparser.parse_args([])
 
+        if not modpath:
+            modpath = []
         path = os.pathsep.join(modpath)
         repos = pyang.repository.FileRepository(path, verbose=True)
         self._ctx = pyang.context.Context(repos)
@@ -89,8 +92,12 @@ class Decoder:
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
+        
+        # Set to an object while processing a top-level module
+        self._module = None
+        self._obj_pos = 0
 
-    def _get_semtype(self, stmt):
+    def _get_typeuse(self, obj: TypeUseMixin, stmt: pyang.statements.Statement):
         TYPE_KYWDS = (
             (AMM_MOD, 'type'),
             (AMM_MOD, 'ulist'),
@@ -123,6 +130,7 @@ class Decoder:
         kywd_name = type_stmt.keyword[1]
 
         # Process refining substatements
+        typeuse = TypeUse()
         if kywd_name == 'type':
             refinements = list(filter(None, [
                 type_stmt.search_one(kywd)
@@ -131,26 +139,36 @@ class Decoder:
             if not refinements:
                 # Unrefined type use
                 if ':' in type_stmt.arg:
-                    admname, typename = type_stmt.arg.split(':', 2)
-                    semtype = (
-                        self._db_sess.query(SemType)
-                            .join(Typedef).join(AdmFile)
-                            .filter(
-                                AdmFile.name == admname,
-                                Typedef.name == typename
-                            )
-                    ).one_or_none()
-                    print('no refinement on typedef', type_stmt.arg, semtype)
+                    adm_prefix, type_name = type_stmt.arg.split(':', 2)
+                    # resolve yang prefix to module name
+                    type_ns = self._module.i_prefixes[adm_prefix]
+                    print('no refinement on typedef', type_stmt.arg, type_ns, type_name)
+                    typeuse.type_ns = type_ns
+                    typeuse.type_name = type_name
                 else:
                     print('no refinement on built-in', type_stmt.arg)
-            print(stmt, refinements)
+                    typeuse.type_name = type_stmt.arg
+            else:
+                print(stmt, refinements)
+
+        elif kywd_name == 'ulist':
+            pass  # FIXME: implement
+        elif kywd_name == 'dlist':
+            pass  # FIXME: implement
+        elif kywd_name == 'umap':
+            pass  # FIXME: implement
 
         elif kywd_name == 'tblt':
             key_stmt = type_stmt.search_one((AMM_MOD, 'key'))
             column_stmts = type_stmt.search((AMM_MOD, 'column'))
             print(stmt, key_stmt, column_stmts)
 
-    def from_stmt(self, cls, stmt):
+        elif kywd_name == 'union':
+            pass  # FIXME: implement
+        
+        obj.typeuse = typeuse
+
+    def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
 
         :param cls: The ORM class to instantiate.
@@ -165,10 +183,28 @@ class Decoder:
             name=stmt.arg,
             description=desc
         )
-    
-        if cls in (Const, Edd, Var):
-            obj.type = self._get_semtype(stmt)
-    
+
+        if issubclass(cls, AdmObjMixin):
+            obj.norm_name = normalize_ident(obj.name)
+            
+            enum_stmt = stmt.search_one((AMM_MOD, 'enum'))
+            if enum_stmt:
+                obj.enum = int(enum_stmt.arg) 
+
+        if issubclass(cls, ParamMixin):
+            orm_val = TypeNameList()
+            for param_stmt in stmt.search((AMM_MOD, 'parameter')):
+                item = TypeNameItem(
+                    name=param_stmt.arg,
+                )
+                self._get_typeuse(item, param_stmt)
+                orm_val.items.append(item)
+            
+            obj.parameters = orm_val
+
+        if issubclass(cls, TypeUseMixin):
+            self._get_typeuse(obj, stmt)
+
         '''
             if key in {'parmspec', 'columns'}:
                 # Type TN pairs
@@ -221,9 +257,6 @@ class Decoder:
         enum = 0
         for yang_stmt in module.search(sec_kywd):
             obj = self.from_stmt(orm_cls, yang_stmt)
-            # set derived attributes based on context
-            if obj.name is not None:
-                obj.norm_name = normalize_ident(obj.name)
 
             # FIXME: check for duplicates
             if obj.enum is None:
@@ -239,8 +272,12 @@ class Decoder:
         :return: The decoded ORM root object.
         '''
         file_path = buf.name if hasattr(buf, 'name') else None
-        module = self._ctx.add_module(file_path, buf.read(), primary_module=True)
+
+        module = self._ctx.add_module(file_path or '<text>', buf.read(), primary_module=True)
         LOGGER.debug('Loaded %s', module)
+        self._module = module
+        self._obj_pos = 0
+        
         modules = [module]
         
         # Same post-load steps from pyang
@@ -270,94 +307,153 @@ class Decoder:
 
         adm = AdmFile()
 
-        if hasattr(buf, 'name'):
-            adm.abs_file_path = buf.name
-            adm.last_modified = self.get_file_time(buf.name)
+        if file_path:
+            adm.abs_file_path = file_path
+            adm.last_modified = self.get_file_time(file_path)
         
+        adm.name = module.arg
         # Normalize the intrinsic ADM name
-        adm.norm_name = normalize_ident(module.arg)
-        adm.norm_namespace = adm.adm_ns = adm.norm_name
-        
+        adm.norm_name = normalize_ident(adm.name)
+
+        enum_stmt = module.search_one((AMM_MOD, 'enum'))
+        if enum_stmt:
+            adm.enum = int(enum_stmt.arg) 
+
+        adm.metadata_list = MetadataList()
+        for kywd in MOD_META_KYWDS:
+            meta_stmt = module.search_one(kywd)
+            if meta_stmt:
+                adm.metadata_list.items.append(MetadataItem(
+                    name=meta_stmt.keyword,
+                    arg=meta_stmt.arg,
+                ))
+
+        for rev_stmt in module.search('revision'):
+            desc = pyang.statements.get_description(rev_stmt)
+            ref_stmt = rev_stmt.search_one('reference')
+            adm.revisions.append(AdmRevision(
+                name=rev_stmt.arg,
+                description=desc,
+                reference=(ref_stmt.arg if ref_stmt else None)
+            ))
+
+        self._get_section(adm.typedef, Typedef, module)
         self._get_section(adm.const, Const, module)
         self._get_section(adm.ctrl, Ctrl, module)
         self._get_section(adm.edd, Edd, module)
         self._get_section(adm.oper, Oper, module)
         self._get_section(adm.var, Var, module)
 
+        self._module = None
         return adm
 
 
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def encode(self, adm: AdmFile, buf: TextIO, indent=None):
+    def __init__(self):
+        modpath = []
+        
+        optparser = optparse.OptionParser('', add_help_option=False)
+        for p in pyang.plugin.plugins:
+            p.add_opts(optparser)
+        (opts, _args) = optparser.parse_args([])
+
+        # opts.yang_canonical = True
+
+        path = os.pathsep.join(modpath)
+        repos = pyang.repository.FileRepository(path, verbose=True)
+        self._ctx = pyang.context.Context(repos)
+        self._ctx.strict = True
+        self._ctx.opts = opts
+
+        self._module = None
+
+    def encode(self, adm: AdmFile, buf: TextIO):
         ''' Decode a single ADM from file.
 
         :param adm: The ORM root object.
         :param buf: The buffer to write into.
-        :param indent: The JSON indentation size or None.
         '''
-        json_adm = {}
+        module = pyang.statements.new_statement(None, None, None, 'module', adm.name)
+        pyang.statements.v_init_module(self._ctx, module)
+        self._module = module
 
-        if adm.uses:
-            json_adm['uses'] = [use.namespace for use in adm.uses]
+        self._add_substmt(module, 'namespace', f'ari:/{adm.name}/')
+        self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.enum))
 
-        self._put_section(adm.mdat, Mdat, json_adm)
-        self._put_section(adm.const, Const, json_adm)
-        self._put_section(adm.ctrl, Ctrl, json_adm)
-        self._put_section(adm.edd, Edd, json_adm)
-        self._put_section(adm.mac, Mac, json_adm)
-        self._put_section(adm.oper, Oper, json_adm)
-        self._put_section(adm.rptt, Rptt, json_adm)
-        self._put_section(adm.tblt, Tblt, json_adm)
-        self._put_section(adm.var, Var, json_adm)
+        imp_stmt = self._add_substmt(module, 'import', 'ietf-amm')
+        self._add_substmt(imp_stmt, 'prefix', 'amm')
+        module.i_prefixes['amm'] = 'ietf-amm'
+        denorm_prefixes = {}
+        denorm_prefixes['ietf-amm'] = 'amm'
 
-        wrap = io.TextIOWrapper(buf, encoding='utf-8')
-        try:
-            json.dump(json_adm, wrap, indent=indent)
-        finally:
-            wrap.flush()
-            wrap.detach()
+        for item in adm.metadata_list.items:
+            self._add_substmt(module, item.name, item.arg)
 
-    def _put_section(self, obj_list, orm_cls, json_adm):
+        for rev in adm.revisions:
+            rev_stmt = self._add_substmt(module, 'revision', rev.name)
+            if rev.description:
+                self._add_substmt(rev_stmt, 'description', rev.description)
+            if rev.reference:
+                self._add_substmt(rev_stmt, 'reference', rev.reference)
+
+        self._put_section(adm.typedef, Typedef, module)
+        self._put_section(adm.const, Const, module)
+        self._put_section(adm.edd, Edd, module)
+        self._put_section(adm.var, Var, module)
+        self._put_section(adm.ctrl, Ctrl, module)
+        self._put_section(adm.oper, Oper, module)
+
+        def denorm(stmt):
+            if pyang.util.is_prefixed(stmt.raw_keyword):
+                prefix, name = stmt.raw_keyword
+                if prefix in denorm_prefixes:
+                    stmt.raw_keyword = (denorm_prefixes[prefix], name)
+
+            for sub_stmt in stmt.substmts:
+                denorm(sub_stmt)
+
+        denorm(module)
+
+        pyang.translators.yang.emit_yang(self._ctx, module, buf)
+        self._module = None
+
+    def _add_substmt(self, parent, keyword, arg=None):
+        sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
+        parent.substmts.append(sub_stmt)
+        return sub_stmt
+
+    def _put_section(self, obj_list, orm_cls, module:pyang.statements.ModSubmodStatement):
         ''' Insert a section to the file '''
-        if not obj_list:
-            # Don't add empty sections
-            return
-
-        sec_key = KEYWORDS[orm_cls]
-        json_list = []
         for obj in obj_list:
-            json_list.append(self.to_json_obj(obj))
-        json_adm[sec_key] = json_list
+            self.to_stmt(obj, module)
 
-    def to_json_obj(self, obj) -> object:
-        ''' Construct a encoded JSON object from an ORM object.
+    def to_stmt(self, obj:AdmObjMixin, module) -> pyang.statements.Statement:
+        ''' Construct a YANG statement from an ORM object.
 
         :param obj: The ORM object to read from.
-        :return: The JSON-able object.
+        :return: The pyang object.
         '''
-        json_obj = {}
-        json_keys = ATTRMAP[type(obj)]
-        for key in json_keys:
-            if key == 'enum':
-                continue
-            orm_val = getattr(obj, attr_to_member(key))
-            if orm_val is None:
-                continue
+        cls = type(obj)
+        kywd = KEYWORDS[cls]
+        obj_stmt = self._add_substmt(module, kywd, obj.name)
 
-            # Special handling of common keys
-            if key in {'parmspec', 'columns'}:
-                # Type TN pairs
-                json_list = []
-                for item in orm_val.items:
-                    json_item = {
-                        'type': item.type,
-                        'name': item.name,
-                    }
-                    json_list.append(json_item)
-                json_val = json_list
+        if issubclass(cls, ParamMixin):
+            for param in obj.parameters.items:
+                param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
+                self._put_typeuse(param, param_stmt)
 
+        if issubclass(cls, TypeUseMixin):
+            self._put_typeuse(obj, obj_stmt)
+
+        if issubclass(cls, AdmObjMixin):
+            self._add_substmt(obj_stmt, 'description', obj.description)
+            
+            if obj.enum:
+                self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
+
+        '''
             elif key in {'initializer'}:
                 # Type EXPR
                 json_val = {
@@ -376,25 +472,15 @@ class Encoder:
                 json_val = orm_val
 
             json_obj[key] = json_val
-
-        return json_obj
-
-    def _get_ac(self, obj):
-        json_list = []
-        for ari in obj.items:
-            json_list.append(self.to_json_ari(ari))
-        return json_list
-
-    def to_json_ari(self, ari: ARI) -> object:
-        ''' Construct an encoded JSON ARI from an ORM ARI.
-
-        :param ari: The ARI to encode.
-        :return the JSON-able object.
         '''
-        obj = {
-            'ns': ari.ns,
-            'nm': ari.nm,
-        }
-        if ari.ap:
-            obj['ap'] = [{'type': ap.type, 'value': ap.value} for ap in ari.ap]
-        return obj
+
+        return obj_stmt
+
+    def _put_typeuse(self, obj:TypeUseMixin, parent:pyang.statements.Statement) -> pyang.statements.Statement:
+        print('use', obj.typeuse)
+        if obj.typeuse.type_name:
+            if obj.typeuse.type_ns:
+                name = f'{obj.typeuse.type_ns}:{obj.typeuse.type_name}'
+            else:
+                name = obj.typeuse.type_name
+            self._add_substmt(parent, (AMM_MOD, 'type'), name)
