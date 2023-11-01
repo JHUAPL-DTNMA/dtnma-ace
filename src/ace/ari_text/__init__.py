@@ -24,14 +24,13 @@
 import logging
 import os
 from typing import TextIO
-import xdg
+import xdg_base_dirs
 from ace.ari import (
     ARI, AC, EXPR, LiteralARI, ReferenceARI, LITERAL_LABEL_TYPES
 )
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
 from .parsemod import new_parser
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class Decoder:
     ''' The decoder portion of this CODEC. '''
 
     def __init__(self):
-        self._cache_path = os.path.join(xdg.xdg_cache_home(), 'ace', 'ply')
+        self._cache_path = os.path.join(xdg_base_dirs.xdg_cache_home(), 'ace', 'ply')
         if not os.path.exists(self._cache_path):
             os.makedirs(self._cache_path)
         LOGGER.debug('cache at %s', self._cache_path)
