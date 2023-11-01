@@ -27,7 +27,7 @@ import os
 from typing import BinaryIO, Set
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-import xdg
+import xdg_base_dirs
 from ace import models, adm_yang
 
 LOGGER = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ class AdmSet:
             self.cache_path = None
         else:
             if cache_dir is None:
-                cache_dir = os.path.join(xdg.xdg_cache_home(), 'ace')
+                cache_dir = os.path.join(xdg_base_dirs.xdg_cache_home(), 'ace')
             if not os.path.exists(cache_dir):
                 os.makedirs(cache_dir)
             self.cache_path = os.path.join(cache_dir, 'adms.sqlite')
@@ -148,15 +148,6 @@ class AdmSet:
         '''
         return self.get_by_norm_name(name)
 
-    def contains_namespace(self, namespace: str) -> bool:
-        ''' Determine if a specific ADM normalized name is known.
-        :return: True if the name s present.
-        '''
-        query = self._db_sess.query(models.AdmFile.norm_namespace).filter(
-            models.AdmFile.norm_namespace == namespace
-        )
-        return query.count()
-
     def get_by_norm_name(self, name: str) -> models.AdmFile:
         ''' Retreive a specific ADM by its normalized name.
 
@@ -198,7 +189,10 @@ class AdmSet:
 
         :return: The total number of ADMs read.
         '''
-        dir_list = reversed([xdg.xdg_data_home()] + xdg.xdg_data_dirs())
+        dir_list = reversed(
+            [xdg_base_dirs.xdg_data_home()] + 
+            xdg_base_dirs.xdg_data_dirs()
+        )
         adm_cnt = 0
         for root_dir in dir_list:
             adm_dir = os.path.join(root_dir, 'ace', 'adms')
@@ -323,34 +317,34 @@ class AdmSet:
         LOGGER.debug('Loaded AdmFile name "%s"', adm_new.norm_name)
         
         # if dependant adm not added yet 
-        uses = [obj.norm_namespace for obj in adm_new.uses]
+        import_names = [obj.name for obj in adm_new.imports]
         pending = False
-        for adm in uses:
-            if not self.contains_namespace(adm):
+        for adm_name in import_names:
+            if not adm_name in self:
                 pending = True
                 break
 
         if pending:
-            self.pending_adms[adm_new] = uses
-        else: 
-            if del_dupe:
-                query = self._db_sess.query(models.AdmFile).filter(
-                    models.AdmFile.norm_name == adm_new.norm_name
-                )
-                LOGGER.debug('Removing %d old AdmFile objects', query.count())
-                # delete the ORM object so that it cascades
-                for adm_old in query.all():
-                    self._db_sess.delete(adm_old)
+            self.pending_adms[adm_new] = import_names
 
-            self._db_sess.add(adm_new)
-            # check all pending_adms
-            for adm, uses in self.pending_adms.items():
-                if adm_new.adm_ns in uses:
-                    uses.remove(adm_new.adm_ns)
-                    if uses:
-                        self.pending_adms[adm] = uses
-                    else:
-                        self._db_sess.add(adm)
+        if del_dupe:
+            query = self._db_sess.query(models.AdmFile).filter(
+                models.AdmFile.norm_name == adm_new.norm_name
+            )
+            LOGGER.debug('Removing %d old AdmFile objects', query.count())
+            # delete the ORM object so that it cascades
+            for adm_old in query.all():
+                self._db_sess.delete(adm_old)
+
+        self._db_sess.add(adm_new)
+        # check all pending_adms
+        for adm, import_names in self.pending_adms.items():
+            if adm_new.norm_name in import_names:
+                import_names.remove(adm_new.norm_name)
+                if import_names:
+                    self.pending_adms[adm] = import_names
+                else:
+                    self._db_sess.add(adm)
 
     def get_child(self, adm: models.AdmFile, cls: type, norm_name: str=None, enum: int=None):
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.

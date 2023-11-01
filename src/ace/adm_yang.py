@@ -37,7 +37,7 @@ import pyang.translators.yang
 from ace.models import (
     TypeNameList, TypeNameItem, Expr, ARI, AriAP, AC,
     MetadataList, MetadataItem, AdmRevision,
-    AdmFile, AdmUses, TypeUse, ParamMixin, TypeUseMixin, AdmObjMixin,
+    AdmFile, AdmImport, TypeUse, ParamMixin, TypeUseMixin, AdmObjMixin,
     Typedef, Const, Ctrl, Edd, Oper, Var
 )
 from ace.util import normalize_ident
@@ -141,7 +141,7 @@ class Decoder:
                 if ':' in type_stmt.arg:
                     adm_prefix, type_name = type_stmt.arg.split(':', 2)
                     # resolve yang prefix to module name
-                    type_ns = self._module.i_prefixes[adm_prefix]
+                    type_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
                     print('no refinement on typedef', type_stmt.arg, type_ns, type_name)
                     typeuse.type_ns = type_ns
                     typeuse.type_name = type_name
@@ -175,13 +175,9 @@ class Decoder:
         :param stmt: The decoded YANG to read from.
         :return: The ORM object.
         '''
-        desc = pyang.statements.get_description(stmt)
-        if desc:
-            desc = re.sub(r'[\r\n]+s*', ' ', desc)
-
         obj = cls(
             name=stmt.arg,
-            description=desc
+            description=pyang.statements.get_description(stmt),
         )
 
         if issubclass(cls, AdmObjMixin):
@@ -319,6 +315,13 @@ class Decoder:
         if enum_stmt:
             adm.enum = int(enum_stmt.arg) 
 
+        for rev_stmt in module.search('import'):
+            prefix_stmt = rev_stmt.search_one('prefix')
+            adm.imports.append(AdmImport(
+                name=rev_stmt.arg,
+                prefix=prefix_stmt.arg,
+            ))
+
         adm.metadata_list = MetadataList()
         for kywd in MOD_META_KYWDS:
             meta_stmt = module.search_one(kywd)
@@ -329,12 +332,9 @@ class Decoder:
                 ))
 
         for rev_stmt in module.search('revision'):
-            desc = pyang.statements.get_description(rev_stmt)
-            ref_stmt = rev_stmt.search_one('reference')
             adm.revisions.append(AdmRevision(
                 name=rev_stmt.arg,
-                description=desc,
-                reference=(ref_stmt.arg if ref_stmt else None)
+                description=pyang.statements.get_description(rev_stmt),
             ))
 
         self._get_section(adm.typedef, Typedef, module)
@@ -359,7 +359,8 @@ class Encoder:
             p.add_opts(optparser)
         (opts, _args) = optparser.parse_args([])
 
-        # opts.yang_canonical = True
+        # Consistent ordering
+        opts.yang_canonical = True
 
         path = os.pathsep.join(modpath)
         repos = pyang.repository.FileRepository(path, verbose=True)
@@ -368,6 +369,7 @@ class Encoder:
         self._ctx.opts = opts
 
         self._module = None
+        self._denorm_prefixes = None
 
     def encode(self, adm: AdmFile, buf: TextIO):
         ''' Decode a single ADM from file.
@@ -378,15 +380,18 @@ class Encoder:
         module = pyang.statements.new_statement(None, None, None, 'module', adm.name)
         pyang.statements.v_init_module(self._ctx, module)
         self._module = module
+        self._denorm_prefixes = {}
 
         self._add_substmt(module, 'namespace', f'ari:/{adm.name}/')
         self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.enum))
 
-        imp_stmt = self._add_substmt(module, 'import', 'ietf-amm')
-        self._add_substmt(imp_stmt, 'prefix', 'amm')
-        module.i_prefixes['amm'] = 'ietf-amm'
-        denorm_prefixes = {}
-        denorm_prefixes['ietf-amm'] = 'amm'
+        for imp in adm.imports:
+            imp_stmt = self._add_substmt(module, 'import', imp.name)
+            self._add_substmt(imp_stmt, 'prefix', imp.prefix)
+            
+            # local bookkeeping
+            module.i_prefixes[imp.prefix] = imp.name
+            self._denorm_prefixes[imp.name] = imp.prefix
 
         for item in adm.metadata_list.items:
             self._add_substmt(module, item.name, item.arg)
@@ -395,8 +400,6 @@ class Encoder:
             rev_stmt = self._add_substmt(module, 'revision', rev.name)
             if rev.description:
                 self._add_substmt(rev_stmt, 'description', rev.description)
-            if rev.reference:
-                self._add_substmt(rev_stmt, 'reference', rev.reference)
 
         self._put_section(adm.typedef, Typedef, module)
         self._put_section(adm.const, Const, module)
@@ -407,9 +410,7 @@ class Encoder:
 
         def denorm(stmt):
             if pyang.util.is_prefixed(stmt.raw_keyword):
-                prefix, name = stmt.raw_keyword
-                if prefix in denorm_prefixes:
-                    stmt.raw_keyword = (denorm_prefixes[prefix], name)
+                stmt.raw_keyword = self._denorm_tuple(stmt.raw_keyword)
 
             for sub_stmt in stmt.substmts:
                 denorm(sub_stmt)
@@ -418,6 +419,13 @@ class Encoder:
 
         pyang.translators.yang.emit_yang(self._ctx, module, buf)
         self._module = None
+        self._denorm_prefixes = None
+
+    def _denorm_tuple(self, val):
+        prefix, name = val
+        if prefix in self._denorm_prefixes:
+            prefix = self._denorm_prefixes[prefix]
+        return (prefix, name)
 
     def _add_substmt(self, parent, keyword, arg=None):
         sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
@@ -439,6 +447,12 @@ class Encoder:
         kywd = KEYWORDS[cls]
         obj_stmt = self._add_substmt(module, kywd, obj.name)
 
+        if issubclass(cls, AdmObjMixin):
+            if obj.enum:
+                self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
+            if obj.description:
+                self._add_substmt(obj_stmt, 'description', obj.description)
+
         if issubclass(cls, ParamMixin):
             for param in obj.parameters.items:
                 param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
@@ -446,12 +460,6 @@ class Encoder:
 
         if issubclass(cls, TypeUseMixin):
             self._put_typeuse(obj, obj_stmt)
-
-        if issubclass(cls, AdmObjMixin):
-            self._add_substmt(obj_stmt, 'description', obj.description)
-            
-            if obj.enum:
-                self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
 
         '''
             elif key in {'initializer'}:
@@ -477,10 +485,11 @@ class Encoder:
         return obj_stmt
 
     def _put_typeuse(self, obj:TypeUseMixin, parent:pyang.statements.Statement) -> pyang.statements.Statement:
-        print('use', obj.typeuse)
+        print('use', obj.typeuse.type_ns)
         if obj.typeuse.type_name:
             if obj.typeuse.type_ns:
-                name = f'{obj.typeuse.type_ns}:{obj.typeuse.type_name}'
+                ns, name = self._denorm_tuple((obj.typeuse.type_ns, obj.typeuse.type_name))
+                name = f'{ns}:{name}'
             else:
                 name = obj.typeuse.type_name
             self._add_substmt(parent, (AMM_MOD, 'type'), name)

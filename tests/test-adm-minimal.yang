@@ -1,31 +1,29 @@
 module test-adm-minimal {
-  namespace "ari:/ietf-dtnma-agent";
-  prefix da;
-  amm:enum "0";
+  namespace "ari:/test-adm-minimal/";
+  prefix test;
 
   import ietf-amm {
     prefix amm;
   }
-  
-  organization "JHU/APL";
-  
-  revision 2023-10-31 {
-    description "initial test";
-  }
 
+  revision 2023-10-31 {
+    description
+      "Initial test";
+  }
+  amm:enum "0";
+  amm:edd edd1 {
+    amm:type INT;
+    description
+      "EDD test_int";
+  }
   amm:ctrl test1 {
-    description "This control resets all Agent ADM statistics reported in the Agent ADM report.";
-    
     amm:parameter id {
       amm:type amm:ANY;
     }
     amm:parameter def {
       amm:type amm:EXPR;
-    } 
-  }
-  
-  amm:edd edd1 {
-    description "EDD test_int";
-    amm:type INT;
+    }
+    description
+      "This control resets all Agent ADM statistics reported in the Agent ADM report.";
   }
 }

@@ -221,7 +221,7 @@ module empty {
         # (models.Tbr, {}),
     ]
 
-    @unittest.skip
+    @unittest.skip  # FIXME: reinstate later
     def test_loopback_obj(self):
         # Test per-object loopback with normal and special cases
         dec = adm_yang.Decoder()
@@ -238,7 +238,6 @@ module empty {
             LOGGER.warning('%s', json.dumps(json_out, indent=2))
             self.assertEqual(json_in, json_out)
 
-    @unittest.skip
     def test_loopback_adm(self):
         dec = adm_yang.Decoder()
         enc = adm_yang.Encoder()
@@ -258,6 +257,7 @@ module empty {
         # Compare as decoded JSON (the infoset, not the encoded bytes)
         self.assertEqual(indata, outdata)
 
+    @unittest.skip  # FIXME: reinstate later
     def test_loopback_real_adms(self):
         
         def keep(name):

@@ -44,6 +44,11 @@ class SchemaVersion(Base):
 # parent ADM object.
 
 
+class CommonMixin:
+    ''' Common module substatements. '''
+    description = Column(String)
+
+
 class MetadataItem(Base):
     ''' A single item of module, object, or substatement metadata. '''
     __tablename__ = "metadata_item"
@@ -68,8 +73,8 @@ class MetadataList(Base):
 
     items = relationship(
         "MetadataItem",
-        order_by="MetadataItem.id",
-        collection_class=ordering_list('id'),
+        order_by="MetadataItem.name",
+        collection_class=ordering_list('name'),
         cascade="all, delete"
     )
 
@@ -91,7 +96,7 @@ class TypeUse(Base):
     type_ns = Column(String)
     # Name of builtin or namespaced typedef
     type_name = Column(String)
-
+    # Refinements for used type
     type_refinements = relationship(
         "TypeRefinement",
         order_by="TypeRefinement.position",
@@ -99,8 +104,8 @@ class TypeUse(Base):
         cascade="all, delete"
     )
 
-    # Columns present in the table
-    columns_id = Column(Integer, ForeignKey('typename_list.id'), nullable=False)
+    # Columns present in the table template
+    columns_id = Column(Integer, ForeignKey('typename_list.id'))
     columns = relationship("TypeNameList", cascade="all, delete")
 
 
@@ -225,14 +230,6 @@ class Expr(Base):
     postfix = relationship("AC")
 
 
-class DescRefMixin:
-    ''' Common attributes of objects and substatements. '''
-    # Arbitrary optional text
-    description = Column(String)
-    # Arbitrary optional text
-    reference = Column(String)
-
-
 class AdmFile(Base):
     ''' The ADM file itself and its source (filesystem) metadata '''
     __tablename__ = "admfile"
@@ -256,7 +253,7 @@ class AdmFile(Base):
         "MetadataList",
         cascade="all, delete"
     )
-    
+
     revisions = relationship(
         "AdmRevision",
         back_populates="admfile",
@@ -264,9 +261,12 @@ class AdmFile(Base):
         cascade="all, delete"
     )
 
-    uses = relationship("AdmUses", back_populates="admfile",
-                        order_by='asc(AdmUses.position)',
-                        cascade="all, delete")
+    imports = relationship(
+        "AdmImport",
+        back_populates="admfile",
+        order_by='asc(AdmImport.position)',
+        cascade="all, delete"
+    )
 
     # references a list of contained objects
     typedef = relationship("Typedef", back_populates="admfile",
@@ -293,7 +293,7 @@ class AdmFile(Base):
         return "ADM(" + ', '.join(parts) + ")"
 
 
-class AdmRevision(Base, DescRefMixin):
+class AdmRevision(Base, CommonMixin):
     ''' Each "revision" of an ADM '''
     __tablename__ = "adm_revision"
     id = Column(Integer, primary_key=True)
@@ -304,38 +304,37 @@ class AdmRevision(Base, DescRefMixin):
     # ordinal of this item in the list
     position = Column(Integer)
 
-    # Original exact text
-    name = Column(String)
+    # Original exact text, indexed for sorting
+    name = Column(String, index=True)
 
 
-class AdmUses(Base):
-    ''' Each "uses" of an ADM '''
-    __tablename__ = "adm_uses"
+class AdmImport(Base, CommonMixin):
+    ''' Each "import" of an ADM '''
+    __tablename__ = "adm_import"
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
     admfile_id = Column(Integer, ForeignKey("admfile.id"))
     # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="uses")
+    admfile = relationship("AdmFile", back_populates="imports")
     # ordinal of this item in the list
     position = Column(Integer)
 
     # Original exact text
-    namespace = Column(String)
+    name = Column(String)
+    # Prefix within the module
+    prefix = Column(String)
 
-    # Normalized text for searching    
-    norm_namespace = Column(String, index=True)
 
-
-class AdmObjMixin(DescRefMixin):
+class AdmObjMixin(CommonMixin):
     ''' Common attributes of an ADM-defined object. '''
     # ordinal of this item in the module
     position = Column(Integer)
 
     # Unique name (within a section)
     name = Column(String, nullable=False)
-
     # Normalized object name (for searching)
     norm_name = Column(String, index=True)
+
     # Enumeration for this ADM
     enum = Column(Integer, index=True)
 

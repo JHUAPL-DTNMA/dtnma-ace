@@ -23,7 +23,7 @@ dependencies = [
   "cbor2",
   "PLY >= 3",
   "pyang",
-  "xdg",
+  "xdg-base-dirs",
   "sqlalchemy >= 1.3",
 ]
 

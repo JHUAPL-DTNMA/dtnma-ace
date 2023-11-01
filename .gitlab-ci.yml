@@ -93,7 +93,7 @@ unit-test:
     - pip-compile --extra test pyproject.toml
     - pip3 install -r requirements.txt
   script:
-    - PYTHONPATH=src python3 -m pytest --verbose --junitxml=testresults.xml --cov=ace tests
+    - PYTHONPATH=src:tests python3 -m pytest --verbose --junitxml=testresults.xml --cov=ace tests
     - coverage xml
   coverage: /TOTAL\s+\d+\s+\d+\s+(\d+(?:.\d+)?)%/
   artifacts:
