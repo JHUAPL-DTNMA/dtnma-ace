@@ -21,7 +21,7 @@
 ##
 default:
   # All jobs run within a target-like environment
-  image: docker-remote.artifactory.jhuapl.edu/ubuntu:20.04
+  image: docker-remote.artifactory.jhuapl.edu/ubuntu:22.04
 
 include:
   # Run pipeline only on branches, not MRs
