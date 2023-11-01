@@ -65,9 +65,9 @@ cache:
   curl -svL http://apllinuxdepot.jhuapl.edu/linux/APL-root-cert/JHUAPL-MS-Root-CA-05-21-2038-B64-text.cer -o /usr/local/share/ca-certificates/JHUAPL-MS-Root-CA-05-21-2038-B64-text.crt
   update-ca-certificates
 
+#     pip3 config --global set global.index-url https://artifactory.jhuapl.edu/artifactory/api/pypi/python-remote/simple
 .prep-install-pip: &prep-install-pip |
     apt-get update && apt-get install -y python3 python3-venv python3-pip python3-wheel
-#     pip3 config --global set global.index-url https://artifactory.jhuapl.edu/artifactory/api/pypi/python-remote/simple
     pip3 install --upgrade pip
     pip3 install pip-tools
 
