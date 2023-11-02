@@ -23,10 +23,9 @@
 '''
 import logging
 from ply import yacc
-from ace.ari import AC, EXPR, Identity, ReferenceARI, LiteralARI, StructType
+from ace.ari import Identity, ReferenceARI, LiteralARI, StructType
 from ace.util import is_printable
 from .lexmod import tokens  # pylint: disable=unused-import
-
 
 # make linters happy
 __all__ = [
@@ -34,11 +33,10 @@ __all__ = [
     'new_parser',
 ]
 
-
 LOGGER = logging.getLogger(__name__)
 
-
 # pylint: disable=invalid-name disable=missing-function-docstring
+
 
 def p_ari_explicit(p):
     'ari : ARI_PREFIX ssp'
@@ -57,17 +55,24 @@ def p_ari_literal(p):
 
 def p_literal_without_type(p):
     'literal : litvalue'
-    p[0] = p[1]
+    p[0] = LiteralARI(
+        value=p[1],
+    )
 
 
 def p_literal_with_type(p):
-    'literal : TYPEDOT litvalue'
-    p[0] = LiteralARI(
-        type_enum=p[1],
-        value=p[2].value
-    )
+    'literal : SLASH enumid SLASH litvalue'
+    typ = p[2]
+    if isinstance(typ, int):
+        typ = StructType(typ)
+    else:
+        typ = StructType[typ]
+
     try:
-        p[0].check_type()
+        p[0] = LiteralARI.coerce(
+            type_enum=typ,
+            value=p[4]
+        )
     except Exception as err:
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
@@ -75,158 +80,97 @@ def p_literal_with_type(p):
 
 def p_litvalue_bool(p):
     'litvalue : BOOL'
-    p[0] = LiteralARI(
-        type_enum=StructType.BOOL,
-        value=p[1],
-    )
+    p[0] = p[1]
 
 
 def p_litvalue_int(p):
     'litvalue : INT'
-    p[0] = LiteralARI(
-        type_enum=StructType.VAST,
-        value=p[1],
-    )
+    p[0] = p[1]
 
 
 def p_litvalue_float(p):
     'litvalue : FLOAT'
-    p[0] = LiteralARI(
-        type_enum=StructType.REAL64,
-        value=p[1],
-    )
+    p[0] = p[1]
 
 
 def p_litvalue_tstr(p):
     'litvalue : TSTR'
-    p[0] = LiteralARI(
-        type_enum=StructType.STR,
-        value=p[1],
-    )
+    p[0] = p[1]
 
 
 def p_litvalue_bstr(p):
     'litvalue : BSTR'
-    p[0] = LiteralARI(
-        type_enum=StructType.BSTR,
-        value=p[1],
-    )
-
-
-def p_ssp_without_params(p):
-    'ssp : ident'
-    p[0] = ReferenceARI(
-        ident=p[1]
-    )
-
-
-def p_ssp_empty_params(p):
-    'ssp : ident LPAREN RPAREN'
-    p[0] = ReferenceARI(
-        ident=p[1],
-        params=[],
-    )
-
-
-def p_ssp_with_params(p):
-    'ssp : ident LPAREN paramlist RPAREN'
-    p[0] = ReferenceARI(
-        ident=p[1],
-        params=p[3],
-    )
-
-
-def p_paramlist_join(p):
-    'paramlist : paramlist COMMA paramitem'
-    obj = p[1]
-    obj.append(p[3])
-    p[0] = obj
-
-
-def p_paramlist_end(p):
-    'paramlist : paramitem'
-    p[0] = [p[1]]
-
-
-def p_paramitem_ari(p):
-    'paramitem : ari'
     p[0] = p[1]
 
 
-def p_paramitem_acempty(p):
-    'paramitem : LSQRB RSQRB'
-    p[0] = AC()
+def p_litvalue_emptylist(p):
+    '''litvalue : LPAREN RPAREN'''
+    p[0] = []
 
 
-def p_paramitem_expr(p):
-    'paramitem : TYPENAME LSQRB aclist RSQRB'
-    p[0] = EXPR(type_enum=p[1], items=p[3].items)
-
-
-def p_paramitem_aclist(p):
-    'paramitem : LSQRB aclist RSQRB'
+def p_litvalue_container(p):
+    '''litvalue : LPAREN aclist RPAREN
+                | LPAREN amlist RPAREN'''
     p[0] = p[2]
+
+
+def p_ssp_objref(p):
+    '''ssp : ident
+           | ident LPAREN RPAREN
+           | ident LPAREN aclist RPAREN'''
+    if len(p) == 2:
+        params = None
+    elif len(p) == 4:
+        params = []
+    else:
+        params = p[3]
+    p[0] = ReferenceARI(
+        ident=p[1],
+        params=params
+    )
 
 
 def p_aclist_join(p):
     'aclist : aclist COMMA ari'
-    obj = p[1]
-    obj.items.append(p[3])
-    p[0] = obj
+    p[0] = p[1] + [p[3]]
 
 
 def p_aclist_end(p):
     'aclist : ari'
-    p[0] = AC(items=[p[1]])
+    p[0] = [p[1]]
+
+
+def p_amlist_join(p):
+    'amlist : amlist COMMA ampair'
+    p[0] = p[1] | p[3]  # merge dicts
+
+
+def p_amlist_end(p):
+    'amlist : ampair'
+    p[0] = p[1]
+
+
+def p_amlist_pair(p):
+    'ampair : ari EQ ari'
+    p[0] = {p[1]: p[3]}
 
 
 def p_ident_with_ns(p):
-    'ident : SLASH nsid SLASH TYPEDOT objid'
+    'ident : SLASH enumid SLASH IDENT SLASH enumid'
     p[0] = Identity(
         namespace=p[2],
-        type_enum=p[4],
-        name=p[5],
+        type_enum=StructType[p[4]],
+        name=p[6],
     )
 
 
-#FIXME: this is not a valid path but it is used by js-amp.me
-def p_ident_empty_ns(p):
-    'ident : SLASH SLASH TYPEDOT objid'
-    p[0] = Identity(
-        type_enum=p[3],
-        name=p[4],
-    )
-
-
-def p_ident_without_ns(p):
-    'ident : SLASH TYPEDOT objid'
-    p[0] = Identity(
-        type_enum=p[2],
-        name=p[3],
-    )
-
-
-def p_nsid_int(p):
-    'nsid : INT'
+def p_enumid_int(p):
+    'enumid : INT'
     p[0] = p[1]
 
 
-def p_nsid_name(p):
-    'nsid : NAME'
-    p[0] = p[1]
-
-
-def p_objid_bstr(p):
-    'objid : BSTR'
-    name = p[1]
-    # Preserve text names
-    if is_printable(name):
-        name = name.decode('utf-8')
-    p[0] = name
-
-
-def p_objid_name(p):
-    'objid : NAME'
+def p_enumid_name(p):
+    'enumid : IDENT'
     p[0] = p[1]
 
 

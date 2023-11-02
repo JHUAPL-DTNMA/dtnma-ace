@@ -25,7 +25,7 @@ import enum
 import logging
 import cbor2
 from ace import models
-from ace.ari import ReferenceARI, AC, EXPR, TNVC, StructType
+from ace.ari import ReferenceARI, StructType
 from ace.adm_set import AdmSet
 
 LOGGER = logging.getLogger(__name__)
@@ -84,9 +84,14 @@ class Converter:
                 for item in obj.params:
                     self(item)
 
-        elif isinstance(obj, (AC, EXPR, TNVC)):
-            for item in obj.items:
+        elif obj.type_enum is StructType.AC:
+            for item in obj.value:
                 self(item)
+
+        elif obj.type_enum is StructType.AM:
+            for key, val in obj.value.items():
+                self(key)  # FIXME: replace item if key is modified
+                self(val)
 
     def _convert_ari(self, ari):
         if self._mode == Mode.TO_NN and isinstance(ari.ident.namespace, str):
@@ -150,5 +155,5 @@ class Converter:
             obj = self._adms.get_child(adm, ORM_TYPE[ari.ident.type_enum], enum=obj_enum)
             LOGGER.debug('ARI nickname %s name %s resolved to type %s name %s obj %s', ari.ident.namespace, ari.ident.name, ari.ident.type_enum, obj_enum, obj)
 
-            ari.ident.namespace = f'IANA:{adm.norm_name}'
+            ari.ident.namespace = f'{adm.norm_name}'
             ari.ident.name = obj.norm_name

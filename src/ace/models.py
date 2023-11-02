@@ -117,15 +117,15 @@ class TypeRefinement(Base):
     # Containing list
     list_id = Column(Integer, ForeignKey("type_use.id"))
     list = relationship("TypeUse", back_populates="type_refinements")
-    # ordinal of this item in a :cls:`TypeUse`
     position = Column(Integer)
+    ''' ordinal of this item in a :class:`TypeUse` '''
 
     name = Column(String, nullable=False)
     value = Column(String)
 
 
 class TypeUseMixin:
-    ''' Common attributes for referencing a :cls:`TypeUse` instance. '''
+    ''' Common attributes for referencing a :class:`TypeUse` instance. '''
     typeuse_id = Column(Integer, ForeignKey("type_use.id"))
 
     @declared_attr
@@ -157,13 +157,13 @@ class TypeNameItem(Base, TypeUseMixin):
     # Containing list
     list_id = Column(Integer, ForeignKey("typename_list.id"))
     list = relationship("TypeNameList", back_populates="items")
-    # ordinal of this item in a TypeNameList
     position = Column(Integer)
+    ''' ordinal of this item in a :class:`TypeNameList` '''
 
-    # Unique name for the item, the type comes from :cls:`TypeUseMixin`
     name = Column(String, nullable=False)
-    # Arbitrary optional text
+    ''' Unique name for the item, the type comes from :class:`TypeUseMixin` '''
     description = Column(String)
+    ''' Arbitrary optional text '''
 
 
 class ARI(Base):

@@ -95,6 +95,7 @@ unit-test:
     - pip3 install -r requirements.txt
   script:
     - PYTHONPATH=src:tests python3 -m pytest --verbose --junitxml=testresults.xml --cov=ace tests
+  after_script:
     - coverage xml
   coverage: /TOTAL\s+\d+\s+\d+\s+(\d+(?:.\d+)?)%/
   artifacts:

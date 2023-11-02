@@ -28,12 +28,10 @@ import struct
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
-    ARI, AC, EXPR, TNVC, Identity, ReferenceARI, LiteralARI,
-    StructType, LITERAL_TYPES
+    ARI, Identity, ReferenceARI, LiteralARI, StructType
 )
 from ace.cborutil import to_diag
 from ace.util import is_printable
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -127,36 +125,6 @@ class Decoder:
 
         return res
 
-    def _decode_tnvc(self, cbordec):
-        ''' From the document:
-            +--------+---------+----------+----------+----------+----------+
-            | Flags  | # Items |  Types   |  Names   |  Values  |  Mixed   |
-            | [BYTE] |  [UINT] | [OCTETS] | [OCTETS] | [OCTETS] | [OCTETS] |
-            |        |  (Opt)  |  (Opt)   |  (Opt)   |  (Opt)   |  (Opt)   |
-            +--------+---------+----------+----------+----------+----------+
-        '''
-
-        flags, = struct.unpack('!B', cbordec.read(1))
-
-        count = cbordec.decode() if flags else 0
-
-        type_enums = []
-        if flags & TnvcFlag.TYPE:
-            for _idx in range(count):
-                type_id = struct.unpack('!B', cbordec.read(1))[0]
-                type_enums.append(StructType(type_id))
-
-        if flags & TnvcFlag.NAME:
-            raise NotImplementedError
-
-        values = []
-        if flags & TnvcFlag.VALUE:
-            for idx in range(count):
-                LOGGER.debug('Decoding TNVC item %d type %s',
-                             idx, type_enums[idx])
-                values.append(self._decode_obj(type_enums[idx], cbordec))
-        return values
-
     def _decode_ac_items(self, cbordec):
         # FIXME: workaorund! doesn't scale up
         item = ord(cbordec.read(1))
@@ -166,34 +134,6 @@ class Decoder:
         for _ in range(count):
             items.append(self._decode_ari(cbordec))
         return items
-
-    def _decode_obj(self, type_enum, cbordec):
-        if type_enum == StructType.ARI:
-            obj = self._decode_ari(cbordec)
-
-        elif type_enum == StructType.AC:
-            obj = AC(
-                items=self._decode_ac_items(cbordec)
-            )
-
-        elif type_enum == StructType.EXPR:
-            obj = EXPR(
-                type_enum=StructType(cbordec.decode()),
-                items=self._decode_ac_items(cbordec)
-            )
-
-        elif type_enum == StructType.TNVC:
-            # FIXME: there is no distinction in text between AC and TNVC
-            obj = AC(items=self._decode_tnvc(cbordec))
-
-        elif type_enum in LITERAL_TYPES:
-            item = cbordec.decode()
-            obj = LiteralARI(type_enum=type_enum, value=item)
-
-        else:
-            raise ValueError(f'Unhandled param object type: {type_enum}')
-
-        return obj
 
 
 class Encoder:
@@ -212,29 +152,16 @@ class Encoder:
         if isinstance(obj, ReferenceARI):
             self._encode_ref_ari(obj, cborenc)
 
-        elif isinstance(obj, AC):
-            # FIXME: workaorund! doesn't scale up
-            head = bytes([0x80 | len(obj.items)])
-            LOGGER.debug('AC encoding header %s', to_diag(head))
-            cborenc.write(head)
-            for ari in obj.items:
-                self._encode_ref_ari(ari, cborenc)
-
-        elif isinstance(obj, EXPR):
-            cborenc.encode(obj.type_enum.value)
-            # FIXME: workaorund! doesn't scale up
-            head = bytes([0x80 | len(obj.items)])
-            LOGGER.debug('EXPR encoding type %s, header %s',
-                         obj.type_enum.value, to_diag(head))
-            cborenc.write(head)
-            for ari in obj.items:
-                self._encode_ref_ari(ari, cborenc)
-
-        elif isinstance(obj, TNVC):
-            self._encode_tnvc(obj.items, cborenc)
-
         elif isinstance(obj, LiteralARI):
-            if obj.type_enum == StructType.BSTR:
+            if obj.type_enum is StructType.AC:
+                # FIXME: workaorund! doesn't scale up
+                head = bytes([0x80 | len(obj.items)])
+                LOGGER.debug('AC encoding header %s', to_diag(head))
+                cborenc.write(head)
+                for ari in obj.items:
+                    self._encode_ref_ari(ari, cborenc)
+                return
+            elif obj.type_enum == StructType.BYTESTR:
                 cborenc.encode(obj.value)
                 return
 

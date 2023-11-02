@@ -25,71 +25,52 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 import math
 from dataclasses import dataclass, field
 import enum
-from typing import List, Optional, Union
+from typing import List, Dict, Optional, Union
 
 
 @enum.unique
 class StructType(enum.IntEnum):
-    ''' The enumeration of ADM data types from Section 5.4 of ADM draft.
+    ''' The enumeration of ADM data types from Section 10.3 of ARI draft.
     '''
-    MDAT = -1  # FIXME: not a real type!
+    # Primitive types
+    NULL = 0
+    BOOL = 1
+    BYTE = 2
+    INT = 4
+    UINT = 5
+    VAST = 6
+    UVAST = 7
+    REAL32 = 8
+    REAL64 = 9
+    TEXTSTR = 10
+    BYTESTR = 11
+    # Compound types
+    TP = 12
+    TD = 13
+    LABEL = 14
+    CBOR = 15
+    LITTYPE = 16
+    AC = 17
+    AM = 18
 
     # AMM object types
-    CONST = 0
-    CTRL = 1
-    EDD = 2
-    LIT = 3
-    MAC = 4
-    OPER = 5
-#    RPT = 6
-    RPTT = 7
-    SBR = 8
-#    TBL = 9
-    TBLT = 10
-    TBR = 11
-    VAR = 12
-
-    # Primitive data types
-    BOOL = 16
-    BYTE = 17
-    STR = 18  # FIXME: shoudl be TSTR
-    INT = 19
-    UINT = 20
-    VAST = 21
-    UVAST = 22
-    REAL32 = 23
-    REAL64 = 24
-    UNK = -25 # not formally defined in ADM spec 
-
-    # Compound types
-    TV = 32
-    TS = 33
-#    TNV = 34
-    TNVC = 35
-    ARI = 36
-    AC = 37
-    EXPR = 38
-    BSTR = 39  # Really a primitive type
+    CONST = -2
+    CTRL = -3
+    EDD = -4
+    OPER = -6
+    SBR = -8
+    TBR = -10
+    VAR = -11
+    TYPEDEF = -12
 
 
-#: All literal struct types
+# All literal struct types
 LITERAL_TYPES = {
-    StructType.BOOL,
-    StructType.BYTE,
-    StructType.INT,
-    StructType.UINT,
-    StructType.VAST,
-    StructType.UVAST,
-    StructType.REAL32,
-    StructType.REAL64,
-    StructType.UNK,
-    StructType.STR,
-    StructType.BSTR,  # FIXME: not really
-    StructType.TV,
-    StructType.TS,
+    typ for typ in StructType
+    if typ.value >= 0
 }
 
-#: Required label struct types
+# Required label struct types
 # Those that have ambiguous text encoding
 LITERAL_LABEL_TYPES = {
     StructType.BYTE,
@@ -99,24 +80,20 @@ LITERAL_LABEL_TYPES = {
     StructType.UVAST,
     StructType.REAL32,
     StructType.REAL64,
-    StructType.UNK,
-    StructType.TV,
-    StructType.TS,
+    StructType.TP,
+    StructType.TD,
 }
 
 NUMERIC_LIMITS = {
-    StructType.BYTE: (0, 2**8 - 1),
-    StructType.INT: (-2**31, 2**31 - 1),
-    StructType.UINT: (0, 2**32 - 1),
-    StructType.VAST: (-2**63, 2**63 - 1),
-    StructType.UVAST: (0, 2**64 - 1),
+    StructType.BYTE: (0, 2 ** 8 - 1),
+    StructType.INT: (-2 ** 31, 2 ** 31 - 1),
+    StructType.UINT: (0, 2 ** 32 - 1),
+    StructType.VAST: (-2 ** 63, 2 ** 63 - 1),
+    StructType.UVAST: (0, 2 ** 64 - 1),
     # from: numpy.finfo(numpy.float32).max
     StructType.REAL32: (-3.4028235e+38, 3.4028235e+38),
     # from: numpy.finfo(numpy.float32).max
     StructType.REAL64: (-1.7976931348623157e+308, 1.7976931348623157e+308),
-    StructType.UNK: (0, 0),
-    StructType.TV: (0, 2**64 - 1),
-    StructType.TS: (0, 2**64 - 1),
 }
 
 
@@ -124,93 +101,78 @@ class ARI:
     ''' Base class for all forms of ARI. '''
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    #: ADM type of this value
-    type_enum: StructType
-    #: Literal value
     value: object
+    ''' Literal value specific to :attr:`type_enum` '''
+    type_enum: Union[StructType, None] = None
+    ''' ADM type of this value '''
 
-    def check_type(self):
-        ''' Validate the :py:attr:`value` against the :py:attr:`type_enum`
-        of this object.
+    @staticmethod
+    def coerce(value, type_enum:Union[StructType, None]):
+        ''' Coerce a value based on a desired type.
+        
+        :param value: The value provided.
+        :param type_enum: The desired type of the literal.
         '''
-        if self.type_enum == StructType.BOOL:
-            if self.value not in (False, True):
-                raise ValueError('Literal boolean type without boolean value')
-        elif self.type_enum in NUMERIC_LIMITS:
-            lim = NUMERIC_LIMITS[self.type_enum]
-            if math.isfinite(self.value) and (self.value < lim[0] or self.value > lim[1]):
-                raise ValueError('Literal integer vaue outside of valid range')
-        elif self.type_enum == StructType.STR:
-            if not isinstance(self.value, str):
-                raise ValueError('Literal text string with non-text value')
-        elif self.type_enum == StructType.BSTR:
-            if not isinstance(self.value, bytes):
-                raise ValueError('Literal byte string with non-bytes value')
+        if type_enum == StructType.BOOL:
+            if value not in (False, True):
+                raise ValueError(f'Literal boolean type with non-boolean value: {value}')
+        elif type_enum in NUMERIC_LIMITS:
+            lim = NUMERIC_LIMITS[type_enum]
+            if math.isfinite(value) and (value < lim[0] or value > lim[1]):
+                raise ValueError(f'Literal integer outside of valid range {lim}, value: {value}')
+        elif type_enum == StructType.TEXTSTR:
+            if not isinstance(value, str):
+                raise ValueError(f'Literal text string with non-text value: {value}')
+        elif type_enum == StructType.BYTESTR:
+            if not isinstance(value, bytes):
+                raise ValueError(f'Literal byte string with non-bytes value: {value}')
+        elif type_enum == StructType.AC:
+            try:
+                value = list(value)
+            except TypeError:
+                raise ValueError(f'Literal AC with non-array value: {value}')
+        elif type_enum == StructType.AM:
+            try:
+                value = dict(value)
+            except TypeError:
+                raise ValueError(f'Literal AM with non-map value: {value}')
+        
+        return LiteralARI(value=value, type_enum=type_enum)
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Identity:
     ''' The identity of a reference ARI as a unique name-set.
     '''
 
-    #: The None value indicates the absense of a URI path component
     namespace: Union[str, int, None] = None
-    #: ADM type of the referenced object
+    ''' The None value indicates the absense of a URI path component '''
     type_enum: Optional[StructType] = None
-    #: Name with the type removed
-    name: Union[bytes, int, None] = None
-
-    issuer: Optional[bytes] = None
-    tag: Optional[bytes] = None
+    ''' ADM type of the referenced object '''
+    name: Union[str, int, None] = None
+    ''' Name with the type removed '''
 
     def strip_name(self):
         ''' If present, strip parameters off of the name portion.
         '''
         if '(' in self.name:
-            #FIXME: Big assumptions about structure here, should use ARI text decoder
-            self.name,extra = self.name.split('(', 1)
+            # FIXME: Big assumptions about structure here, should use ARI text decoder
+            self.name, extra = self.name.split('(', 1)
             parms = extra.split(')', 1)[0].split(',')
             return parms
         else:
             return None
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ReferenceARI(ARI):
     ''' The data content of an ARI.
     '''
-    #: Identity of the referenced object
     ident: Identity
-    #: Optional paramerization, None is different than empty list
-    params: List[Union['ARI', 'AC', 'EXPR', 'TNVC']] = None
-
-
-@dataclass
-class AC:
-    ''' An ARI Collection (AC).
-    '''
-    # Ordered list of ARIs
-    items: List[Union['ARI', 'AC', 'EXPR']] = field(default_factory=list)
-
-
-@dataclass
-class EXPR:
-    ''' An Expression (EXPR).
-    '''
-    #: ADM type of the result value
-    type_enum: StructType
-    # RPN expression items
-    items: List['ARI'] = field(default_factory=list)
-
-
-@dataclass
-class TNVC:
-    ''' A pseudo-class based on ADM requirements, but not representable as text ARI.
-    In text form this is really an AC and gets converted by nickname handling.
-    '''
-    # Ordered list of ARIs
-    items: List[Union['ARI', 'AC', 'EXPR']] = field(default_factory=list)
+    ''' Identity of the referenced object '''
+    params: Union[LiteralARI, None] = None
+    ''' Optional paramerization, None is different than empty list '''

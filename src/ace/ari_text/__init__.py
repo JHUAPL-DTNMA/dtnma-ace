@@ -26,7 +26,7 @@ import os
 from typing import TextIO
 import xdg_base_dirs
 from ace.ari import (
-    ARI, AC, EXPR, LiteralARI, ReferenceARI, LITERAL_LABEL_TYPES
+    StructType, ARI, LiteralARI, ReferenceARI, LITERAL_LABEL_TYPES
 )
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
@@ -87,11 +87,25 @@ class Encoder:
     def _encode_list(self, buf, items, begin, end):
         buf.write(begin)
         first = True
-        for part in items:
-            if not first:
-                buf.write(',')
-            first = False
-            self.encode(part, buf)
+        if items:
+            for part in items:
+                if not first:
+                    buf.write(',')
+                first = False
+                self.encode(part, buf)
+        buf.write(end)
+
+    def _encode_map(self, buf, map, begin, end):
+        buf.write(begin)
+        first = True
+        if map:
+            for key, val in map.items():
+                if not first:
+                    buf.write(',')
+                first = False
+                self.encode(key, buf)
+                buf.write('=')
+                self.encode(val, buf)
         buf.write(end)
 
     def encode(self, obj, buf: TextIO):
@@ -100,28 +114,23 @@ class Encoder:
         :param obj: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
-        if isinstance(obj, AC):
-            self._encode_list(buf, obj.items, '[', ']')
-
-        elif isinstance(obj, EXPR):
-            buf.write(f'({obj.type_enum.name})')
-            self._encode_list(buf, obj.items, '[', ']')
-
-        elif isinstance(obj, LiteralARI):
+        if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
-            if obj.type_enum in LITERAL_LABEL_TYPES:
-                buf.write(obj.type_enum.name + '.')
-            buf.write(to_diag(obj.value))
+            if obj.type_enum:
+                buf.write('/' + obj.type_enum.name + '/')
+            
+            if obj.type_enum is StructType.AC:
+                self._encode_list(buf, obj.value, '(', ')')
+            elif obj.type_enum is StructType.AM:
+                self._encode_map(buf, obj.value, '(', ')')
+            else:
+                buf.write(to_diag(obj.value))
 
         elif isinstance(obj, ReferenceARI):
             buf.write('ari:')
-            if obj.ident.namespace:
-                buf.write(f'/{obj.ident.namespace}')
-            if obj.ident.name:
-                name = obj.ident.name
-                if isinstance(name, bytes):
-                    name = to_diag(name)
-                buf.write(f'/{obj.ident.type_enum.name}.{name}')
+            buf.write(f'/{obj.ident.namespace}')
+            buf.write(f'/{obj.ident.type_enum.name}')
+            buf.write(f'/{obj.ident.name}')
             if obj.params is not None:
                 self._encode_list(buf, obj.params, '(', ')')
 

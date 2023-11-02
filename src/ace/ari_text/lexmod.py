@@ -27,13 +27,11 @@ import re
 from ply import lex
 from ace.ari import StructType, LITERAL_TYPES
 
-
 # make linters happy
 __all__ = [
     'tokens',
     'new_lexer',
 ]
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,14 +42,11 @@ tokens = (
     'COMMA',
     'LPAREN',
     'RPAREN',
-    'LSQRB',
-    'RSQRB',
-    'TYPENAME',
-    'TYPEDOT',
+    'EQ',
     'BOOL',
     'INT',
     'FLOAT',
-    'NAME',
+    'IDENT',
     'TSTR',
     'BSTR',
 )
@@ -62,20 +57,6 @@ tokens = (
 
 def t_ARI_PREFIX(tok):
     r'ari:'
-    return tok
-
-
-@lex.TOKEN(r'\((' + r'|'.join(re.escape(item.name) for item in StructType) + r')\)')
-def t_TYPENAME(tok):
-    name = tok.value[1:-1]
-    tok.value = StructType[name.upper()]
-    return tok
-
-
-@lex.TOKEN(r'(' + r'|'.join(re.escape(item.name) for item in StructType) + r')\.')
-def t_TYPEDOT(tok):
-    name = tok.value[:-1]
-    tok.value = StructType[name.upper()]
     return tok
 
 
@@ -132,10 +113,8 @@ t_SLASH = r'/'
 t_COMMA = r','
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
-t_LSQRB = r'\['
-t_RSQRB = r'\]'
-# alternate t_NAME = r'[a-zA-Z0-9_\.:]+'
-t_NAME = r'[a-zA-Z][^/\(\)\[\],\s]+'  # more permissive name
+t_EQ = r'='
+t_IDENT = r'[a-zA-Z_][a-zA-Z0-9_\-\.]+'
 
 # All space is ignored for lexing purposes
 t_ignore = ' \t\n'
