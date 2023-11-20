@@ -20,6 +20,13 @@
 # subcontract 1658085.
 #
 ''' This tool converts ARIs between different encoding forms.
+
+It uses environment variables to control where ADMs are searched for and
+command options to control the ARI conversion.
+For ``text`` or ``cborhex`` forms of input or output, each line is handled 
+as a separate ARI and converted independently until the input stream is ended.
+For ``cbor`` form of input or output, the stream is treated as a CBOR sequence
+and each item is handled as a separate ARI.
 '''
 import argparse
 import io
@@ -41,16 +48,16 @@ def get_parser() -> argparse.ArgumentParser:
                         help='The minimum log severity.')
     parser.add_argument('--inform', choices=('text', 'cbor', 'cborhex'),
                         default='text',
-                        help='The input encoding')
+                        help='The input encoding.')
     parser.add_argument('--input', default='-',
-                        help='The input file or "-" for stdin')
+                        help='The input file or "-" for stdin stream.')
     parser.add_argument('--outform', choices=('text', 'cbor', 'cborhex'),
                         default='cbor',
-                        help='The desired output encoding')
+                        help='The desired output encoding.')
     parser.add_argument('--output', default='-',
-                        help='The output file or "-" for stdout')
+                        help='The output file or "-" for stdout stream.')
     parser.add_argument('--must-nickname', action='store_true', default=False,
-                        help='Require that a nickname exist when converting from text')
+                        help='Require that a nickname exist when converting from text.')
     return parser
 
 
