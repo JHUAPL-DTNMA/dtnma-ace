@@ -174,5 +174,5 @@ class ReferenceARI(ARI):
     '''
     ident: Identity
     ''' Identity of the referenced object '''
-    params: Union[LiteralARI, None] = None
+    params: Union[List[ARI], None] = None
     ''' Optional paramerization, None is different than empty list '''

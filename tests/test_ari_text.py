@@ -21,6 +21,7 @@
 #
 ''' Verify behavior of the ace.ari_text module tree.
 '''
+import datetime
 import io
 import logging
 import math
@@ -83,6 +84,14 @@ class TestAriText(unittest.TestCase):
         ('b32\'MZXW6YTBOI\'', b'foobar', 'h\'666f6f626172\''),
         # not working ('h32\'CPNMUOJ1\'', b'foobar', 'h\'666f6f626172\''),
         ('b64\'Zm9vYmFy\'', b'foobar', 'h\'666f6f626172\''),
+        # Times
+        ('/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
+        ('/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),  # with formatting
+        ('/TD/PT3H', datetime.timedelta(hours=3)),
+        ('/TD/PT10.001S', datetime.timedelta(seconds=10.001)),
+        ('/TD/PT10.25S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
+        ('/TD/PT10.250000S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
+        ('/TD/P1DT10.25S', datetime.timedelta(days=1, seconds=10.25), '/TD/P1DT10.25S'),
         # Containers
         # ('(1,2)', [LiteralARI(1), LiteralARI(2)]),
         ('/AC/()', []),

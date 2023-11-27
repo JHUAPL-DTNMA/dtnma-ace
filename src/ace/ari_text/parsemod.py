@@ -103,6 +103,16 @@ def p_litvalue_bstr(p):
     p[0] = p[1]
 
 
+def p_litvalue_tp(p):
+    'litvalue : TIMEPOINT'
+    p[0] = p[1]
+
+
+def p_litvalue_td(p):
+    'litvalue : TIMEPERIOD'
+    p[0] = p[1]
+
+
 def p_litvalue_emptylist(p):
     '''litvalue : LPAREN RPAREN'''
     p[0] = []

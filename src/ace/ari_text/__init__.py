@@ -21,6 +21,7 @@
 #
 ''' CODEC for converting ARI to and from text URI form.
 '''
+import datetime
 import logging
 import os
 from typing import TextIO
@@ -123,6 +124,40 @@ class Encoder:
                 self._encode_list(buf, obj.value, '(', ')')
             elif obj.type_enum is StructType.AM:
                 self._encode_map(buf, obj.value, '(', ')')
+            elif obj.type_enum is StructType.TP or isinstance(obj.value, datetime.datetime):
+                if obj.value.microsecond:
+                    fmt = '%Y%m%dT%H%M%S.%fZ'
+                else:
+                    fmt = '%Y%m%dT%H%M%SZ'
+                text = obj.value.strftime(fmt)
+                buf.write(text)
+            elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
+                days = obj.value.days
+                secs = obj.value.seconds
+                hours = secs // 3600
+                secs = secs % 3600
+                minutes = secs // 60
+                secs = secs % 60
+
+                usec = obj.value.microseconds
+                pad = 6
+                while usec and usec % 10 == 0:
+                    usec //= 10
+                    pad -= 1
+
+                text = 'P'
+                if days:
+                    text += f'{days}D'
+                text += 'T'
+                if hours:
+                    text += f'{hours}H'
+                if minutes:
+                    text += f'{minutes}M'
+                if usec:
+                    text += f'{secs}.{usec:0>{pad}}S'
+                elif secs:
+                    text += f'{secs}S'
+                buf.write(text)
             else:
                 buf.write(to_diag(obj.value))
 

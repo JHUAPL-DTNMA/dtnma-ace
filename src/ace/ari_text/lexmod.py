@@ -22,10 +22,10 @@
 ''' Lexer configuration for ARI text decoding.
 '''
 import base64
+import datetime
 import logging
 import re
 from ply import lex
-from ace.ari import StructType, LITERAL_TYPES
 
 # make linters happy
 __all__ = [
@@ -43,6 +43,8 @@ tokens = (
     'LPAREN',
     'RPAREN',
     'EQ',
+    'TIMEPOINT',
+    'TIMEPERIOD',
     'BOOL',
     'INT',
     'FLOAT',
@@ -57,6 +59,58 @@ tokens = (
 
 def t_ARI_PREFIX(tok):
     r'ari:'
+    return tok
+
+
+def part_to_int(digits):
+    ''' Convert a text time part into integer, defaulting to zero. '''
+    if digits:
+        return int(digits)
+    else:
+        return 0
+
+
+def subsec_to_microseconds(digits):
+    ''' Convert subseconds text into microseconds, defaulting to zero. '''
+    if digits:
+        usec = int(digits) * 10 ** (6 - len(digits))
+    else:
+        usec = 0
+    return usec
+
+
+def t_TIMEPOINT(tok):
+    r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z'
+    rem = tok.lexer.lexmatch
+    print('TP', rem.groups())
+    tok.value = datetime.datetime(
+        year=part_to_int(rem.group('yr')),
+        month=part_to_int(rem.group('mon')),
+        day=part_to_int(rem.group('dom')),
+        hour=part_to_int(rem.group('H')),
+        minute=part_to_int(rem.group('M')),
+        second=part_to_int(rem.group('S')),
+        microsecond=subsec_to_microseconds(rem.group('SS'))
+    )
+    return tok
+
+
+def t_TIMEPERIOD(tok):
+    r'P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?'
+    rem = tok.lexer.lexmatch
+    print('TD', rem.groups())
+    day = part_to_int(rem.group('D'))
+    hour = part_to_int(rem.group('H'))
+    minute = part_to_int(rem.group('M'))
+    second = part_to_int(rem.group('S'))
+    usec = subsec_to_microseconds(rem.group('SS'))
+    tok.value = datetime.timedelta(
+        days=day,
+        hours=hour,
+        minutes=minute,
+        seconds=second,
+        microseconds=usec
+    )
     return tok
 
 

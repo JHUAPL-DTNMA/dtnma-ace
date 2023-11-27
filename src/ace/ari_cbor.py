@@ -21,7 +21,7 @@
 #
 ''' CODEC for converting ARI to and from CBOR form.
 '''
-
+import datetime
 import enum
 import logging
 import struct
@@ -34,6 +34,8 @@ from ace.cborutil import to_diag
 from ace.util import is_printable
 
 LOGGER = logging.getLogger(__name__)
+
+DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 
 
 @enum.unique
@@ -69,71 +71,78 @@ class Decoder:
         '''
         cbordec = cbor2.CBORDecoder(buf)
         try:
-            res = self._decode_ari(cbordec)
-        except cbor2.CBORDecodeEOF as err:
-            raise ParseError(f'Failed to decode ARI: {err}') from err
+            item = cbordec.decode()
+        except Exception as err:
+            raise ParseError(f'Failed to decode CBOR: {err}') from err
         if buf.tell() != len(buf.getbuffer()):
             LOGGER.warning('ARI decoder handled only the first %d octets of %s',
                            buf.tell(), to_diag(buf.getvalue()))
+
+        try:
+            res = self._item_to_obj(item)
+        except cbor2.CBORDecodeEOF as err:
+            raise ParseError(f'Failed to decode ARI: {err}') from err
+
         return res
 
-    def _decode_ari(self, cbordec):
-        flags, = struct.unpack('!B', cbordec.read(1))
-        LOGGER.debug('Got flags: 0x%02x', flags)
-        str_type = StructType(flags & 0x0F)
+    def _item_to_obj(self, item:object):
+        LOGGER.debug('Got ARI item: %s', item)
 
-        if str_type == StructType.LIT:
-            try:
-                val = cbordec.decode()
-            except Exception as err:
-                raise ParseError(f'Failed to decode literal value: {err}') from err
+        if isinstance(item, list):
+            if len(item) >= 3:
+                # Object reference
+                ident = Identity(
+                    namespace=item[0],
+                    type_enum=StructType(item[1]),
+                    name=item[2],
+                )
 
-            type_enum = StructType((flags >> 4) + StructType.BOOL)
-            res = LiteralARI(type_enum=type_enum, value=val)
+                params = None
+                if len(item) >= 4:
+                    params = [
+                        self._item_to_obj(param_item)
+                        for param_item in item[3]
+                    ]
 
+                res = ReferenceARI(ident=ident, params=params)
+
+            elif len(item) == 2:
+                # Typed literal
+                type_enum = StructType(item[0])
+                res = LiteralARI(
+                    type_enum=type_enum,
+                    value=self._item_to_val(item[1], type_enum)
+                )
+            else:
+                raise ParseError(f'Invalid ARI CBOR item: {item}')
         else:
-            obj_nn = cbordec.decode() if flags & AriFlag.HAS_NN else None
-            LOGGER.debug('Got nickname: %s', obj_nn)
-
-            name = cbordec.decode()
-            LOGGER.debug('Got name: %s', to_diag(name))
-            if not isinstance(name, (bytes, str)):
-                raise ParseError(f'Decoded name is not bytes or str, got {type(name)}')
-            if isinstance(name, bytes) and is_printable(name):
-                name = name.decode('utf-8')
-
-            params = self._decode_tnvc(cbordec) if flags & AriFlag.HAS_PARAMS else None
-
-            issuer = cbordec.decode() if flags & AriFlag.HAS_ISS else None
-            LOGGER.debug('Got issuer: %s', to_diag(issuer))
-            if issuer is not None and not isinstance(issuer, bytes):
-                raise ParseError(f'Decoded issuer is not bytes, got {type(issuer)}')
-
-            tag = cbordec.decode() if flags & AriFlag.HAS_TAG else None
-            LOGGER.debug('Got tag: %s', to_diag(issuer))
-            if tag is not None and not isinstance(tag, bytes):
-                raise ParseError(f'Decoded tag is not bytes, got {type(tag)}')
-
-            ident = Identity(
-                namespace=obj_nn,
-                type_enum=str_type,
-                name=name,
-                issuer=issuer,
-                tag=tag
-            )
-            res = ReferenceARI(ident=ident, params=params)
+            # Untyped literal
+            res = LiteralARI(value=self._item_to_val(item, None))
 
         return res
 
-    def _decode_ac_items(self, cbordec):
-        # FIXME: workaorund! doesn't scale up
-        item = ord(cbordec.read(1))
-        count = item & 0x1F
-        LOGGER.debug('AC with count %d', count)
-        items = []
-        for _ in range(count):
-            items.append(self._decode_ari(cbordec))
-        return items
+    def _item_to_val(self, item, type_enum):
+        if type_enum == StructType.AC:
+            value = [self._item_to_obj(sub_item) for sub_item in item]
+        elif type_enum == StructType.AM:
+            value = {key: self._item_to_obj(sub_item) for key, sub_item in item.items()}
+        elif type_enum == StructType.TP:
+            value = self._item_to_timeval(item) + DTN_EPOCH
+        elif type_enum == StructType.TD:
+            value = self._item_to_timeval(item)
+        else:
+            value = item
+        return value
+
+    def _item_to_timeval(self, item):
+        if isinstance(item, int):
+            return datetime.timedelta(seconds=item)
+        elif isinstance(item, list):
+            mant, exp = item
+            total_usec = mant * 10 ** (exp + 6)
+            return datetime.timedelta(microseconds=total_usec)
+        else:
+            raise TypeError(f'Bad timeval type: {type(item)}')
 
 
 class Encoder:
@@ -146,93 +155,63 @@ class Encoder:
         :param buf: The buffer to write into.
         '''
         cborenc = cbor2.CBOREncoder(buf)
-        self._encode_obj(obj, cborenc, True)
+        item = self._obj_to_item(obj)
+        LOGGER.debug('ARI to item %s', item)
+        cborenc.encode(item)
 
-    def _encode_obj(self, obj, cborenc, as_ari):
+    def _obj_to_item(self, obj:ARI) -> object:
+        ''' Convert an ARI object into a CBOR item. '''
+        item = None
         if isinstance(obj, ReferenceARI):
-            self._encode_ref_ari(obj, cborenc)
+            item = [
+                obj.ident.namespace,
+                int(obj.ident.type_enum),
+                obj.ident.name,
+            ]
+    
+            if obj.params is not None:
+                item.append([
+                    self._obj_to_item(param)
+                    for param in obj.params
+                ])
 
         elif isinstance(obj, LiteralARI):
-            if obj.type_enum is StructType.AC:
-                # FIXME: workaorund! doesn't scale up
-                head = bytes([0x80 | len(obj.items)])
-                LOGGER.debug('AC encoding header %s', to_diag(head))
-                cborenc.write(head)
-                for ari in obj.items:
-                    self._encode_ref_ari(ari, cborenc)
-                return
-            elif obj.type_enum == StructType.BYTESTR:
-                cborenc.encode(obj.value)
-                return
-
-            if as_ari:
-                flags = (
-                    ((obj.type_enum - StructType.BOOL) << 4)
-                    | StructType.LIT
-                )
-                cborenc.write(struct.pack('!B', flags))
-            cborenc.encode(obj.value)
+            if obj.type_enum is not None:
+                item = [obj.type_enum.value, self._val_to_item(obj.value)]
+            else:
+                item = self._val_to_item(obj.value)
 
         else:
             raise TypeError(f'Unhandled object type {type(obj)} for: {obj}')
 
-    def _encode_ref_ari(self, obj, cborenc):
-        flags = int(obj.ident.type_enum)
-        if obj.ident.namespace is not None:
-            flags |= AriFlag.HAS_NN
-        if obj.params is not None:
-            flags |= AriFlag.HAS_PARAMS
-        if obj.ident.issuer is not None:
-            flags |= AriFlag.HAS_ISS
-        if obj.ident.tag is not None:
-            flags |= AriFlag.HAS_TAG
-        LOGGER.debug('ReferenceARI encoding flags %s', to_diag(flags))
-        cborenc.write(struct.pack('!B', flags))
+        return item
 
-        if obj.ident.namespace is not None:
-            cborenc.encode(obj.ident.namespace)
-        
-        # amp is expecting a bytestring
-        cborenc.encode(
-            obj.ident.name if isinstance(obj.ident.name, bytes)
-            else str(obj.ident.name).encode('utf-8')
-        )
-        
-        if obj.params is not None:
-            self._encode_tnvc(obj.params, cborenc)
-        if obj.ident.issuer is not None:
-            cborenc.encode(obj.ident.issuer)
-        if obj.ident.tag is not None:
-            cborenc.encode(obj.ident.tag)
+    def _val_to_item(self, value):
+        ''' Convert a non-typed value into a CBOR item. '''
+        if isinstance(value, list):
+            item = [self._obj_to_item(obj) for obj in value]
+        elif isinstance(value, map):
+            item = {key: self._obj_to_item(obj) for key, obj in value.items()}
+        elif isinstance(value, datetime.datetime):
+            diff = value - DTN_EPOCH
+            item = self._timeval_to_item(diff)
+        elif isinstance(value, datetime.timedelta):
+            item = self._timeval_to_item(value)
+        else:
+            item = value
+        return item
 
-    def _encode_tnvc(self, params, cborenc):
-        LOGGER.debug('TNVC encoding count %s', len(params))
-        flags = 0
-        if params:
-            flags |= TnvcFlag.TYPE | TnvcFlag.VALUE
-        cborenc.write(struct.pack('!B', flags))
+    def _timeval_to_item(self, diff):
+        total_usec = (diff.days * 24 * 3600 + diff.seconds) * 10 ** 6 + diff.microseconds
+        mant = total_usec
+        exp = -6
+        while mant and mant % 10 == 0:
+            mant //= 10
+            exp += 1
 
-        if flags:
-            cborenc.encode(len(params))
-
-        for param in params:
-            if isinstance(param, ReferenceARI):
-                type_enum = StructType.ARI
-            elif isinstance(param, AC):
-                type_enum = StructType.AC
-            elif isinstance(param, EXPR):
-                type_enum = StructType.EXPR
-            elif isinstance(param, TNVC):
-                type_enum = StructType.TNVC
-            elif isinstance(param, LiteralARI):
-                type_enum = param.type_enum
-            else:
-                LOGGER.warning(
-                    'Unhandled parameter type %s for: %s',
-                    type(param), param
-                )
-            cborenc.write(struct.pack('!B', type_enum))
-
-        for param in params:
-            LOGGER.debug('TNVC encoding item %s', param)
-            self._encode_obj(param, cborenc, as_ari=False)
+        if exp:
+            # use decimal fraction
+            item = [mant, exp]
+        else:
+            item = mant
+        return item
