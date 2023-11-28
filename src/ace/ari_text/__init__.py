@@ -96,11 +96,11 @@ class Encoder:
                 self.encode(part, buf)
         buf.write(end)
 
-    def _encode_map(self, buf, map, begin, end):
+    def _encode_map(self, buf, mapobj, begin, end):
         buf.write(begin)
         first = True
-        if map:
-            for key, val in map.items():
+        if mapobj:
+            for key, val in mapobj.items():
                 if not first:
                     buf.write(',')
                 first = False
@@ -132,20 +132,26 @@ class Encoder:
                 text = obj.value.strftime(fmt)
                 buf.write(text)
             elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
-                days = obj.value.days
-                secs = obj.value.seconds
+                neg = obj.value.days < 0
+                diff = -obj.value if neg else obj.value
+                
+                days = diff.days
+                secs = diff.seconds
                 hours = secs // 3600
                 secs = secs % 3600
                 minutes = secs // 60
                 secs = secs % 60
 
-                usec = obj.value.microseconds
+                usec = diff.microseconds
                 pad = 6
                 while usec and usec % 10 == 0:
                     usec //= 10
                     pad -= 1
 
-                text = 'P'
+                text = ''
+                if neg:
+                    text += '-'
+                text += 'P'
                 if days:
                     text += f'{days}D'
                 text += 'T'

@@ -96,9 +96,10 @@ def t_TIMEPOINT(tok):
 
 
 def t_TIMEPERIOD(tok):
-    r'P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?'
+    r'[+-]?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?'
     rem = tok.lexer.lexmatch
     print('TD', rem.groups())
+    neg = tok.value[0] == '-'
     day = part_to_int(rem.group('D'))
     hour = part_to_int(rem.group('H'))
     minute = part_to_int(rem.group('M'))
@@ -111,6 +112,8 @@ def t_TIMEPERIOD(tok):
         seconds=second,
         microseconds=usec
     )
+    if neg:
+        tok.value = -tok.value
     return tok
 
 

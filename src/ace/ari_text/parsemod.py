@@ -23,8 +23,7 @@
 '''
 import logging
 from ply import yacc
-from ace.ari import Identity, ReferenceARI, LiteralARI, StructType
-from ace.util import is_printable
+from ace.ari import (Identity, ReferenceARI, LiteralARI, StructType)
 from .lexmod import tokens  # pylint: disable=unused-import
 
 # make linters happy

@@ -87,13 +87,18 @@ class TestAriText(unittest.TestCase):
         # Times
         ('/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
         ('/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),  # with formatting
+        ('/TP/20230102T030405.250000Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 250000)),
+        ('/TP/725943845.0', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),
         ('/TD/PT3H', datetime.timedelta(hours=3)),
         ('/TD/PT10.001S', datetime.timedelta(seconds=10.001)),
         ('/TD/PT10.25S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
         ('/TD/PT10.250000S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
         ('/TD/P1DT10.25S', datetime.timedelta(days=1, seconds=10.25), '/TD/P1DT10.25S'),
+        ('/TD/+PT3H', datetime.timedelta(hours=3), '/TD/PT3H'),
+        ('/TD/-PT3H', -datetime.timedelta(hours=3)),
+        ('/TD/100', datetime.timedelta(seconds=100), '/TD/PT1M40S'),
+        ('/TD/1.5', datetime.timedelta(seconds=1.5), '/TD/PT1.5S'),
         # Containers
-        # ('(1,2)', [LiteralARI(1), LiteralARI(2)]),
         ('/AC/()', []),
         ('/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
         (

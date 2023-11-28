@@ -21,6 +21,7 @@
 #
 ''' Verify behavior of the ace.ari_cbor module tree.
 '''
+import datetime
 import base64
 import io
 import logging
@@ -54,6 +55,11 @@ class TestAriCbor(unittest.TestCase):
         (cbor2.dumps("hi"), 'hi'),
         # BYTESTR
         (cbor2.dumps(b'hi'), b'hi'),
+        # Times
+        (cbor2.dumps([StructType.TP, 101]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=101))),
+        (cbor2.dumps([StructType.TP, [1, 3]]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=1000))),
+        (cbor2.dumps([StructType.TD, 18]), datetime.timedelta(seconds=18)),
+        (cbor2.dumps([StructType.TD, -18]), -datetime.timedelta(seconds=18)),
     ]
 
     def test_literal_cbor_loopback(self):

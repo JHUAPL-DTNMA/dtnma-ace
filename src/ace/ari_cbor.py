@@ -22,38 +22,15 @@
 ''' CODEC for converting ARI to and from CBOR form.
 '''
 import datetime
-import enum
 import logging
-import struct
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
-    ARI, Identity, ReferenceARI, LiteralARI, StructType
+    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType
 )
 from ace.cborutil import to_diag
-from ace.util import is_printable
 
 LOGGER = logging.getLogger(__name__)
-
-DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
-
-
-@enum.unique
-class AriFlag(enum.IntFlag):
-    ''' Flags at the front of an ARI. '''
-    HAS_NN = 0x80
-    HAS_PARAMS = 0x40
-    HAS_ISS = 0x20
-    HAS_TAG = 0x10
-
-
-@enum.unique
-class TnvcFlag(enum.IntFlag):
-    ''' Flgas at the front of a TNVC. '''
-    MIXED = 0x8
-    TYPE = 0x4
-    NAME = 0x2
-    VALUE = 0x1
 
 
 class ParseError(RuntimeError):
@@ -109,15 +86,18 @@ class Decoder:
             elif len(item) == 2:
                 # Typed literal
                 type_enum = StructType(item[0])
+                value = self._item_to_val(item[1], type_enum)
                 res = LiteralARI(
                     type_enum=type_enum,
-                    value=self._item_to_val(item[1], type_enum)
+                    value=value
                 )
             else:
                 raise ParseError(f'Invalid ARI CBOR item: {item}')
+
         else:
             # Untyped literal
-            res = LiteralARI(value=self._item_to_val(item, None))
+            value = self._item_to_val(item, None)
+            res = LiteralARI(value=value)
 
         return res
 

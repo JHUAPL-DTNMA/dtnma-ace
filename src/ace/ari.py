@@ -22,10 +22,14 @@
 ''' The logical data model for an ARI and associated AMP data.
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
 '''
+import datetime
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import enum
 from typing import List, Dict, Optional, Union
+
+DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
+''' Reference for absolute time points '''
 
 
 @enum.unique
@@ -140,7 +144,13 @@ class LiteralARI(ARI):
                 value = dict(value)
             except TypeError:
                 raise ValueError(f'Literal AM with non-map value: {value}')
-        
+        elif type_enum == StructType.TP:
+            if isinstance(value, (int, float)):
+                value = DTN_EPOCH + datetime.timedelta(seconds=value)
+        elif type_enum == StructType.TD:
+            if isinstance(value, (int, float)):
+                value = datetime.timedelta(seconds=value)
+
         return LiteralARI(value=value, type_enum=type_enum)
 
 
