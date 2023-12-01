@@ -119,7 +119,7 @@ class Encoder:
             LOGGER.debug('Encode literal %s', obj)
             if obj.type_enum:
                 buf.write('/' + obj.type_enum.name + '/')
-            
+
             if obj.type_enum is StructType.AC:
                 self._encode_list(buf, obj.value, '(', ')')
             elif obj.type_enum is StructType.AM:
@@ -134,7 +134,7 @@ class Encoder:
             elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
                 neg = obj.value.days < 0
                 diff = -obj.value if neg else obj.value
-                
+
                 days = diff.days
                 secs = diff.seconds
                 hours = secs // 3600
@@ -164,6 +164,9 @@ class Encoder:
                 elif secs:
                     text += f'{secs}S'
                 buf.write(text)
+            elif obj.type_enum is StructType.RPTSET:
+                # FIXME: different text form for RPTSET
+                self._encode_list(buf, obj.value, '(', ')')
             else:
                 buf.write(to_diag(obj.value))
 

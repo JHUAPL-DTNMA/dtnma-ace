@@ -27,6 +27,7 @@ import math
 from dataclasses import dataclass
 import enum
 from typing import List, Dict, Optional, Union
+import cbor2
 
 DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 ''' Reference for absolute time points '''
@@ -56,6 +57,9 @@ class StructType(enum.IntEnum):
     LITTYPE = 16
     AC = 17
     AM = 18
+
+    EXECSET = 19
+    RPTSET = 20
 
     # AMM object types
     CONST = -2
@@ -117,7 +121,7 @@ class LiteralARI(ARI):
     @staticmethod
     def coerce(value, type_enum:Union[StructType, None]):
         ''' Coerce a value based on a desired type.
-        
+
         :param value: The value provided.
         :param type_enum: The desired type of the literal.
         '''
@@ -152,6 +156,44 @@ class LiteralARI(ARI):
                 value = datetime.timedelta(seconds=value)
 
         return LiteralARI(value=value, type_enum=type_enum)
+
+
+UNDEFINED = LiteralARI(value=cbor2.types.undefined)
+''' The undefined value of the AMM '''
+NULL = LiteralARI(value=None)
+''' The null value of the AMM '''
+
+TRUE = LiteralARI(value=True)
+''' The true value of the AMM '''
+FALSE = LiteralARI(value=False)
+''' The false value of the AMM '''
+
+
+def coerce_literal(val):
+    ''' Coerce a Python value into a Literal ARI
+
+    :param val: The Python value.
+    :return: The ARI value.
+    '''
+    import copy
+    if isinstance(val, LiteralARI):
+        val = copy.copy(val)
+    else:
+        if isinstance(val, (tuple, list)):
+            return LiteralARI(value=val, type_enum=StructType.AC)
+        elif isinstance(val, dict):
+            return LiteralARI(value=val, type_enum=StructType.AM)
+        else:
+            return LiteralARI(value=val)
+
+    # Recurse for containers
+    if val.type_enum == StructType.AC:
+        val.value = map(coerce_literal, val.value)
+    elif val.type_enum == StructType.AM:
+        val.value = {
+            coerce_literal(key): coerce_literal(subval)
+            for key, subval in val.items()
+        }
 
 
 @dataclass(eq=True, frozen=True)
