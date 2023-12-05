@@ -21,10 +21,9 @@
 #
 ''' Lexer configuration for ARI text decoding.
 '''
-import base64
-import datetime
 import logging
 import re
+from urllib.parse import unquote
 from ply import lex
 
 # make linters happy
@@ -43,14 +42,11 @@ tokens = (
     'LPAREN',
     'RPAREN',
     'EQ',
-    'TIMEPOINT',
-    'TIMEPERIOD',
-    'BOOL',
     'INT',
-    'FLOAT',
     'IDENT',
-    'TSTR',
-    'BSTR',
+    'AC',
+    'AM',
+    'SEGMENT',
 )
 
 # Function tokens are searched in declaration order
@@ -62,106 +58,21 @@ def t_ARI_PREFIX(tok):
     return tok
 
 
-def part_to_int(digits):
-    ''' Convert a text time part into integer, defaulting to zero. '''
-    if digits:
-        return int(digits)
-    else:
-        return 0
-
-
-def subsec_to_microseconds(digits):
-    ''' Convert subseconds text into microseconds, defaulting to zero. '''
-    if digits:
-        usec = int(digits) * 10 ** (6 - len(digits))
-    else:
-        usec = 0
-    return usec
-
-
-def t_TIMEPOINT(tok):
-    r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z'
-    rem = tok.lexer.lexmatch
-    print('TP', rem.groups())
-    tok.value = datetime.datetime(
-        year=part_to_int(rem.group('yr')),
-        month=part_to_int(rem.group('mon')),
-        day=part_to_int(rem.group('dom')),
-        hour=part_to_int(rem.group('H')),
-        minute=part_to_int(rem.group('M')),
-        second=part_to_int(rem.group('S')),
-        microsecond=subsec_to_microseconds(rem.group('SS'))
-    )
+def t_AC(tok):
+    r'(AC|17)/'
     return tok
 
 
-def t_TIMEPERIOD(tok):
-    r'[+-]?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?'
-    rem = tok.lexer.lexmatch
-    print('TD', rem.groups())
-    neg = tok.value[0] == '-'
-    day = part_to_int(rem.group('D'))
-    hour = part_to_int(rem.group('H'))
-    minute = part_to_int(rem.group('M'))
-    second = part_to_int(rem.group('S'))
-    usec = subsec_to_microseconds(rem.group('SS'))
-    tok.value = datetime.timedelta(
-        days=day,
-        hours=hour,
-        minutes=minute,
-        seconds=second,
-        microseconds=usec
-    )
-    if neg:
-        tok.value = -tok.value
+def t_AM(tok):
+    r'(AM|18)/'
     return tok
 
 
-def t_BOOL(tok):
-    r'true|false'
-    tok.value = (tok.value == 'true')
-    return tok
-
-
-def t_FLOAT(tok):
-    r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN'
-    # float either contains a decimal point or exponent or both
-    tok.value = float(tok.lexer.lexmatch[0])
-    return tok
-
-
-def t_INT(tok):
-    r'[+-]?(0b[01]+|0x[0-9a-fA-F]+|\d+)'
-    tok.value = int(tok.lexer.lexmatch[0], 0)
-    return tok
-
-
-def t_TSTR(tok):
-    r'"(?P<val>[^\"]*)"'
-    tok.value = tok.lexer.lexmatch['val']
-    return tok
-
-
-def t_BSTR(tok):
-    r'(?P<enc>h|b32|h32|b64)?\'(?P<val>[^\']*)\''
-    enc = tok.lexer.lexmatch['enc']
-    val = tok.lexer.lexmatch['val']
-    if enc == 'h':
-        tok.value = base64.b16decode(val, casefold=True)
-    elif enc == 'b32':
-        rem = len(val) % 8
-        if rem in {2, 4, 5, 7}:
-            val += '=' * (8 - rem)
-        tok.value = base64.b32decode(val, casefold=True)
-    elif enc == 'h32':
-        raise NotImplementedError
-    elif enc == 'b64':
-        rem = len(val) % 4
-        if rem in {2, 3}:
-            val += '=' * (4 - rem)
-        tok.value = base64.b64decode(val)
-    else:
-        tok.value = bytes(val, 'ascii')
+# This is the same as RFC 3986 'segment-nz' production with some excluded
+# for AC/AM recursion.
+def t_SEGMENT(tok):
+    r'([a-zA-Z0-9\-\._~\:@]|%[0-9a-fA-F]{2})+'
+    tok.value = unquote(tok.value)
     return tok
 
 
@@ -171,7 +82,6 @@ t_COMMA = r','
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_EQ = r'='
-t_IDENT = r'[a-zA-Z_][a-zA-Z0-9_\-\.]+'
 
 # All space is ignored for lexing purposes
 t_ignore = ' \t\n'

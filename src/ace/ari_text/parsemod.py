@@ -24,6 +24,7 @@
 import logging
 from ply import yacc
 from ace.ari import (Identity, ReferenceARI, LiteralARI, StructType)
+from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
 # make linters happy
@@ -37,96 +38,79 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=invalid-name disable=missing-function-docstring
 
 
-def p_ari_explicit(p):
+def p_ari_scheme(p):
     'ari : ARI_PREFIX ssp'
     p[0] = p[2]
 
 
-def p_ssp_literal(p):
-    'ssp : literal'
+def p_ari_noscheme(p):
+    'ari : ssp'
     p[0] = p[1]
 
-
-def p_ari_literal(p):
-    'ari : literal'
-    p[0] = p[1]
+# The following are untyped literals with primitive values
 
 
-def p_literal_without_type(p):
-    'literal : litvalue'
+def p_ssp_primitive(p):
+    'ssp : SEGMENT'
+    try:
+        value = util.PRIMITIVE(p[1])
+    except Exception as err:
+        LOGGER.error('Primitive value invalid: %s', err)
+        raise RuntimeError(err) from err
     p[0] = LiteralARI(
-        value=p[1],
+        value=value,
     )
 
 
-def p_literal_with_type(p):
-    'literal : SLASH enumid SLASH litvalue'
-    typ = p[2]
-    if isinstance(typ, int):
-        typ = StructType(typ)
-    else:
-        typ = StructType[typ]
+def p_ssp_typedlit(p):
+    'ssp : typedlit'
+    p[0] = p[1]
+
+
+def p_typedlit_ac(p):
+    '''typedlit : SLASH AC LPAREN RPAREN
+                | SLASH AC LPAREN aclist RPAREN'''
+    value = p[4] if len(p) == 6 else []
+    p[0] = LiteralARI(type_enum=StructType.AC, value=value)
+
+
+def p_typedlit_am(p):
+    '''typedlit : SLASH AM LPAREN RPAREN
+                | SLASH AM LPAREN amlist RPAREN'''
+    value = p[4] if len(p) == 6 else {}
+    p[0] = LiteralARI(type_enum=StructType.AM, value=value)
+
+
+def p_typedlit_single(p):
+    'typedlit : SLASH SEGMENT SLASH SEGMENT'
+    try:
+        typ = util.get_structtype(p[2])
+    except Exception as err:
+        LOGGER.error('Literal value type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    # Literal value handled based on type-specific parsing
+    try:
+        value = util.TYPEDLIT[typ](p[4])
+    except Exception as err:
+        LOGGER.error('Literal value failure: %s', err)
+        raise RuntimeError(err) from err
 
     try:
         p[0] = LiteralARI.coerce(
             type_enum=typ,
-            value=p[4]
+            value=value
         )
     except Exception as err:
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
 
 
-def p_litvalue_bool(p):
-    'litvalue : BOOL'
-    p[0] = p[1]
-
-
-def p_litvalue_int(p):
-    'litvalue : INT'
-    p[0] = p[1]
-
-
-def p_litvalue_float(p):
-    'litvalue : FLOAT'
-    p[0] = p[1]
-
-
-def p_litvalue_tstr(p):
-    'litvalue : TSTR'
-    p[0] = p[1]
-
-
-def p_litvalue_bstr(p):
-    'litvalue : BSTR'
-    p[0] = p[1]
-
-
-def p_litvalue_tp(p):
-    'litvalue : TIMEPOINT'
-    p[0] = p[1]
-
-
-def p_litvalue_td(p):
-    'litvalue : TIMEPERIOD'
-    p[0] = p[1]
-
-
-def p_litvalue_emptylist(p):
-    '''litvalue : LPAREN RPAREN'''
-    p[0] = []
-
-
-def p_litvalue_container(p):
-    '''litvalue : LPAREN aclist RPAREN
-                | LPAREN amlist RPAREN'''
-    p[0] = p[2]
-
-
 def p_ssp_objref(p):
     '''ssp : ident
            | ident LPAREN RPAREN
-           | ident LPAREN aclist RPAREN'''
+           | ident LPAREN aclist RPAREN
+           | ident LPAREN amlist RPAREN'''
     if len(p) == 2:
         params = None
     elif len(p) == 4:
@@ -136,6 +120,21 @@ def p_ssp_objref(p):
     p[0] = ReferenceARI(
         ident=p[1],
         params=params
+    )
+
+
+def p_ident_with_ns(p):
+    'ident : SLASH SEGMENT SLASH SEGMENT SLASH SEGMENT'
+    try:
+        typ = util.get_structtype(p[4])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    p[0] = Identity(
+        namespace=util.IDSEGMENT(p[2]),
+        type_enum=typ,
+        name=util.IDSEGMENT(p[6]),
     )
 
 
@@ -162,25 +161,6 @@ def p_amlist_end(p):
 def p_amlist_pair(p):
     'ampair : ari EQ ari'
     p[0] = {p[1]: p[3]}
-
-
-def p_ident_with_ns(p):
-    'ident : SLASH enumid SLASH IDENT SLASH enumid'
-    p[0] = Identity(
-        namespace=p[2],
-        type_enum=StructType[p[4]],
-        name=p[6],
-    )
-
-
-def p_enumid_int(p):
-    'enumid : INT'
-    p[0] = p[1]
-
-
-def p_enumid_name(p):
-    'enumid : IDENT'
-    p[0] = p[1]
 
 
 def p_error(p):

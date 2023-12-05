@@ -26,7 +26,7 @@ import io
 import logging
 import math
 import unittest
-from ace.ari import ARI, ReferenceARI, LiteralARI, StructType
+from ace.ari import ARI, ReferenceARI, LiteralARI, StructType, UNDEFINED
 from ace import ari_text
 
 LOGGER = logging.getLogger(__name__)
@@ -43,6 +43,10 @@ class TestAriText(unittest.TestCase):
         self.assertEqual(aval, bval)
 
     LITERAL_TEXTS = [
+        # Specials
+        ('undefined', UNDEFINED.value),
+        ('null', None),
+        ('/NULL/null', None),
         # BOOL
         ('true', True),
         ('false', False),
@@ -74,16 +78,16 @@ class TestAriText(unittest.TestCase):
         ('/REAL64/Infinity', float('Infinity')),
         ('/REAL64/-Infinity', -float('Infinity')),
         # TEXTSTR
-        ('"hi"', 'hi'),
-        ('/TEXTSTR/"hi"', 'hi'),
+        ('%22hi%22', 'hi'),
+        ('/TEXTSTR/%22hi%22', 'hi'),
         # BYTESTR
-        ('\'hi\'', b'hi', 'h\'6869\''),
-        ('/BYTESTR/\'hi\'', b'hi', '/BYTESTR/h\'6869\''),
+        ('%27hi%27', b'hi', 'h%276869%27'),
+        ('/BYTESTR/%27hi%27', b'hi', '/BYTESTR/h%276869%27'),
         # RFC 4648 test vectors
-        ('h\'666F6F626172\'', b'foobar', 'h\'666f6f626172\''),
-        ('b32\'MZXW6YTBOI\'', b'foobar', 'h\'666f6f626172\''),
-        # not working ('h32\'CPNMUOJ1\'', b'foobar', 'h\'666f6f626172\''),
-        ('b64\'Zm9vYmFy\'', b'foobar', 'h\'666f6f626172\''),
+        ('h%27666F6F626172%27', b'foobar', 'h%27666f6f626172%27'),
+        ('b32%27MZXW6YTBOI%27', b'foobar', 'h%27666f6f626172%27'),
+        # not working ('h32%27CPNMUOJ1%27', b'foobar', 'h%27666f6f626172%27'),
+        ('b64%27Zm9vYmFy%27', b'foobar', 'h%27666f6f626172%27'),
         # Times
         ('/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
         ('/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),  # with formatting
@@ -124,12 +128,12 @@ class TestAriText(unittest.TestCase):
                 elif len(row) == 3:
                     text, val, exp_loop = row
                 LOGGER.info('Testing text: %s', text)
-    
+
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, LiteralARI)
                 self.assertEqualWithNan(ari.value, val)
-    
+
                 loop = io.StringIO()
                 enc.encode(ari, loop)
                 LOGGER.info('Got text: %s', loop.getvalue())
@@ -141,9 +145,9 @@ class TestAriText(unittest.TestCase):
         'ari:/namespace/VAR/hello()',
         'ari:/namespace/VAR/hello(/INT/10)',
         'ari:/bp-agent/CTRL/reset_all_counts()',
-        'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report("ipn:1.1")),/AC/())',
+        'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
-        'ari:/amp-agent/CTRL/ADD_SBR(ari:/APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(ari:/APL_SC/EDD/payload_temperature,ari:/APL_SC/CONST/payload_heat_on_temp,ari:/amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(ari:/APL_SC/CTRL/payload_heater(/INT/1)),"heater on")',
+        'ari:/amp-agent/CTRL/ADD_SBR(ari:/APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(ari:/APL_SC/EDD/payload_temperature,ari:/APL_SC/CONST/payload_heat_on_temp,ari:/amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(ari:/APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
     ]
 
     def test_reference_text_loopback(self):
@@ -152,11 +156,11 @@ class TestAriText(unittest.TestCase):
         for text in self.REFERENCE_TEXTS:
             with self.subTest(text):
                 LOGGER.info('Testing text: %s', text)
-    
+
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ReferenceARI)
-    
+
                 loop = io.StringIO()
                 enc.encode(ari, loop)
                 LOGGER.info('Got text: %s', loop.getvalue())
@@ -165,7 +169,7 @@ class TestAriText(unittest.TestCase):
 
     INVALID_TEXTS = [
         '/BOOL/10',
-        '/INT/"hi"',
+        '/INT/%22hi%22',
         '/TEXTSTR/3',
         '/AC/3',
         '/AM/3',
@@ -183,7 +187,7 @@ class TestAriText(unittest.TestCase):
                     LOGGER.info('Instead got ARI %s', ari)
 
     def test_complex_decode(self):
-        text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report("ipn:1.1")),/AC/())'
+        text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
         dec = ari_text.Decoder()
         ari = dec.decode(io.StringIO(text))
         LOGGER.info('Got ARI %s', ari)

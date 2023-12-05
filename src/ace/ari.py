@@ -55,9 +55,10 @@ class StructType(enum.IntEnum):
     LABEL = 14
     CBOR = 15
     LITTYPE = 16
+    # ARI containers
     AC = 17
     AM = 18
-
+    # Specialized containers
     EXECSET = 19
     RPTSET = 20
 
@@ -103,6 +104,7 @@ NUMERIC_LIMITS = {
     # from: numpy.finfo(numpy.float32).max
     StructType.REAL64: (-1.7976931348623157e+308, 1.7976931348623157e+308),
 }
+''' Valid domains for numeric literal values. '''
 
 
 class ARI:

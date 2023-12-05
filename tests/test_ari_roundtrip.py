@@ -54,11 +54,11 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/namespace/VAR/hello()',
         'ari:/namespace/VAR/hello(/INT/10)',
         'ari:/bp-agent/CTRL/reset_all_counts()',
-        'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/DTN.bpsec/CONST/source_report("ipn:1.1")),/AC/())',
+        'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/DTN.bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
         # 'ari:/AMP-AGENT/CTRL/ADD_SBR(ari:/APL_SC/SBR/HEAT_ON,VAST/0,(BOOL)[ari:/APL_SC/EDD/payload_temperature,ari:/APL_SC/CONST/payload_heat_on_temp,ari:/AMP.AGENT/OPER/LESSTHAN],/VAST/1000,/VAST/1000,[ari:/APL_SC/CTRL/payload_heater(/INT/1)],"heater on")',
     ]
-    
+
     def test_text_cbor_roundtrip(self):
         text_dec = ari_text.Decoder()
         text_enc = ari_text.Encoder()

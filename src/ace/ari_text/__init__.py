@@ -25,13 +25,15 @@ import datetime
 import logging
 import os
 from typing import TextIO
+from urllib.parse import quote
 import xdg_base_dirs
 from ace.ari import (
-    StructType, ARI, LiteralARI, ReferenceARI, LITERAL_LABEL_TYPES
+    StructType, ARI, LiteralARI, ReferenceARI
 )
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
 from .parsemod import new_parser
+from .encode import Encoder
 
 LOGGER = logging.getLogger(__name__)
 
@@ -81,102 +83,3 @@ class Decoder:
 
         return res
 
-
-class Encoder:
-    ''' The encoder portion of this CODEC. '''
-
-    def _encode_list(self, buf, items, begin, end):
-        buf.write(begin)
-        first = True
-        if items:
-            for part in items:
-                if not first:
-                    buf.write(',')
-                first = False
-                self.encode(part, buf)
-        buf.write(end)
-
-    def _encode_map(self, buf, mapobj, begin, end):
-        buf.write(begin)
-        first = True
-        if mapobj:
-            for key, val in mapobj.items():
-                if not first:
-                    buf.write(',')
-                first = False
-                self.encode(key, buf)
-                buf.write('=')
-                self.encode(val, buf)
-        buf.write(end)
-
-    def encode(self, obj, buf: TextIO):
-        ''' Encode an ARI into UTF8 text.
-
-        :param obj: The ARI object to encode.
-        :param buf: The buffer to write into.
-        '''
-        if isinstance(obj, LiteralARI):
-            LOGGER.debug('Encode literal %s', obj)
-            if obj.type_enum:
-                buf.write('/' + obj.type_enum.name + '/')
-
-            if obj.type_enum is StructType.AC:
-                self._encode_list(buf, obj.value, '(', ')')
-            elif obj.type_enum is StructType.AM:
-                self._encode_map(buf, obj.value, '(', ')')
-            elif obj.type_enum is StructType.TP or isinstance(obj.value, datetime.datetime):
-                if obj.value.microsecond:
-                    fmt = '%Y%m%dT%H%M%S.%fZ'
-                else:
-                    fmt = '%Y%m%dT%H%M%SZ'
-                text = obj.value.strftime(fmt)
-                buf.write(text)
-            elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
-                neg = obj.value.days < 0
-                diff = -obj.value if neg else obj.value
-
-                days = diff.days
-                secs = diff.seconds
-                hours = secs // 3600
-                secs = secs % 3600
-                minutes = secs // 60
-                secs = secs % 60
-
-                usec = diff.microseconds
-                pad = 6
-                while usec and usec % 10 == 0:
-                    usec //= 10
-                    pad -= 1
-
-                text = ''
-                if neg:
-                    text += '-'
-                text += 'P'
-                if days:
-                    text += f'{days}D'
-                text += 'T'
-                if hours:
-                    text += f'{hours}H'
-                if minutes:
-                    text += f'{minutes}M'
-                if usec:
-                    text += f'{secs}.{usec:0>{pad}}S'
-                elif secs:
-                    text += f'{secs}S'
-                buf.write(text)
-            elif obj.type_enum is StructType.RPTSET:
-                # FIXME: different text form for RPTSET
-                self._encode_list(buf, obj.value, '(', ')')
-            else:
-                buf.write(to_diag(obj.value))
-
-        elif isinstance(obj, ReferenceARI):
-            buf.write('ari:')
-            buf.write(f'/{obj.ident.namespace}')
-            buf.write(f'/{obj.ident.type_enum.name}')
-            buf.write(f'/{obj.ident.name}')
-            if obj.params is not None:
-                self._encode_list(buf, obj.params, '(', ')')
-
-        else:
-            raise TypeError(f'Unhandled object type {type(obj)} for: {obj}')

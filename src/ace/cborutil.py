@@ -22,6 +22,7 @@
 ''' Utilities to convert to CBOR diagnostic notation.
 '''
 import base64
+import cbor2
 import math
 
 
@@ -29,7 +30,9 @@ def to_diag(val) -> str:
     ''' Convert a Python object to CBOR diagnostic notation.
     '''
     diag = None
-    if val is None:
+    if val is cbor2.types.undefined:
+        diag = 'undefined'
+    elif val is None:
         diag = 'null'
     elif isinstance(val, bool):
         diag = 'true' if val else 'false'
