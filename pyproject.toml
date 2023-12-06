@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "cbor2",
+  "cbor2 ~= 5.5",
   "PLY >= 3",
   "pyang",
   "xdg-base-dirs",

@@ -26,11 +26,57 @@ import logging
 from typing import TextIO
 from urllib.parse import quote
 from ace.ari import (
-    StructType, ARI, LiteralARI, ReferenceARI
+    StructType, ARI, LiteralARI, ReferenceARI,
+    ExecutionSet, ReportSet, Report
 )
 from ace.cborutil import to_diag
+from .util import t_identity
 
 LOGGER = logging.getLogger(__name__)
+
+
+def encode_datetime(value):
+    if value.microsecond:
+        fmt = '%Y%m%dT%H%M%S.%fZ'
+    else:
+        fmt = '%Y%m%dT%H%M%SZ'
+    text = value.strftime(fmt)
+    return text
+
+
+def encode_timedelta(value):
+    neg = value.days < 0
+    diff = -value if neg else value
+
+    days = diff.days
+    secs = diff.seconds
+    hours = secs // 3600
+    secs = secs % 3600
+    minutes = secs // 60
+    secs = secs % 60
+
+    usec = diff.microseconds
+    pad = 6
+    while usec and usec % 10 == 0:
+        usec //= 10
+        pad -= 1
+
+    text = ''
+    if neg:
+        text += '-'
+    text += 'P'
+    if days:
+        text += f'{days}D'
+    text += 'T'
+    if hours:
+        text += f'{hours}H'
+    if minutes:
+        text += f'{minutes}M'
+    if usec:
+        text += f'{secs}.{usec:0>{pad}}S'
+    elif secs:
+        text += f'{secs}S'
+    return text
 
 
 class Encoder:
@@ -45,98 +91,109 @@ class Encoder:
         :param obj: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
+        self._encode_obj(buf, obj, root=True)
+
+    def _encode_obj(self, buf: TextIO, obj:ARI, root:bool=False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
             if obj.type_enum is not None:
                 buf.write('/' + obj.type_enum.name + '/')
 
             if obj.type_enum is StructType.AC:
-                self._encode_list(buf, obj.value, '(', ')')
+                self._encode_list(buf, obj.value)
             elif obj.type_enum is StructType.AM:
-                self._encode_map(buf, obj.value, '(', ')')
+                self._encode_map(buf, obj.value)
             elif obj.type_enum is StructType.TP or isinstance(obj.value, datetime.datetime):
                 self._encode_tp(buf, obj.value)
             elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
                 self._encode_td(buf, obj.value)
-            elif obj.type_enum is StructType.RPTSET:
-                # FIXME: different text form for RPTSET
-                self._encode_list(buf, obj.value, '(', ')')
+            elif obj.type_enum is StructType.LABEL:
+                # no need to quote identity
+                buf.write(obj.value)
+            elif isinstance(obj.value, ExecutionSet):
+                params = {
+                    'n': obj.value.nonce,
+                }
+                self._encode_struct(buf, params)
+                self._encode_list(buf, obj.value.targets)
+            elif isinstance(obj.value, ReportSet):
+                params = {
+                    'n': obj.value.nonce,
+                    'r': encode_datetime(obj.value.ref_time.value),
+                }
+                self._encode_struct(buf, params)
+                self._encode_list(buf, obj.value.reports)
             else:
-                buf.write(quote(to_diag(obj.value), safe='.+'))
+                if (isinstance(obj.value, str)
+                    and t_identity.regex.fullmatch(obj.value) is not None):
+                    # Shortcut for identity text
+                    buf.write(obj.value)
+                else:
+                    buf.write(quote(to_diag(obj.value), safe='.+'))
 
         elif isinstance(obj, ReferenceARI):
-            buf.write('ari:')
+            if root:
+                buf.write('ari:')
             buf.write(quote(f'/{obj.ident.namespace}'))
             buf.write(f'/{obj.ident.type_enum.name}')
             buf.write(quote(f'/{obj.ident.name}'))
             if obj.params is not None:
-                self._encode_list(buf, obj.params, '(', ')')
+                self._encode_list(buf, obj.params)
+
+        # FIXME: special cases for recursion
+        elif isinstance(obj, Report):
+            params = {
+                't': encode_timedelta(obj.rel_time.value),
+                's': obj.source,
+            }
+            self._encode_struct(buf, params)
+            self._encode_list(buf, obj.items)
+        elif isinstance(obj, str):
+            buf.write(obj)
 
         else:
-            raise TypeError(f'Unhandled object type {type(obj)} for: {obj}')
+            raise TypeError(f'Unhandled object type {type(obj)} instance: {obj}')
 
-    def _encode_list(self, buf, items, begin, end):
-        buf.write(begin)
+    def _encode_list(self, buf, items):
+        buf.write('(')
+
         first = True
         if items:
             for part in items:
                 if not first:
                     buf.write(',')
                 first = False
-                self.encode(part, buf)
-        buf.write(end)
+                self._encode_obj(buf, part)
 
-    def _encode_map(self, buf, mapobj, begin, end):
-        buf.write(begin)
+        buf.write(')')
+
+    def _encode_map(self, buf, mapobj):
+        buf.write('(')
+
         first = True
         if mapobj:
             for key, val in mapobj.items():
                 if not first:
                     buf.write(',')
                 first = False
-                self.encode(key, buf)
+
+                self._encode_obj(buf, key)
                 buf.write('=')
-                self.encode(val, buf)
-        buf.write(end)
+                self._encode_obj(buf, val)
+
+        buf.write(')')
+
+    def _encode_struct(self, buf, obj):
+        for key, val in obj.items():
+            buf.write(key)
+            buf.write('=')
+            self._encode_obj(buf, val, False)
+            buf.write(';')
 
     def _encode_tp(self, buf, value):
-        if value.microsecond:
-            fmt = '%Y%m%dT%H%M%S.%fZ'
-        else:
-            fmt = '%Y%m%dT%H%M%SZ'
-        text = value.strftime(fmt)
+        text = encode_datetime(value)
         buf.write(quote(text))
 
     def _encode_td(self, buf, value):
-        neg = value.days < 0
-        diff = -value if neg else value
-
-        days = diff.days
-        secs = diff.seconds
-        hours = secs // 3600
-        secs = secs % 3600
-        minutes = secs // 60
-        secs = secs % 60
-
-        usec = diff.microseconds
-        pad = 6
-        while usec and usec % 10 == 0:
-            usec //= 10
-            pad -= 1
-
-        text = ''
-        if neg:
-            text += '-'
-        text += 'P'
-        if days:
-            text += f'{days}D'
-        text += 'T'
-        if hours:
-            text += f'{hours}H'
-        if minutes:
-            text += f'{minutes}M'
-        if usec:
-            text += f'{secs}.{usec:0>{pad}}S'
-        elif secs:
-            text += f'{secs}S'
+        text = encode_timedelta(value)
         buf.write(quote(text))

@@ -21,12 +21,16 @@
 #
 ''' Verify behavior of the ace.ari_text module tree.
 '''
+import base64
 import datetime
 import io
 import logging
 import math
 import unittest
-from ace.ari import ARI, ReferenceARI, LiteralARI, StructType, UNDEFINED
+from ace.ari import (
+    ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
+    ExecutionSet, ReportSet, Report
+)
 from ace import ari_text
 
 LOGGER = logging.getLogger(__name__)
@@ -78,8 +82,10 @@ class TestAriText(unittest.TestCase):
         ('/REAL64/Infinity', float('Infinity')),
         ('/REAL64/-Infinity', -float('Infinity')),
         # TEXTSTR
-        ('%22hi%22', 'hi'),
-        ('/TEXTSTR/%22hi%22', 'hi'),
+        ('hi', 'hi'),
+        ('%22hi%20there%22', 'hi there'),
+        ('/TEXTSTR/hi', 'hi'),
+        ('/TEXTSTR/%22hi%20there%22', 'hi there'),
         # BYTESTR
         ('%27hi%27', b'hi', 'h%276869%27'),
         ('/BYTESTR/%27hi%27', b'hi', '/BYTESTR/h%276869%27'),
@@ -102,6 +108,9 @@ class TestAriText(unittest.TestCase):
         ('/TD/-PT3H', -datetime.timedelta(hours=3)),
         ('/TD/100', datetime.timedelta(seconds=100), '/TD/PT1M40S'),
         ('/TD/1.5', datetime.timedelta(seconds=1.5), '/TD/PT1.5S'),
+        # Extras
+        ('/LABEL/test', 'test'),
+        ('/CBOR/h%27a164746573748203f94480%27', base64.b16decode('A164746573748203F94480')),
         # Containers
         ('/AC/()', []),
         ('/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
@@ -115,6 +124,51 @@ class TestAriText(unittest.TestCase):
             '/AM/(1=/UVAST/1,2=3)',
             {LiteralARI(1): LiteralARI(1, type_enum=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
         ),
+        ('/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
+        (
+            '/EXECSET/n=null;(/adm/CTRL/name)',
+            ExecutionSet(nonce=LiteralARI(None), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+        ),
+        (
+            '/EXECSET/n=1234;(/adm/CTRL/name)',
+            ExecutionSet(nonce=LiteralARI(1234), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+        ),
+        (
+            '/EXECSET/n=h%276869%27;(/adm/CTRL/name)',
+            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+        ),
+        (
+            '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
+            ReportSet(
+                nonce=LiteralARI(None),
+                ref_time=LiteralARI(datetime.datetime(2024, 1, 2, 3, 4, 5), StructType.TP),
+                reports=[
+                    Report(
+                        source=ReferenceARI(Identity('adm', StructType.CTRL, 'name')),
+                        rel_time=LiteralARI(datetime.timedelta(seconds=0), StructType.TD),
+                        items=[
+                            LiteralARI(None)
+                        ]
+                    )
+                ]
+            )
+        ),
+        (
+            '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=/adm/CTRL/other;(null))',
+            ReportSet(
+                nonce=LiteralARI(1234),
+                ref_time=LiteralARI(datetime.datetime(2024, 1, 2, 3, 4, 5), StructType.TP),
+                reports=[
+                    Report(
+                        source=ReferenceARI(Identity('adm', StructType.CTRL, 'other')),
+                        rel_time=LiteralARI(datetime.timedelta(seconds=0), StructType.TD),
+                        items=[
+                            LiteralARI(None)
+                        ]
+                    )
+                ]
+            )
+        ),
     ]
 
     def test_literal_text_loopback(self):
@@ -127,6 +181,8 @@ class TestAriText(unittest.TestCase):
                     exp_loop = text
                 elif len(row) == 3:
                     text, val, exp_loop = row
+                else:
+                    raise ValueError
                 LOGGER.info('Testing text: %s', text)
 
                 ari = dec.decode(io.StringIO(text))
@@ -144,10 +200,11 @@ class TestAriText(unittest.TestCase):
         'ari:/namespace/VAR/hello',
         'ari:/namespace/VAR/hello()',
         'ari:/namespace/VAR/hello(/INT/10)',
+        'ari:/namespace/VAR/hello(/other/CONST/hi)',
         'ari:/bp-agent/CTRL/reset_all_counts()',
-        'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
+        'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
-        'ari:/amp-agent/CTRL/ADD_SBR(ari:/APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(ari:/APL_SC/EDD/payload_temperature,ari:/APL_SC/CONST/payload_heat_on_temp,ari:/amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(ari:/APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
+        'ari:/amp-agent/CTRL/ADD_SBR(/APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(/APL_SC/EDD/payload_temperature,/APL_SC/CONST/payload_heat_on_temp,/amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(/APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
     ]
 
     def test_reference_text_loopback(self):
@@ -173,7 +230,7 @@ class TestAriText(unittest.TestCase):
         '/TEXTSTR/3',
         '/AC/3',
         '/AM/3',
-        'ari:hello',
+        'ari:hello there',
         'ari:/namespace/hello((',
     ]
 
@@ -187,7 +244,7 @@ class TestAriText(unittest.TestCase):
                     LOGGER.info('Instead got ARI %s', ari)
 
     def test_complex_decode(self):
-        text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(ari:/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
+        text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
         dec = ari_text.Decoder()
         ari = dec.decode(io.StringIO(text))
         LOGGER.info('Got ARI %s', ari)

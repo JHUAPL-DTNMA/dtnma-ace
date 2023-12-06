@@ -33,6 +33,33 @@ DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 ''' Reference for absolute time points '''
 
 
+@dataclass(eq=True, frozen=True)
+class ExecutionSet:
+    ''' Internal representation of Execution-Set data. '''
+    nonce:Union[None, int, bytes]
+    ''' Optional nonce value '''
+    targets:List['ARI']
+    ''' The targets to execute '''
+
+
+@dataclass(eq=True, frozen=True)
+class Report:
+    ''' Internal representation of Report data. '''
+    rel_time:datetime.timedelta
+    source:'ARI'
+    items:List['ARI']
+
+
+@dataclass(eq=True, frozen=True)
+class ReportSet:
+    ''' Internal representation of Report-Set data. '''
+    nonce:Union[None, int, bytes]
+    ''' Optional nonce value '''
+    ref_time:datetime.datetime
+    reports:List['Report']
+    ''' The contained Reports '''
+
+
 @enum.unique
 class StructType(enum.IntEnum):
     ''' The enumeration of ADM data types from Section 10.3 of ARI draft.
@@ -129,38 +156,44 @@ class LiteralARI(ARI):
         '''
         if type_enum == StructType.BOOL:
             if value not in (False, True):
-                raise ValueError(f'Literal boolean type with non-boolean value: {value}')
+                raise ValueError(f'Literal boolean type with non-boolean value: {value!r}')
         elif type_enum in NUMERIC_LIMITS:
             lim = NUMERIC_LIMITS[type_enum]
             if math.isfinite(value) and (value < lim[0] or value > lim[1]):
-                raise ValueError(f'Literal integer outside of valid range {lim}, value: {value}')
+                raise ValueError(f'Literal integer outside of valid range {lim}, value: {value!r}')
         elif type_enum == StructType.TEXTSTR:
             if not isinstance(value, str):
-                raise ValueError(f'Literal text string with non-text value: {value}')
+                raise ValueError(f'Literal text string with non-text value: {value!r}')
         elif type_enum == StructType.BYTESTR:
             if not isinstance(value, bytes):
-                raise ValueError(f'Literal byte string with non-bytes value: {value}')
+                raise ValueError(f'Literal byte string with non-bytes value: {value!r}')
         elif type_enum == StructType.AC:
             try:
                 value = list(value)
             except TypeError:
-                raise ValueError(f'Literal AC with non-array value: {value}')
+                raise ValueError(f'Literal AC with non-array value: {value!r}')
         elif type_enum == StructType.AM:
             try:
                 value = dict(value)
             except TypeError:
-                raise ValueError(f'Literal AM with non-map value: {value}')
+                raise ValueError(f'Literal AM with non-map value: {value!r}')
         elif type_enum == StructType.TP:
             if isinstance(value, (int, float)):
                 value = DTN_EPOCH + datetime.timedelta(seconds=value)
         elif type_enum == StructType.TD:
             if isinstance(value, (int, float)):
                 value = datetime.timedelta(seconds=value)
+        elif type_enum == StructType.LABEL:
+            if not isinstance(value, str):
+                raise ValueError(f'LABEL with non-text value: {value!r}')
+        elif type_enum == StructType.CBOR:
+            if not isinstance(value, bytes):
+                raise ValueError(f'CBOR with non-bytes value: {value!r}')
 
         return LiteralARI(value=value, type_enum=type_enum)
 
 
-UNDEFINED = LiteralARI(value=cbor2.types.undefined)
+UNDEFINED = LiteralARI(value=cbor2.undefined)
 ''' The undefined value of the AMM '''
 NULL = LiteralARI(value=None)
 ''' The null value of the AMM '''

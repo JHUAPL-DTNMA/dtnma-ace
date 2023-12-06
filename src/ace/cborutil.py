@@ -30,7 +30,7 @@ def to_diag(val) -> str:
     ''' Convert a Python object to CBOR diagnostic notation.
     '''
     diag = None
-    if val is cbor2.types.undefined:
+    if val is cbor2.undefined:
         diag = 'undefined'
     elif val is None:
         diag = 'null'

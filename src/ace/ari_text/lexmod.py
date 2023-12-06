@@ -39,6 +39,7 @@ tokens = (
     'ARI_PREFIX',
     'SLASH',
     'COMMA',
+    'SC',
     'LPAREN',
     'RPAREN',
     'EQ',
@@ -46,6 +47,8 @@ tokens = (
     'IDENT',
     'AC',
     'AM',
+    'EXECSET',
+    'RPTSET',
     'SEGMENT',
 )
 
@@ -68,10 +71,20 @@ def t_AM(tok):
     return tok
 
 
+def t_EXECSET(tok):
+    r'(EXECSET|19)/'
+    return tok
+
+
+def t_RPTSET(tok):
+    r'(RPTSET|20)/'
+    return tok
+
+
 # This is the same as RFC 3986 'segment-nz' production with some excluded
 # for AC/AM recursion.
 def t_SEGMENT(tok):
-    r'([a-zA-Z0-9\-\._~\:@]|%[0-9a-fA-F]{2})+'
+    r'([a-zA-Z0-9\-\._~\!\*\+\:@]|%[0-9a-fA-F]{2})+'
     tok.value = unquote(tok.value)
     return tok
 
@@ -79,6 +92,7 @@ def t_SEGMENT(tok):
 # Regular expression rules for simple tokens
 t_SLASH = r'/'
 t_COMMA = r','
+t_SC = r';'
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
 t_EQ = r'='

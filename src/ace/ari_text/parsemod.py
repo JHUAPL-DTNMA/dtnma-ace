@@ -23,7 +23,10 @@
 '''
 import logging
 from ply import yacc
-from ace.ari import (Identity, ReferenceARI, LiteralARI, StructType)
+from ace.ari import (
+    Identity, ReferenceARI, LiteralARI, StructType,
+    ExecutionSet, ReportSet, Report
+)
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
@@ -68,17 +71,52 @@ def p_ssp_typedlit(p):
 
 
 def p_typedlit_ac(p):
-    '''typedlit : SLASH AC LPAREN RPAREN
-                | SLASH AC LPAREN aclist RPAREN'''
-    value = p[4] if len(p) == 6 else []
-    p[0] = LiteralARI(type_enum=StructType.AC, value=value)
+    'typedlit : SLASH AC acbracket'
+    p[0] = LiteralARI(type_enum=StructType.AC, value=p[3])
 
 
 def p_typedlit_am(p):
-    '''typedlit : SLASH AM LPAREN RPAREN
-                | SLASH AM LPAREN amlist RPAREN'''
-    value = p[4] if len(p) == 6 else {}
-    p[0] = LiteralARI(type_enum=StructType.AM, value=value)
+    '''typedlit : SLASH AM ambracket'''
+    p[0] = LiteralARI(type_enum=StructType.AM, value=p[3])
+
+
+def p_typedlit_execset(p):
+    'typedlit : SLASH EXECSET structlist acbracket'
+    nonce = LiteralARI(util.NONCE(p[3].get('n', 'null')))
+    value = ExecutionSet(
+        nonce=nonce,
+        targets=p[4],
+    )
+    p[0] = LiteralARI(type_enum=StructType.EXECSET, value=value)
+
+
+def p_typedlit_rptset(p):
+    'typedlit : SLASH RPTSET structlist reportlist'
+    nonce = LiteralARI(util.NONCE(p[3].get('n', 'null')))
+    ref_time = LiteralARI.coerce(util.TYPEDLIT[StructType.TP](p[3]['r']), StructType.TP)
+    value = ReportSet(
+        nonce=nonce,
+        ref_time=ref_time,
+        reports=p[4],
+    )
+    p[0] = LiteralARI(type_enum=StructType.RPTSET, value=value)
+
+
+def p_reportlist_join(p):
+    'reportlist : reportlist SC report'
+    p[0] = p[1] + [p[3]]
+
+
+def p_reportlist_end(p):
+    'reportlist : report'
+    p[0] = [p[1]]
+
+
+def p_report(p):
+    'report : LPAREN SEGMENT EQ SEGMENT SC SEGMENT EQ ari SC acbracket RPAREN'
+    rel_time = LiteralARI.coerce(util.TYPEDLIT[StructType.TD](p[4]), StructType.TD)
+    source = p[8]
+    p[0] = Report(rel_time=rel_time, source=source, items=p[10])
 
 
 def p_typedlit_single(p):
@@ -138,6 +176,12 @@ def p_ident_with_ns(p):
     )
 
 
+def p_acbracket(p):
+    '''acbracket : LPAREN RPAREN
+                 | LPAREN aclist RPAREN'''
+    p[0] = p[2] if len(p) == 4 else []
+
+
 def p_aclist_join(p):
     'aclist : aclist COMMA ari'
     p[0] = p[1] + [p[3]]
@@ -146,6 +190,12 @@ def p_aclist_join(p):
 def p_aclist_end(p):
     'aclist : ari'
     p[0] = [p[1]]
+
+
+def p_ambracket(p):
+    '''ambracket : LPAREN RPAREN
+                 | LPAREN amlist RPAREN'''
+    p[0] = p[2] if len(p) == 4 else {}
 
 
 def p_amlist_join(p):
@@ -158,9 +208,26 @@ def p_amlist_end(p):
     p[0] = p[1]
 
 
-def p_amlist_pair(p):
-    'ampair : ari EQ ari'
-    p[0] = {p[1]: p[3]}
+def p_ampair(p):
+    'ampair : SEGMENT EQ ari'
+    key = LiteralARI(value=util.AMKEY(p[1]))
+    p[0] = {key: p[3]}
+
+
+def p_structlist_join(p):
+    'structlist : structlist structpair'
+    p[0] = p[1] | p[2]  # merge dicts
+
+
+def p_structlist_end(p):
+    'structlist : structpair'
+    p[0] = p[1]
+
+
+def p_structpair(p):
+    'structpair : SEGMENT EQ SEGMENT SC'
+    key = util.STRUCTKEY(p[1])
+    p[0] = {key: p[3]}
 
 
 def p_error(p):

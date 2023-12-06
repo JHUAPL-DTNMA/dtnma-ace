@@ -1,13 +1,22 @@
 ''' Utilities for text processing.
 '''
 import base64
-from dataclasses import dataclass
 import datetime
+import logging
 import re
+from typing import List
 from ace.ari import UNDEFINED, StructType
+
+LOGGER = logging.getLogger(__name__)
 
 
 class TypeMatch:
+    ''' Container for each literal leaf type.
+    '''
+
+    def __init__(self, pattern, parser):
+        self.regex = re.compile(pattern)
+        self.parser = parser
 
     @staticmethod
     def apply(pattern):
@@ -18,14 +27,12 @@ class TypeMatch:
 
         return wrap
 
-    def __init__(self, pattern, parser):
-        self.regex = re.compile(pattern)
-        self.parser = parser
-
 
 class TypeSeq:
+    ''' An ordered list of TypeMatch to check against.
+    '''
 
-    def __init__(self, matchers):
+    def __init__(self, matchers:List[TypeMatch]):
         self._matchers = matchers
 
     def __call__(self, text):
@@ -69,7 +76,7 @@ def t_int(found):
     return int(found[0], 0)
 
 
-@TypeMatch.apply(r'[a-zA-Z_][a-zA-Z0-9_\-\.]+')
+@TypeMatch.apply(r'[a-zA-Z_][a-zA-Z0-9_\-\.]*')
 def t_identity(found):
     return found[0]
 
@@ -101,6 +108,11 @@ def t_bstr(found):
         return bytes(val, 'ascii')
 
 
+@TypeMatch.apply(r'.*')
+def t_cbor_diag(found):
+    return found[0]
+
+
 def part_to_int(digits):
     ''' Convert a text time part into integer, defaulting to zero. '''
     if digits:
@@ -120,7 +132,7 @@ def subsec_to_microseconds(digits):
 
 @TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z')
 def t_timepoint(found):
-    print('TP', found.groups())
+    LOGGER.debug('TP %s', found.groups())
     value = datetime.datetime(
         year=part_to_int(found.group('yr')),
         month=part_to_int(found.group('mon')),
@@ -135,7 +147,7 @@ def t_timepoint(found):
 
 @TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?')
 def t_timeperiod(found):
-    print('TD', found.groups())
+    LOGGER.debug('TD %s', found.groups())
     neg = found.group('sign') == '-'
     day = part_to_int(found.group('D'))
     hour = part_to_int(found.group('H'))
@@ -172,7 +184,7 @@ PRIMITIVE = TypeSeq([
     t_bool,
     t_float,
     t_int,
-    t_tstr,
+    t_identity, t_tstr,
     t_bstr
 ])
 ''' Any untyped literal value '''
@@ -187,10 +199,18 @@ TYPEDLIT = {
     StructType.UVAST: TypeSeq([t_int]),
     StructType.REAL32: TypeSeq([t_float]),
     StructType.REAL64: TypeSeq([t_float]),
-    StructType.TEXTSTR: TypeSeq([t_tstr]),
+    StructType.TEXTSTR: TypeSeq([t_identity, t_tstr]),
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
+    StructType.LABEL: TypeSeq([t_identity]),
+    StructType.CBOR: TypeSeq([t_bstr]),
 }
 ''' Map from literal types to value parsers. '''
 
+AMKEY = TypeSeq([t_int, t_identity, t_tstr])
+''' Allowed AM key literals. '''
+
+STRUCTKEY = TypeSeq([t_identity])
+
+NONCE = TypeSeq([t_null, t_int, t_bstr])
