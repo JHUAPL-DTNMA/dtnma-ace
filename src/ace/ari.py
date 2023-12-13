@@ -23,11 +23,11 @@
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
 '''
 import datetime
-import math
 from dataclasses import dataclass
 import enum
-from typing import List, Dict, Optional, Union
+from typing import Callable, List, Optional, Union
 import cbor2
+import numpy
 
 DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 ''' Reference for absolute time points '''
@@ -85,19 +85,20 @@ class StructType(enum.IntEnum):
     # ARI containers
     AC = 17
     AM = 18
+    TBL = 19
     # Specialized containers
-    EXECSET = 19
-    RPTSET = 20
+    EXECSET = 20
+    RPTSET = 21
 
     # AMM object types
+    TYPEDEF = -12
     CONST = -2
-    CTRL = -3
     EDD = -4
+    VAR = -11
+    CTRL = -3
     OPER = -6
     SBR = -8
     TBR = -10
-    VAR = -11
-    TYPEDEF = -12
 
 
 # All literal struct types
@@ -106,101 +107,52 @@ LITERAL_TYPES = {
     if typ.value >= 0
 }
 
-# Required label struct types
-# Those that have ambiguous text encoding
-LITERAL_LABEL_TYPES = {
-    StructType.BYTE,
-    StructType.INT,
-    StructType.UINT,
-    StructType.VAST,
-    StructType.UVAST,
-    StructType.REAL32,
-    StructType.REAL64,
-    StructType.TP,
-    StructType.TD,
-}
-
-NUMERIC_LIMITS = {
-    StructType.BYTE: (0, 2 ** 8 - 1),
-    StructType.INT: (-2 ** 31, 2 ** 31 - 1),
-    StructType.UINT: (0, 2 ** 32 - 1),
-    StructType.VAST: (-2 ** 63, 2 ** 63 - 1),
-    StructType.UVAST: (0, 2 ** 64 - 1),
-    # from: numpy.finfo(numpy.float32).max
-    StructType.REAL32: (-3.4028235e+38, 3.4028235e+38),
-    # from: numpy.finfo(numpy.float32).max
-    StructType.REAL64: (-1.7976931348623157e+308, 1.7976931348623157e+308),
-}
-''' Valid domains for numeric literal values. '''
-
 
 class ARI:
     ''' Base class for all forms of ARI. '''
+
+    def visit(self, visitor:Callable[['ARI'], None]):
+        ''' Call a visitor on this ARI and each ARI in a collection.
+
+        The base type calls the visitor on itself, so only composing types
+        need to override this function.
+
+        :param visitor: The callable visitor for each type object.
+        '''
+        visitor(self)
 
 
 @dataclass(eq=True, frozen=True)
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    value: object
+    value:object = cbor2.undefined
     ''' Literal value specific to :attr:`type_enum` '''
-    type_enum: Union[StructType, None] = None
+    type_enum:Optional[StructType] = None
     ''' ADM type of this value '''
 
-    @staticmethod
-    def coerce(value, type_enum:Union[StructType, None]):
-        ''' Coerce a value based on a desired type.
-
-        :param value: The value provided.
-        :param type_enum: The desired type of the literal.
-        '''
-        if type_enum == StructType.BOOL:
-            if value not in (False, True):
-                raise ValueError(f'Literal boolean type with non-boolean value: {value!r}')
-        elif type_enum in NUMERIC_LIMITS:
-            lim = NUMERIC_LIMITS[type_enum]
-            if math.isfinite(value) and (value < lim[0] or value > lim[1]):
-                raise ValueError(f'Literal integer outside of valid range {lim}, value: {value!r}')
-        elif type_enum == StructType.TEXTSTR:
-            if not isinstance(value, str):
-                raise ValueError(f'Literal text string with non-text value: {value!r}')
-        elif type_enum == StructType.BYTESTR:
-            if not isinstance(value, bytes):
-                raise ValueError(f'Literal byte string with non-bytes value: {value!r}')
-        elif type_enum == StructType.AC:
-            try:
-                value = list(value)
-            except TypeError:
-                raise ValueError(f'Literal AC with non-array value: {value!r}')
-        elif type_enum == StructType.AM:
-            try:
-                value = dict(value)
-            except TypeError:
-                raise ValueError(f'Literal AM with non-map value: {value!r}')
-        elif type_enum == StructType.TP:
-            if isinstance(value, (int, float)):
-                value = DTN_EPOCH + datetime.timedelta(seconds=value)
-        elif type_enum == StructType.TD:
-            if isinstance(value, (int, float)):
-                value = datetime.timedelta(seconds=value)
-        elif type_enum == StructType.LABEL:
-            if not isinstance(value, str):
-                raise ValueError(f'LABEL with non-text value: {value!r}')
-        elif type_enum == StructType.CBOR:
-            if not isinstance(value, bytes):
-                raise ValueError(f'CBOR with non-bytes value: {value!r}')
-
-        return LiteralARI(value=value, type_enum=type_enum)
+    def visit(self, visitor:Callable[['ARI'], None]):
+        if isinstance(self.value, list):
+            for item in self.value:
+                item.visit(visitor)
+        elif isinstance(self.value, dict):
+            for key, item in self.value.items():
+                key.visit(visitor)
+                item.visit(visitor)
+        elif isinstance(self.value, numpy.ndarray):
+            func = lambda item: item.visit(visitor)
+            numpy.vectorize(func)(self.value)
+        super().visit(visitor)
 
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
 ''' The undefined value of the AMM '''
-NULL = LiteralARI(value=None)
+NULL = LiteralARI(value=None, type_enum=StructType.NULL)
 ''' The null value of the AMM '''
 
-TRUE = LiteralARI(value=True)
+TRUE = LiteralARI(value=True, type_enum=StructType.BOOL)
 ''' The true value of the AMM '''
-FALSE = LiteralARI(value=False)
+FALSE = LiteralARI(value=False, type_enum=StructType.BOOL)
 ''' The false value of the AMM '''
 
 
@@ -215,11 +167,17 @@ def coerce_literal(val):
         val = copy.copy(val)
     else:
         if isinstance(val, (tuple, list)):
-            return LiteralARI(value=val, type_enum=StructType.AC)
+            val = LiteralARI(value=val, type_enum=StructType.AC)
         elif isinstance(val, dict):
-            return LiteralARI(value=val, type_enum=StructType.AM)
+            val = LiteralARI(value=val, type_enum=StructType.AM)
+        elif isinstance(val, numpy.ndarray):
+            val = LiteralARI(value=val, type_enum=StructType.TBL)
+        elif isinstance(val, datetime.datetime):
+            val = LiteralARI(value=val, type_enum=StructType.TP)
+        elif isinstance(val, datetime.timedelta):
+            val = LiteralARI(value=val, type_enum=StructType.TD)
         else:
-            return LiteralARI(value=val)
+            val = LiteralARI(value=val)
 
     # Recurse for containers
     if val.type_enum == StructType.AC:
@@ -227,13 +185,17 @@ def coerce_literal(val):
     elif val.type_enum == StructType.AM:
         val.value = {
             coerce_literal(key): coerce_literal(subval)
-            for key, subval in val.items()
+            for key, subval in val.value.items()
         }
+    elif val.type_enum == StructType.TBL:
+        val.value = numpy.vectorize(coerce_literal)(val.value)
+
+    return val
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass
 class Identity:
-    ''' The identity of a reference ARI as a unique name-set.
+    ''' The identity of an object reference as a unique name-set.
     '''
 
     namespace: Union[str, int, None] = None
@@ -243,23 +205,17 @@ class Identity:
     name: Union[str, int, None] = None
     ''' Name with the type removed '''
 
-    def strip_name(self):
-        ''' If present, strip parameters off of the name portion.
-        '''
-        if '(' in self.name:
-            # FIXME: Big assumptions about structure here, should use ARI text decoder
-            self.name, extra = self.name.split('(', 1)
-            parms = extra.split(')', 1)[0].split(',')
-            return parms
-        else:
-            return None
+
+class RelativePath(tuple):
+    ''' A URI Reference as a percent-decoded path-segment tuple.
+    '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass
 class ReferenceARI(ARI):
     ''' The data content of an ARI.
     '''
-    ident: Identity
+    ident: Union[Identity, RelativePath]
     ''' Identity of the referenced object '''
-    params: Union[List[ARI], None] = None
+    params: Optional[List[ARI]] = None
     ''' Optional paramerization, None is different than empty list '''

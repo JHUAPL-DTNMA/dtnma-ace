@@ -21,14 +21,20 @@
 #
 ''' ORM models for the ADM and its contents.
 '''
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+import logging
+from typing import List
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, PickleType
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
 )
+from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.orderinglist import ordering_list
+from ace.typing import BUILTINS, SemType, TypeUse
 
-# Value of :attr:`SchemaVersion.version_num`
-CURRENT_SCHEMA_VERSION = 12
+LOGGER = logging.getLogger(__name__)
+
+CURRENT_SCHEMA_VERSION = 13
+''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
 
@@ -79,58 +85,80 @@ class MetadataList(Base):
     )
 
 
-class TypeUse(Base):
-    ''' Attributes for typed (value producing) objects and 
-    typed sub-statements.
-    
-    Built-in types will not have an associated :ivar:`semtype`, 
-    just an unrefined :ivar:`type_name` reference.
-    '''
-    __tablename__ = "type_use"
-    id = Column(Integer, primary_key=True)
+class TypeBindingError(RuntimeError):
 
-    # Optional relationship to a parent :class:`Typedef`
-    typedef = relationship("Typedef", viewonly=True)
-
-    # ADM module name for a non-builtin :ivar:`type_name`
-    type_ns = Column(String)
-    # Name of builtin or namespaced typedef
-    type_name = Column(String)
-    # Refinements for used type
-    type_refinements = relationship(
-        "TypeRefinement",
-        order_by="TypeRefinement.position",
-        collection_class=ordering_list('position'),
-        cascade="all, delete"
-    )
-
-    # Columns present in the table template
-    columns_id = Column(Integer, ForeignKey('typename_list.id'))
-    columns = relationship("TypeNameList", cascade="all, delete")
-
-
-class TypeRefinement(Base):
-    ''' Each item within a TypeNameList '''
-    __tablename__ = "type_refinement"
-    id = Column(Integer, primary_key=True)
-
-    # Containing list
-    list_id = Column(Integer, ForeignKey("type_use.id"))
-    list = relationship("TypeUse", back_populates="type_refinements")
-    position = Column(Integer)
-    ''' ordinal of this item in a :class:`TypeUse` '''
-
-    name = Column(String, nullable=False)
-    value = Column(String)
+    def __init__(self, msg:str, badtypes:List):
+        super().__init__(msg)
+        self.badtypes = badtypes
 
 
 class TypeUseMixin:
-    ''' Common attributes for referencing a :class:`TypeUse` instance. '''
-    typeuse_id = Column(Integer, ForeignKey("type_use.id"))
+    ''' Common attributes for containing a :class:`typing` instance. '''
+    typeobj = Column(PickleType)
+    ''' An object derived from the :cls:`SemType` class. '''
 
-    @declared_attr
-    def typeuse(self) -> Mapped["TypeUse"]:
-        return relationship("TypeUse", foreign_keys=[self.typeuse_id], cascade="all, delete")
+    def typeobj_bound(self, adm:'AdmFile') -> SemType:
+        ''' Bind references to external BaseType objects from type names.
+
+        :return: The :ivar:`typeobj` with all type references bound.
+        :raise TypeBindingError: If any required types are missing.
+        '''
+        typeobj = self.typeobj
+        if typeobj is None:
+            return None
+
+        db_sess = object_session(self)
+        badtype = set()
+
+        def visitor(obj):
+            ''' Check cross-referenced type names. '''
+            if isinstance(obj, TypeUse):
+                if obj.type_ns is None:
+                    # Search own ADM first, then built-ins
+                    found = (
+                        db_sess.query(Typedef).join(AdmFile)
+                        .filter(
+                            Typedef.admfile == adm,
+                            Typedef.norm_name == obj.type_name
+                        )
+                    ).one_or_none()
+                    if found:
+                        # recursive binding
+                        obj.base = found.typeobj_bound(adm)
+                    elif obj.type_name in BUILTINS:
+                        obj.base = BUILTINS[obj.type_name]
+                    else:
+                        badtype.add(obj.type_name)
+                else:
+                    other_adm = (
+                        db_sess.query(AdmFile)
+                        .filter(
+                            AdmFile.norm_name == obj.type_ns
+                        )
+                    ).one_or_none()
+                    if other_adm is None:
+                        badtype.add((obj.type_ns, obj.type_name))
+                        return
+
+                    found = (
+                        db_sess.query(Typedef).join(AdmFile)
+                        .filter(
+                            Typedef.admfile == other_adm,
+                            Typedef.norm_name == obj.type_name
+                        )
+                    ).one_or_none()
+                    if found is None:
+                        badtype.add((obj.type_ns, obj.type_name))
+                    else:
+                        # recursive binding
+                        obj.base = found.typeobj_bound(other_adm)
+                LOGGER.debug('bound %s:%s as %s', obj.type_ns, obj.type_name, obj.base)
+
+        typeobj.visit(visitor)
+        if badtype:
+            raise TypeBindingError(f'Missing types to bind to: {badtype}', badtype)
+
+        return typeobj
 
 
 class TypeNameList(Base):
@@ -164,70 +192,6 @@ class TypeNameItem(Base, TypeUseMixin):
     ''' Unique name for the item, the type comes from :class:`TypeUseMixin` '''
     description = Column(String)
     ''' Arbitrary optional text '''
-
-
-class ARI(Base):
-    ''' A single non-literal ARI '''
-    __tablename__ = "ari"
-    id = Column(Integer, primary_key=True)
-
-    # Optional containing AC
-    list_id = Column(Integer, ForeignKey("ac.id"))
-    # Relationship to the :class:`AC`
-    list = relationship("AC", back_populates="items")
-    # ordinal of this parameter in an AC (if part of an AC)
-    position = Column(Integer)
-
-    # Namespace
-    ns = Column(String)
-    # Name
-    nm = Column(String)
-    # Optional parameters
-    ap = relationship("AriAP", order_by="AriAP.position",
-                      collection_class=ordering_list('position'),
-                      cascade="all, delete")
-
-
-class AriAP(Base):
-    ''' Defining each parameter used by an ARI '''
-    __tablename__ = "ari_ap"
-    id = Column(Integer, primary_key=True)
-    # ID of the Oper for which this is a parameter
-    ari_id = Column(Integer, ForeignKey("ari.id"))
-    # Relationship to the parent :class:`Oper`
-    ari = relationship("ARI", back_populates="ap")
-    # ordinal of this parameter in an ARI list
-    position = Column(Integer)
-
-    type = Column(String)
-    value = Column(String)
-
-
-class AC(Base):
-    ''' An ARI Collection (AC).
-    Used by macros to define the action, used by reports to define the contents.
-
-    There is no explicit relationship to the object which contains this type.
-    '''
-    __tablename__ = "ac"
-    id = Column(Integer, primary_key=True)
-
-    items = relationship("ARI", order_by="ARI.position",
-                         collection_class=ordering_list('position'),
-                         cascade="all, delete")
-
-
-class Expr(Base):
-    ''' Expression (EXPR) '''
-    __tablename__ = "expr"
-    id = Column(Integer, primary_key=True)
-
-    # Result type of the expression
-    type = Column(String)
-    # The AC defining the postfix expression
-    postfix_id = Column(Integer, ForeignKey('ac.id'))
-    # Relationship to the :class:`AC`
-    postfix = relationship("AC")
 
 
 class AdmFile(Base):
@@ -267,24 +231,37 @@ class AdmFile(Base):
         order_by='asc(AdmImport.position)',
         cascade="all, delete"
     )
+    feature = relationship(
+        "Feature",
+        back_populates="admfile",
+        order_by='asc(Feature.position)',
+        cascade="all, delete"
+    )
 
     # references a list of contained objects
-    typedef = relationship("Typedef", back_populates="admfile",
-                           order_by='asc(Typedef.enum)',
+    typedef = relationship("Typedef",
+                           back_populates="admfile",
+                           order_by='asc(Typedef.position)',
                            cascade="all, delete")
-    const = relationship("Const", back_populates="admfile",
-                         order_by='asc(Const.enum)',
+    const = relationship("Const",
+                         back_populates="admfile",
+                         order_by='asc(Const.position)',
                          cascade="all, delete")
-    ctrl = relationship("Ctrl", back_populates="admfile",
+    ctrl = relationship("Ctrl",
+                        back_populates="admfile",
+                         order_by='asc(Ctrl.position)',
                         cascade="all, delete")
-    edd = relationship("Edd", back_populates="admfile",
-                       order_by='asc(Edd.enum)',
+    edd = relationship("Edd",
+                       back_populates="admfile",
+                       order_by='asc(Edd.position)',
                        cascade="all, delete")
-    oper = relationship("Oper", back_populates="admfile",
-                        order_by='asc(Oper.enum)',
+    oper = relationship("Oper",
+                        back_populates="admfile",
+                        order_by='asc(Oper.position)',
                         cascade="all, delete")
-    var = relationship("Var", back_populates="admfile",
-                       order_by='asc(Var.enum)',
+    var = relationship("Var",
+                       back_populates="admfile",
+                       order_by='asc(Var.position)',
                        cascade="all, delete")
 
     def __repr__(self):
@@ -325,6 +302,22 @@ class AdmImport(Base, CommonMixin):
     prefix = Column(String)
 
 
+class Feature(Base, CommonMixin):
+    ''' Feature definition, which is a module-only object not an AMM object. '''
+    __tablename__ = "feature"
+    # Unique ID of the row
+    id = Column(Integer, primary_key=True)
+    # ID of the file from which this came
+    admfile_id = Column(Integer, ForeignKey("admfile.id"))
+    # Relationship to the :class:`AdmFile`
+    admfile = relationship("AdmFile", back_populates="feature")
+    # ordinal of this item in the module
+    position = Column(Integer)
+
+    # Unique name
+    name = Column(String, nullable=False, index=True)
+
+
 class AdmObjMixin(CommonMixin):
     ''' Common attributes of an ADM-defined object. '''
     # ordinal of this item in the module
@@ -337,6 +330,9 @@ class AdmObjMixin(CommonMixin):
 
     # Enumeration for this ADM
     enum = Column(Integer, index=True)
+
+    if_feature_expr = Column(String)
+    ''' Feature-matching expression. '''
 
 
 class ParamMixin:
@@ -388,8 +384,8 @@ class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     # Relationship to the :class:`AdmFile`
     admfile = relationship("AdmFile", back_populates="const")
 
-    # The initial and constant value ARI
-    value = Column(String)
+    init_value = Column(String)
+    ''' The initial and constant value as text ARI '''
 
 
 class Ctrl(Base, AdmObjMixin, ParamMixin):
@@ -401,6 +397,10 @@ class Ctrl(Base, AdmObjMixin, ParamMixin):
     admfile_id = Column(Integer, ForeignKey("admfile.id"))
     # Relationship to the :class:`AdmFile`
     admfile = relationship("AdmFile", back_populates="ctrl")
+
+    result_id = Column(Integer, ForeignKey("typename_item.id"))
+    result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
+    ''' Optional result descriptor. '''
 
 
 class Oper(Base, AdmObjMixin, ParamMixin):
@@ -432,6 +432,5 @@ class Var(Base, AdmObjMixin, TypeUseMixin):
     # Relationship to the :class:`AdmFile`
     admfile = relationship("AdmFile", back_populates="var")
 
-    # Initial value expression
-    initializer_id = Column(Integer, ForeignKey('expr.id'))
-    initializer = relationship("Expr")
+    init_value = Column(String)
+    ''' The initial and constant value as text ARI '''

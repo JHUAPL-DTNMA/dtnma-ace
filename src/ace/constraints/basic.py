@@ -26,6 +26,7 @@ import logging
 import os
 from sqlalchemy import inspect, orm, func
 from ace import models, ari, nickname, util
+from ace.typing import TypeUse, BUILTINS
 from .core import register, Issue
 
 LOGGER = logging.getLogger(__name__)
@@ -137,26 +138,24 @@ class unique_object_names:  # pylint: disable=invalid-name
 class valid_type_name:  # pylint: disable=invalid-name
     ''' Ensure that all type names are well-fromed, but not necessarily valid in the context. '''
 
-    def __call__(self, issuelist, obj, db_sess):
+    def __call__(self, issuelist, obj, db_sess, adm=None):
         ''' Entrypoint for this functor. '''
         count = 0
         if isinstance(obj, models.AdmFile):
-            count += self._iter_call(issuelist, obj.const, db_sess)
-            count += self._iter_call(issuelist, obj.edd, db_sess)
-            count += self._iter_call(issuelist, obj.oper, db_sess)
-            count += self._iter_call(issuelist, obj.var, db_sess)
+            count += self._iter_call(issuelist, obj.const, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.edd, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.var, db_sess, adm=obj)
         elif isinstance(obj, models.Const):
-            count += self._check_type(issuelist, obj, obj.semtype)
+            count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         elif isinstance(obj, models.Edd):
-            count += self._check_type(issuelist, obj, obj.semtype)
+            count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         elif isinstance(obj, models.Oper):
-            count += self._check_type(issuelist, obj, obj.result_type)
-            for parm in obj.in_type:
-                count += self._check_type(issuelist, obj, parm.semtype)
+            count += self._check_typeobj(issuelist, obj, obj.result, db_sess, adm)
+            for operand in obj.operands.items:
+                count += self._check_typeobj(issuelist, obj, operand, db_sess, adm)
         elif isinstance(obj, models.Var):
-            count += self._check_type(issuelist, obj, obj.semtype)
-            if obj.initializer:
-                count += self._check_type(issuelist, obj, obj.initializer.type)
+            count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         return count
 
     def _iter_call(self, issuelist, container, *args, **kwargs):
@@ -165,18 +164,24 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _check_type(self, issuelist, top_obj, type_name):
+    def _check_typeobj(self, issuelist, top_obj, ctr:models.TypeUseMixin, db_sess, adm:models.AdmFile):
         ''' Verify a single named type. '''
+        typeobj = ctr.typeobj
+        if not typeobj:
+            return 0
+        LOGGER.debug('Checking object %s type %s', top_obj.name, typeobj)
+
         try:
-            ari.StructType[type_name]
-        except KeyError:
+            ctr.typeobj_bound(adm)
+        except models.TypeBindingError as err:
             issuelist.append(Issue(
                 obj=top_obj,
                 detail=(
                     f'Within the object named "{top_obj.name}" '
-                    f'the type name "{type_name}" is not known'
+                    f'the type names are not known: {err.badtypes}'
                 ),
             ))
+
         return 1
 
 
@@ -194,8 +199,8 @@ class valid_reference_ari:  # pylint: disable=invalid-name
                 items = obj.initializer.postfix.items
                 count += self._iter_call(issuelist, items, db_sess, top_obj=obj)
         elif isinstance(obj, models.ARI):
+            # FIXME identify text ARIs differently
             ident = util.get_ident(obj)
-            ident.strip_name()
             if not util.find_ident(db_sess, ident):
                 issuelist.append(Issue(
                     obj=top_obj,

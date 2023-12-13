@@ -23,22 +23,22 @@
 '''
 
 from datetime import datetime
-import io
 import logging
 import optparse
 import os
-import re
 from typing import TextIO, List
-import pyang
 import pyang.plugin
 import pyang.context
 import pyang.repository
 import pyang.translators.yang
 from ace.models import (
-    TypeNameList, TypeNameItem, Expr, ARI, AriAP, AC,
-    MetadataList, MetadataItem, AdmRevision,
-    AdmFile, AdmImport, TypeUse, ParamMixin, TypeUseMixin, AdmObjMixin,
+    TypeNameList, TypeNameItem,
+    MetadataList, MetadataItem, AdmRevision, Feature,
+    AdmFile, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
     Typedef, Const, Ctrl, Edd, Oper, Var
+)
+from ace.typing import (
+    SemType, TypeUse, TypeUnion, UniformList, TableTemplate, TableColumn
 )
 from ace.util import normalize_ident
 
@@ -67,6 +67,24 @@ MOD_META_KYWDS = {
 }
 
 
+def search_one_exp(stmt, kywd):
+    ''' Search-one within uses-expanded substatements. '''
+    found = stmt.search_one(kywd)
+    if found is not None:
+        return found
+    subs = getattr(stmt, 'i_children', None)
+    return stmt.search_one(kywd, children=subs)
+
+
+def search_all_exp(stmt, kywd):
+    ''' Search-one within uses-expanded substatements. '''
+    # FIXME combine substatemnts with children
+    # found = stmt.search(kywd)
+
+    subs = getattr(stmt, 'i_children', None)
+    return stmt.search(kywd, children=subs)
+
+
 class Decoder:
     ''' The decoder portion of this CODEC.
     '''
@@ -92,81 +110,128 @@ class Decoder:
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
-        
+
         # Set to an object while processing a top-level module
         self._module = None
         self._obj_pos = 0
 
-    def _get_typeuse(self, obj: TypeUseMixin, stmt: pyang.statements.Statement):
-        TYPE_KYWDS = (
-            (AMM_MOD, 'type'),
-            (AMM_MOD, 'ulist'),
-            (AMM_MOD, 'dlist'),
-            (AMM_MOD, 'umap'),
-            (AMM_MOD, 'tblt'),
-            (AMM_MOD, 'union'),
-        )
-        TYPE_REFINE_KWDS = (
-            'length',
-            'pattern',
-            'range',
-            (AMM_MOD, 'int-labels'),
-            (AMM_MOD, 'cddl'),
-        )
+        self._type_handlers = {
+            (AMM_MOD, 'type'): self._handle_type,
+            (AMM_MOD, 'ulist'): self._handle_ulist,
+            (AMM_MOD, 'dlist'): self._handle_dlist,
+            (AMM_MOD, 'umap'): self._handle_umap,
+            (AMM_MOD, 'tblt'): self._handle_tblt,
+            (AMM_MOD, 'union'): self._handle_union,
+        }
 
+    def _get_typeobj(self, parent: pyang.statements.Statement) -> SemType:
         # Only one type statement is valid
-        found_types = list(filter(
-            None,
-            [
-                stmt.search_one(kywd)
-                for kywd in TYPE_KYWDS
-            ]
-        ))
-        if not found_types:
+        found_type_stmts = [
+            type_stmt for type_stmt in parent.substmts
+            if type_stmt.keyword in self._type_handlers
+        ]
+        if not found_type_stmts:
             raise RuntimeError('No type present where required')
-        elif len(found_types) > 1:
+        elif len(found_type_stmts) > 1:
             raise RuntimeError('Too many types present where one required')
-        type_stmt = found_types[0]
-        kywd_name = type_stmt.keyword[1]
+        type_stmt = found_type_stmts[0]
 
-        # Process refining substatements
-        typeuse = TypeUse()
-        if kywd_name == 'type':
-            refinements = list(filter(None, [
-                type_stmt.search_one(kywd)
-                for kywd in TYPE_REFINE_KWDS
-            ]))
-            if not refinements:
-                # Unrefined type use
-                if ':' in type_stmt.arg:
-                    adm_prefix, type_name = type_stmt.arg.split(':', 2)
-                    # resolve yang prefix to module name
-                    type_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
-                    print('no refinement on typedef', type_stmt.arg, type_ns, type_name)
-                    typeuse.type_ns = type_ns
-                    typeuse.type_name = type_name
-                else:
-                    print('no refinement on built-in', type_stmt.arg)
-                    typeuse.type_name = type_stmt.arg
-            else:
-                print(stmt, refinements)
+        typeobj = self._type_handlers[type_stmt.keyword](type_stmt)
+        LOGGER.debug('Got type %s', typeobj)
+        return typeobj
 
-        elif kywd_name == 'ulist':
-            pass  # FIXME: implement
-        elif kywd_name == 'dlist':
-            pass  # FIXME: implement
-        elif kywd_name == 'umap':
-            pass  # FIXME: implement
+    _TYPE_REFINE_KWDS = (
+        'units',
+        'length',
+        'pattern',
+        'range',
+        (AMM_MOD, 'int-labels'),
+        (AMM_MOD, 'cddl'),
+    )
 
-        elif kywd_name == 'tblt':
-            key_stmt = type_stmt.search_one((AMM_MOD, 'key'))
-            column_stmts = type_stmt.search((AMM_MOD, 'column'))
-            print(stmt, key_stmt, column_stmts)
+    def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = TypeUse()
 
-        elif kywd_name == 'union':
-            pass  # FIXME: implement
-        
-        obj.typeuse = typeuse
+        if ':' in stmt.arg:
+            adm_prefix, type_name = stmt.arg.split(':', 2)
+            # resolve yang prefix to module name
+            type_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
+            typeobj.type_ns = normalize_ident(type_ns)
+            typeobj.type_name = normalize_ident(type_name)
+        else:
+            typeobj.type_name = normalize_ident(stmt.arg)
+
+        refinements = list(filter(None, [
+            search_one_exp(stmt, kywd)
+            for kywd in self._TYPE_REFINE_KWDS
+        ]))
+        for rfn in refinements:
+            if rfn.keyword == 'units':
+                typeobj.units = rfn.arg.strip()
+            elif rfn.keyword == 'length':
+                pass  # FIXME
+            elif rfn.keyword == 'pattern':
+                pass  # FIXME
+            elif rfn.keyword == 'range':
+                pass  # FIXME
+
+        return typeobj
+
+    def _handle_ulist(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = UniformList(
+            type=self._get_typeobj(stmt)
+        )
+        return typeobj
+
+    def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
+        pass
+
+    def _handle_umap(self, stmt:pyang.statements.Statement) -> SemType:
+        pass
+
+    def _handle_tblt(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = TableTemplate()
+
+        col_names = set()
+        for col_stmt in search_all_exp(stmt, (AMM_MOD, 'column')):
+            col = TableColumn(
+                name=col_stmt.arg,
+                type=self._get_typeobj(col_stmt)
+            )
+            if isinstance(col.type, TableTemplate):
+                LOGGER.warn('A table column is typed to contain another table')
+            if col.name in col_names:
+                LOGGER.warn('A duplicate column name is present: %s', col)
+
+            typeobj.columns.append(col)
+            col_names.add(col.name)
+
+        key_stmt = search_one_exp(stmt, (AMM_MOD, 'key'))
+        if key_stmt:
+            typeobj.key = key_stmt.arg
+
+        for unique_stmt in search_all_exp(stmt, (AMM_MOD, 'unique')):
+            col_names = [
+                name.strip()
+                for name in unique_stmt.arg.split(',')
+            ]
+            typeobj.unique.append(col_names)
+
+        return typeobj
+
+    def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = TypeUnion()
+
+        found_type_stmts = [
+            type_stmt for type_stmt in stmt.substmts
+            if type_stmt.keyword in self._type_handlers
+        ]
+
+        for type_stmt in found_type_stmts:
+            subtype = self._type_handlers[type_stmt.keyword](type_stmt)
+            typeobj.types.append(subtype)
+
+        return typeobj
 
     def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
@@ -182,58 +247,50 @@ class Decoder:
 
         if issubclass(cls, AdmObjMixin):
             obj.norm_name = normalize_ident(obj.name)
-            
-            enum_stmt = stmt.search_one((AMM_MOD, 'enum'))
+
+            enum_stmt = search_one_exp(stmt, (AMM_MOD, 'enum'))
             if enum_stmt:
-                obj.enum = int(enum_stmt.arg) 
+                obj.enum = int(enum_stmt.arg)
 
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
-            for param_stmt in stmt.search((AMM_MOD, 'parameter')):
+            for param_stmt in search_all_exp(stmt, (AMM_MOD, 'parameter')):
                 item = TypeNameItem(
                     name=param_stmt.arg,
+                    typeobj=self._get_typeobj(param_stmt)
                 )
-                self._get_typeuse(item, param_stmt)
                 orm_val.items.append(item)
-            
+
             obj.parameters = orm_val
 
         if issubclass(cls, TypeUseMixin):
-            self._get_typeuse(obj, stmt)
+            obj.typeobj = self._get_typeobj(stmt)
 
-        '''
-            if key in {'parmspec', 'columns'}:
-                # Type TN pairs
-                orm_val = TypeNameList()
-                for json_parm in json_val:
-                    item = TypeNameItem(
-                        type=json_parm['type'],
-                        name=json_parm['name'],
-                    )
-                    orm_val.items.append(item)
+        if issubclass(cls, (Const, Var)):
+            value_stmt = search_one_exp(stmt, (AMM_MOD, 'init-value'))
+            if not value_stmt:
+                LOGGER.warning('const is missing init-value substatement')
+            else:
+                obj.init_value = value_stmt.arg
 
-            elif key in {'initializer'}:
-                # Type EXPR
-                orm_val = Expr(
-                    type=json_val['type'],
-                    postfix=self._get_ac(json_val['postfix-expr']),
+        elif issubclass(cls, Ctrl):
+            result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
+            if result_stmt:
+                obj.result = TypeNameItem(
+                    name=result_stmt.arg,
+                    typeobj=self._get_typeobj(result_stmt)
                 )
 
-            elif key in {'action', 'definition'}:
-                # Type AC
-                orm_val = self._get_ac(json_val)
+        elif issubclass(cls, Oper):
+            # FIXME populate these
+            obj.operands = TypeNameList()
 
-            elif key == 'in-type':
-                orm_val = [
-                    OperParm(type=type_name)
-                    for type_name in json_val
-                ]
-
-            else:
-                orm_val = json_val
-
-            setattr(obj, attr_to_member(key), orm_val)
-            '''
+            result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
+            if result_stmt:
+                obj.result = TypeNameItem(
+                    name=result_stmt.arg,
+                    typeobj=self._get_typeobj(result_stmt)
+                )
 
         return obj
 
@@ -251,7 +308,7 @@ class Decoder:
         sec_kywd = KEYWORDS[orm_cls]
 
         enum = 0
-        for yang_stmt in module.search(sec_kywd):
+        for yang_stmt in search_all_exp(module, sec_kywd):
             obj = self.from_stmt(orm_cls, yang_stmt)
 
             # FIXME: check for duplicates
@@ -273,9 +330,9 @@ class Decoder:
         LOGGER.debug('Loaded %s', module)
         self._module = module
         self._obj_pos = 0
-        
+
         modules = [module]
-        
+
         # Same post-load steps from pyang
 
         for p in pyang.plugin.plugins:
@@ -306,35 +363,41 @@ class Decoder:
         if file_path:
             adm.abs_file_path = file_path
             adm.last_modified = self.get_file_time(file_path)
-        
+
         adm.name = module.arg
         # Normalize the intrinsic ADM name
         adm.norm_name = normalize_ident(adm.name)
 
         enum_stmt = module.search_one((AMM_MOD, 'enum'))
         if enum_stmt:
-            adm.enum = int(enum_stmt.arg) 
+            adm.enum = int(enum_stmt.arg)
 
-        for rev_stmt in module.search('import'):
-            prefix_stmt = rev_stmt.search_one('prefix')
+        for sub_stmt in module.search('import'):
+            prefix_stmt = search_one_exp(sub_stmt, 'prefix')
             adm.imports.append(AdmImport(
-                name=rev_stmt.arg,
+                name=sub_stmt.arg,
                 prefix=prefix_stmt.arg,
             ))
 
         adm.metadata_list = MetadataList()
         for kywd in MOD_META_KYWDS:
-            meta_stmt = module.search_one(kywd)
+            meta_stmt = search_one_exp(module, kywd)
             if meta_stmt:
                 adm.metadata_list.items.append(MetadataItem(
                     name=meta_stmt.keyword,
                     arg=meta_stmt.arg,
                 ))
 
-        for rev_stmt in module.search('revision'):
+        for sub_stmt in module.search('revision'):
             adm.revisions.append(AdmRevision(
-                name=rev_stmt.arg,
-                description=pyang.statements.get_description(rev_stmt),
+                name=sub_stmt.arg,
+                description=pyang.statements.get_description(sub_stmt),
+            ))
+
+        for sub_stmt in module.search('feature'):
+            adm.feature.append(Feature(
+                name=sub_stmt.arg,
+                description=pyang.statements.get_description(sub_stmt),
             ))
 
         self._get_section(adm.typedef, Typedef, module)
@@ -353,7 +416,7 @@ class Encoder:
 
     def __init__(self):
         modpath = []
-        
+
         optparser = optparse.OptionParser('', add_help_option=False)
         for p in pyang.plugin.plugins:
             p.add_opts(optparser)
@@ -388,7 +451,7 @@ class Encoder:
         for imp in adm.imports:
             imp_stmt = self._add_substmt(module, 'import', imp.name)
             self._add_substmt(imp_stmt, 'prefix', imp.prefix)
-            
+
             # local bookkeeping
             module.i_prefixes[imp.prefix] = imp.name
             self._denorm_prefixes[imp.name] = imp.prefix
@@ -400,6 +463,11 @@ class Encoder:
             rev_stmt = self._add_substmt(module, 'revision', rev.name)
             if rev.description:
                 self._add_substmt(rev_stmt, 'description', rev.description)
+
+        for feat in adm.feature:
+            rev_stmt = self._add_substmt(module, 'feature', feat.name)
+            if feat.description:
+                self._add_substmt(rev_stmt, 'description', feat.description)
 
         self._put_section(adm.typedef, Typedef, module)
         self._put_section(adm.const, Const, module)
@@ -452,6 +520,8 @@ class Encoder:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
             if obj.description:
                 self._add_substmt(obj_stmt, 'description', obj.description)
+            if obj.if_feature_expr:
+                self._add_substmt(obj_stmt, 'if-feature', obj.if_feature_expr)
 
         if issubclass(cls, ParamMixin):
             for param in obj.parameters.items:
@@ -485,11 +555,14 @@ class Encoder:
         return obj_stmt
 
     def _put_typeuse(self, obj:TypeUseMixin, parent:pyang.statements.Statement) -> pyang.statements.Statement:
-        print('use', obj.typeuse.type_ns)
-        if obj.typeuse.type_name:
-            if obj.typeuse.type_ns:
-                ns, name = self._denorm_tuple((obj.typeuse.type_ns, obj.typeuse.type_name))
-                name = f'{ns}:{name}'
-            else:
-                name = obj.typeuse.type_name
-            self._add_substmt(parent, (AMM_MOD, 'type'), name)
+        print('use', obj.typeobj)
+        if isinstance(obj.typeobj, TypeUse):
+            if obj.typeobj.type_name:
+                if obj.typeobj.type_ns:
+                    ns, name = self._denorm_tuple((obj.typeobj.type_ns, obj.typeobj.type_name))
+                    name = f'{ns}:{name}'
+                else:
+                    name = obj.typeobj.type_name
+                self._add_substmt(parent, (AMM_MOD, 'type'), name)
+        else:
+            raise TypeError(f'Unhandled type object: {obj.typeobj}')

@@ -24,9 +24,10 @@
 import logging
 from ply import yacc
 from ace.ari import (
-    Identity, ReferenceARI, LiteralARI, StructType,
+    Identity, RelativePath, ReferenceARI, LiteralARI, StructType,
     ExecutionSet, ReportSet, Report
 )
+from ace.typing import LITERALS_BY_ENUM
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
@@ -93,7 +94,8 @@ def p_typedlit_execset(p):
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
     nonce = LiteralARI(util.NONCE(p[3].get('n', 'null')))
-    ref_time = LiteralARI.coerce(util.TYPEDLIT[StructType.TP](p[3]['r']), StructType.TP)
+    rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+    ref_time = LITERALS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time,
@@ -114,7 +116,8 @@ def p_reportlist_end(p):
 
 def p_report(p):
     'report : LPAREN SEGMENT EQ SEGMENT SC SEGMENT EQ ari SC acbracket RPAREN'
-    rel_time = LiteralARI.coerce(util.TYPEDLIT[StructType.TD](p[4]), StructType.TD)
+    rawtime = util.TYPEDLIT[StructType.TD](p[4])
+    rel_time = LITERALS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
     p[0] = Report(rel_time=rel_time, source=source, items=p[10])
 
@@ -135,30 +138,44 @@ def p_typedlit_single(p):
         raise RuntimeError(err) from err
 
     try:
-        p[0] = LiteralARI.coerce(
+        p[0] = LITERALS_BY_ENUM[typ].convert(LiteralARI(
             type_enum=typ,
             value=value
-        )
+        ))
     except Exception as err:
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
 
 
 def p_ssp_objref(p):
-    '''ssp : ident
-           | ident LPAREN RPAREN
-           | ident LPAREN aclist RPAREN
-           | ident LPAREN amlist RPAREN'''
-    if len(p) == 2:
-        params = None
-    elif len(p) == 4:
-        params = []
-    else:
-        params = p[3]
+    'ssp : ident'
     p[0] = ReferenceARI(
         ident=p[1],
-        params=params
+        params=None
     )
+
+
+def p_ssp_objref_params(p):
+    'ssp : ident params'
+    p[0] = ReferenceARI(
+        ident=p[1],
+        params=p[2]
+    )
+
+
+def p_params_empty(p):
+    'params : LPAREN RPAREN'
+    p[0] = []
+
+
+def p_params_aclist(p):
+    'params : LPAREN aclist RPAREN'
+    p[0] = p[2]
+
+
+def p_params_amlist(p):
+    'params : LPAREN amlist RPAREN'
+    p[0] = p[2]
 
 
 def p_ident_with_ns(p):
@@ -174,6 +191,18 @@ def p_ident_with_ns(p):
         type_enum=typ,
         name=util.IDSEGMENT(p[6]),
     )
+
+
+def p_ident_relative(p):
+    'ident : DOTDOT SLASH SEGMENT SLASH SEGMENT'
+    print('PARSE', dir(p), p.lexer, p.parser)
+    try:
+        typ = util.get_structtype(p[3])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    p[0] = RelativePath([p[1], typ, util.IDSEGMENT(p[5])])
 
 
 def p_acbracket(p):

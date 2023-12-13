@@ -36,7 +36,7 @@ SELFDIR = os.path.dirname(__file__)
 class TestAdmYang(unittest.TestCase):
 
     TEST_FILE_PATH = os.path.join(SELFDIR, 'test-adm-minimal.yang')
-    
+
     maxDiff = None
 
     def setUp(self):
@@ -110,37 +110,37 @@ module empty {
         self.assertEqual("test1", obj.name)
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
-        self.assertEqual("ANY", obj.parameters.items[0].typeuse.type_name)
+        self.assertEqual("any", obj.parameters.items[0].typeobj.type_name)
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual("INT", obj.typeuse.type_name)
+        self.assertEqual("int", obj.typeobj.type_name)
 
     # As close to real YANG syntax as possible
     LOOPBACK_CASELIST = [
         (models.Typedef, {
             "name": "tblt_name",
-            "columns": [{"type": "STR", "name": "rule1"},
-                        {"type": "STR", "name": "rule2"},
-                        {"type": "UINT", "name": "rule3"},
-                        {"type": "STR", "name": "rule4"},
-                        {"type": "STR", "name": "rule5"}
+            "columns": [{"type": "textstr", "name": "rule1"},
+                        {"type": "textstr", "name": "rule2"},
+                        {"type": "uint", "name": "rule3"},
+                        {"type": "textstr", "name": "rule4"},
+                        {"type": "textstr", "name": "rule5"}
                         ],
             "description": "Tblt Rules description."
         }),
         (models.Var, {
             "name": "myname",
             "description": "Some long text",
-            "type": "INT",
+            "type": "int",
         }),
         (models.Var, {
             "name": "myname",
             "description": "Some long text",
-            "type": "INT",
+            "type": "int",
             "initializer": {
-                "type": "INT",
+                "type": "int",
                 "postfix-expr": [
                     {
                         "ns": "Amp/Agent",
@@ -151,17 +151,17 @@ module empty {
         }),
         (models.Edd, {
             "name": "edd_name1",
-            "type": "STR",
+            "type": "textstr",
             "description": "Description of an Edd"
         }),
         (models.Edd, {
             "name": "edd_name2",
-            "type": "UVAST",
+            "type": "uvast",
             "description": "Second description of an Edd"
         }),
         (models.Const, {
             "name": "const_name",
-            "type": "STR",
+            "type": "textstr",
             "description": "A description of a Const",
             "value": "some_value"
         }),
@@ -210,10 +210,10 @@ module empty {
         }),
         (models.Oper, {
             "name": "some_op_name",
-            "result-type": "INT",
+            "result-type": "int",
             "in-type": [
-                "INT",
-                "INT",
+                "int",
+                "int",
             ],
             "description": "a description of an Operator"
         }),
@@ -259,10 +259,10 @@ module empty {
 
     @unittest.skip  # FIXME: reinstate later
     def test_loopback_real_adms(self):
-        
+
         def keep(name):
             return name.endswith('.yang')
-        
+
         file_names = os.listdir(os.path.join(SELFDIR, 'adms'))
         file_names = tuple(filter(keep, file_names))
         self.assertLess(0, len(file_names))
@@ -271,19 +271,19 @@ module empty {
             LOGGER.warning('Handling file %s', name)
             dec = adm_yang.Decoder()
             enc = adm_yang.Encoder()
-    
+
             file_path = os.path.join(SELFDIR, 'adms', name)
             with open(file_path, 'r', encoding='utf-8') as buf:
                 indata = buf.read()
                 buf.seek(0)
                 adm = dec.decode(buf)
             LOGGER.warning('%s', indata)
-    
+
             outbuf = io.StringIO()
             enc.encode(adm, outbuf)
             outbuf.seek(0)
             outdata = outbuf.getvalue()
             LOGGER.warning('%s', outdata)
-    
+
             # Compare as decoded JSON (the infoset, not the encoded bytes)
             self.assertEqual(indata, outdata)

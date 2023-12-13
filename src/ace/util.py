@@ -23,14 +23,15 @@
 '''
 import logging
 import string
-
+import sqlalchemy.orm
+from . import ari
 
 LOGGER = logging.getLogger(__name__)
 
 
 def is_printable(name: bytes) -> bool:
     return (
-        name and name[:1].isalpha() 
+        name and name[:1].isalpha()
         and all([chr(char) in string.printable for char in name])
     )
 
@@ -43,18 +44,16 @@ def normalize_ident(text: str) -> str:
     :param text: The text to normalize.
     :return: Normalized text.
     '''
-    
+
     return text.casefold().replace("/", "_")
 
 
-def get_ident(obj: 'ace.models.ARI') -> 'ace.ari.Ident':
+def get_ident(obj: 'ace.models.ARI') -> ari.Identity:
     ''' Extract an Ident object from an ADM's ARI.
-    
+
     :param obj: The ORM object from an ADM.
     :return: The object identity.
     '''
-    from ace import ari
-
     type_name, remain = obj.nm.split('.', maxsplit=1)
     ident = ari.Identity(
         namespace=normalize_ident(obj.ns),
@@ -64,25 +63,25 @@ def get_ident(obj: 'ace.models.ARI') -> 'ace.ari.Ident':
     return ident
 
 
-def find_ident(db_sess: 'sqlalchemy.orm.Session', ident: 'ace.ari.Ident'):
+def find_ident(db_sess:sqlalchemy.orm.Session, ident:ari.Identity):
     ''' Search for a specific referenced object.
 
     :param ident: The object identity to search for.
     :return: The found object or None.
     '''
-    from ace import ari, models, nickname
+    from ace import models, nickname
 
     adm_ns = normalize_ident(ident.namespace)
     obj_name = normalize_ident(ident.name)
-    
+
     try:
         cls = nickname.ORM_TYPE[ident.type_enum]
     except KeyError:
         return None
-    
+
     LOGGER.debug('Searching for NS %s type %s name %s', ident.namespace, cls.name, obj_name)
     query = db_sess.query(cls).join(models.AdmFile).filter(
-        models.AdmFile.norm_namespace == adm_ns,
+        models.AdmFile.norm_name == adm_ns,
         cls.norm_name == obj_name
     )
     return query.one_or_none()

@@ -32,24 +32,13 @@ LOGGER = logging.getLogger(__name__)
 
 # : ORM relationship attribute for each ARI reference type
 ORM_TYPE = {
+    StructType.TYPEDEF: models.Typedef,
     StructType.CONST: models.Const,
     StructType.CTRL: models.Ctrl,
     StructType.EDD: models.Edd,
     StructType.OPER: models.Oper,
     StructType.VAR: models.Var,
 }
-
-
-# : Map from draft-birrane-dtn-amp-08, Table 1
-@enum.unique
-class AdmObjType(enum.IntEnum):
-    CONST = 0
-    CTRL = 1
-    EDD = 2
-    OPER = 4
-    SBR = 6
-    TBR = 8
-    VAR = 9
 
 
 @enum.unique
@@ -96,17 +85,17 @@ class Converter:
     def _convert_ari(self, ari):
         if self._mode == Mode.TO_NN and isinstance(ari.ident.namespace, str):
             # Prefer nicknames
-            adm_name = ari.ident.namespace.split(':')[1]
+            adm_name = ari.ident.namespace
             obj_type = ari.ident.type_enum
             obj_name = ari.ident.name
 
             adm = self._adms.get_by_norm_name(adm_name)
             LOGGER.debug('Got ADM %s', adm)
-            nn_type_enum = AdmObjType[obj_type.name]
             obj = self._adms.get_child(adm, ORM_TYPE[obj_type], norm_name=obj_name)
-            LOGGER.debug('ARI type %s name %s resolved to enums for ADM %s, type %s, obj %s',
-                         obj_type, obj_name, adm.enum if adm else None,
-                         nn_type_enum, obj.enum if obj else None)
+            LOGGER.debug('ARI type %s name %s resolved to enums for ADM %s, obj %s',
+                         obj_type, obj_name,
+                         adm.enum if adm else None,
+                         obj.enum if obj else None)
 
             if adm is None or adm.enum is None:
                 if self._must:
@@ -127,10 +116,10 @@ class Converter:
                     raise RuntimeError(msg)
                 return
 
-            # Object name as encoded nickname
-            ari.ident.namespace = adm.enum * 20 + nn_type_enum.value
-            ari.ident.name = cbor2.dumps(obj.enum)
-            
+            # ARI IDs from enums
+            ari.ident.namespace = adm.enum
+            ari.ident.name = obj.enum
+
             # Convert parameter types from text ARI as needed
             if isinstance(obj, models.ParamMixin) and obj.parameters is not None:
                 for ix, spec in enumerate(obj.parameters.items):
@@ -138,22 +127,14 @@ class Converter:
                         ari.params[ix] = TNVC(items=ari.params[ix].items)
 
         if self._mode == Mode.FROM_NN and isinstance(ari.ident.namespace, int):
-            adm_enum = ari.ident.namespace // 20
-            adm_type_enum = AdmObjType(ari.ident.namespace % 20)
-            
-            if adm_type_enum.name != ari.ident.type_enum.name:
-                LOGGER.warning(
-                    'Nickname type %s is inconsistent with ARI type %s',
-                    adm_type_enum, ari.ident.type_enum
-                )
-            obj_enum = cbor2.loads(ari.ident.name)
-            if not isinstance(obj_enum, int):
-                raise ValueError('Object name is not an encoded integer')
+            adm_enum = ari.ident.namespace
+            obj_enum = ari.ident.name
 
             adm = self._adms.get_by_enum(adm_enum)
             LOGGER.debug('Got ADM %s', adm)
             obj = self._adms.get_child(adm, ORM_TYPE[ari.ident.type_enum], enum=obj_enum)
             LOGGER.debug('ARI nickname %s name %s resolved to type %s name %s obj %s', ari.ident.namespace, ari.ident.name, ari.ident.type_enum, obj_enum, obj)
 
-            ari.ident.namespace = f'{adm.norm_name}'
+            # ARI IDs from names
+            ari.ident.namespace = adm.norm_name
             ari.ident.name = obj.norm_name
