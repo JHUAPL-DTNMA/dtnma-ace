@@ -361,6 +361,8 @@ class AnyType(BuiltInType):
         self.cls = cls
 
     def get(self, obj:ARI) -> ARI:
+        if obj == UNDEFINED:
+            return None
         if not isinstance(obj, self.cls):
             return None
         return obj
