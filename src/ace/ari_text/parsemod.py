@@ -128,7 +128,7 @@ def p_typedlit_rptset(p):
     ref_time = LITERALS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
         nonce=nonce,
-        ref_time=ref_time,
+        ref_time=ref_time.value,
         reports=p[4],
     )
     p[0] = LiteralARI(type_enum=StructType.RPTSET, value=value)
@@ -149,7 +149,7 @@ def p_report(p):
     rawtime = util.TYPEDLIT[StructType.TD](p[4])
     rel_time = LITERALS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
-    p[0] = Report(rel_time=rel_time, source=source, items=p[10])
+    p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
 
 
 def p_typedlit_single(p):

@@ -59,6 +59,8 @@ class TestAriRoundtrip(unittest.TestCase):
         '/AM/(1=1,2=3)',
         '/TBL/c=3;',
         '/TBL/c=3;(1,2,3)(a,b,c)',
+        '/EXECSET/n=1234;(/adm/CTRL/name)',
+        '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
         # Reference
         'ari:/namespace/VAR/hello',
         'ari:/namespace/VAR/hello()',

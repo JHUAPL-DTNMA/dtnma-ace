@@ -153,11 +153,11 @@ class TestAriText(unittest.TestCase):
             '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=LiteralARI(datetime.datetime(2024, 1, 2, 3, 4, 5), StructType.TP),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
                         source=ReferenceARI(Identity('adm', StructType.CTRL, 'name')),
-                        rel_time=LiteralARI(datetime.timedelta(seconds=0), StructType.TD),
+                        rel_time=datetime.timedelta(seconds=0),
                         items=[
                             LiteralARI(None)
                         ]
@@ -169,11 +169,11 @@ class TestAriText(unittest.TestCase):
             '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=/adm/CTRL/other;(null))',
             ReportSet(
                 nonce=LiteralARI(1234),
-                ref_time=LiteralARI(datetime.datetime(2024, 1, 2, 3, 4, 5), StructType.TP),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
                         source=ReferenceARI(Identity('adm', StructType.CTRL, 'other')),
-                        rel_time=LiteralARI(datetime.timedelta(seconds=0), StructType.TD),
+                        rel_time=datetime.timedelta(seconds=0),
                         items=[
                             LiteralARI(None)
                         ]

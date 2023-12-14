@@ -26,7 +26,8 @@ import logging
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType, Table
+    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType,
+    Table, ExecutionSet, ReportSet, Report
 )
 from ace.cborutil import to_diag
 
@@ -56,13 +57,13 @@ class Decoder:
                            buf.tell(), to_diag(buf.getvalue()))
 
         try:
-            res = self._item_to_obj(item)
+            res = self._item_to_ari(item)
         except cbor2.CBORDecodeEOF as err:
             raise ParseError(f'Failed to decode ARI: {err}') from err
 
         return res
 
-    def _item_to_obj(self, item:object):
+    def _item_to_ari(self, item:object):
         LOGGER.debug('Got ARI item: %s', item)
 
         if isinstance(item, list):
@@ -77,7 +78,7 @@ class Decoder:
                 params = None
                 if len(item) >= 4:
                     params = [
-                        self._item_to_obj(param_item)
+                        self._item_to_ari(param_item)
                         for param_item in item[3]
                     ]
 
@@ -102,10 +103,11 @@ class Decoder:
         return res
 
     def _item_to_val(self, item, type_enum):
+        ''' Decode a CBOR item into an ARI value. '''
         if type_enum == StructType.AC:
-            value = [self._item_to_obj(sub_item) for sub_item in item]
+            value = [self._item_to_ari(sub_item) for sub_item in item]
         elif type_enum == StructType.AM:
-            value = {self._item_to_obj(key): self._item_to_obj(sub_item) for key, sub_item in item.items()}
+            value = {self._item_to_ari(key): self._item_to_ari(sub_item) for key, sub_item in item.items()}
         elif type_enum == StructType.TBL:
             item_it = iter(item)
 
@@ -115,17 +117,38 @@ class Decoder:
 
             for row_ix in range(nrow):
                 for col_ix in range(ncol):
-                    value[row_ix, col_ix] = self._item_to_obj(next(item_it))
+                    value[row_ix, col_ix] = self._item_to_ari(next(item_it))
 
         elif type_enum == StructType.TP:
             value = self._item_to_timeval(item) + DTN_EPOCH
         elif type_enum == StructType.TD:
             value = self._item_to_timeval(item)
+        elif type_enum == StructType.EXECSET:
+            value = ExecutionSet(
+                nonce=self._item_to_ari(item[0]),
+                targets=[self._item_to_ari(sub) for sub in item[1:]]
+            )
+        elif type_enum == StructType.RPTSET:
+            rpts = []
+            for rpt_item in item[2:]:
+                rpt = Report(
+                    rel_time=self._item_to_timeval(rpt_item[0]),
+                    source=self._item_to_ari(rpt_item[1]),
+                    items=list(map(self._item_to_ari, rpt_item[2:]))
+                )
+                rpts.append(rpt)
+
+            value = ReportSet(
+                nonce=self._item_to_ari(item[0]),
+                ref_time=(DTN_EPOCH + self._item_to_timeval(item[1])),
+                reports=rpts
+            )
         else:
             value = item
         return value
 
-    def _item_to_timeval(self, item):
+    def _item_to_timeval(self, item) -> datetime.timedelta:
+        ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
             return datetime.timedelta(seconds=item)
         elif isinstance(item, list):
@@ -139,18 +162,18 @@ class Decoder:
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def encode(self, obj: ARI, buf: BinaryIO):
+    def encode(self, ari: ARI, buf: BinaryIO):
         ''' Encode an ARI into CBOR bytestring.
 
-        :param obj: The ARI object to encode.
+        :param ari: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
         cborenc = cbor2.CBOREncoder(buf)
-        item = self._obj_to_item(obj)
+        item = self._ari_to_item(ari)
         LOGGER.debug('ARI to item %s', item)
         cborenc.encode(item)
 
-    def _obj_to_item(self, obj:ARI) -> object:
+    def _ari_to_item(self, obj:ARI) -> object:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
         if isinstance(obj, ReferenceARI):
@@ -162,7 +185,7 @@ class Encoder:
 
             if obj.params is not None:
                 item.append([
-                    self._obj_to_item(param)
+                    self._ari_to_item(param)
                     for param in obj.params
                 ])
 
@@ -180,16 +203,32 @@ class Encoder:
     def _val_to_item(self, value):
         ''' Convert a non-typed value into a CBOR item. '''
         if isinstance(value, list):
-            item = [self._obj_to_item(obj) for obj in value]
+            item = [self._ari_to_item(obj) for obj in value]
         elif isinstance(value, dict):
-            item = {self._obj_to_item(key): self._obj_to_item(obj) for key, obj in value.items()}
+            item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}
         elif isinstance(value, Table):
-            item = [value.shape[1]] + list(map(self._obj_to_item, value.flat))
+            item = [value.shape[1]] + list(map(self._ari_to_item, value.flat))
         elif isinstance(value, datetime.datetime):
             diff = value - DTN_EPOCH
             item = self._timeval_to_item(diff)
         elif isinstance(value, datetime.timedelta):
             item = self._timeval_to_item(value)
+        elif isinstance(value, ExecutionSet):
+            item = [
+                self._ari_to_item(value.nonce)
+            ] + list(map(self._ari_to_item, value.targets))
+        elif isinstance(value, ReportSet):
+            rpts_item = []
+            for rpt in value.reports:
+                rpt_item = [
+                    self._val_to_item(rpt.rel_time),
+                    self._ari_to_item(rpt.source),
+                ] + list(map(self._ari_to_item, rpt.items))
+                rpts_item.append(rpt_item)
+            item = [
+                self._ari_to_item(value.nonce),
+                self._val_to_item(value.ref_time)
+            ] + rpts_item
         else:
             item = value
         return item

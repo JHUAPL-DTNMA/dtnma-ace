@@ -78,7 +78,7 @@ class Decoder:
         )
         try:
             res = parser.parse(text, lexer=lexer)
-        except RuntimeError as err:
+        except Exception as err:
             raise ParseError(f'Failed to parse "{text}": {err}') from err
 
         return res

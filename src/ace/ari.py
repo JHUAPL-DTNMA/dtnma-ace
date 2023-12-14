@@ -46,7 +46,7 @@ class Table(numpy.ndarray):
 @dataclass(eq=True, frozen=True)
 class ExecutionSet:
     ''' Internal representation of Execution-Set data. '''
-    nonce:Union[None, int, bytes]
+    nonce:'LiteralARI'
     ''' Optional nonce value '''
     targets:List['ARI']
     ''' The targets to execute '''
@@ -63,9 +63,10 @@ class Report:
 @dataclass(eq=True, frozen=True)
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
-    nonce:Union[None, int, bytes]
+    nonce:'LiteralARI'
     ''' Optional nonce value '''
     ref_time:datetime.datetime
+    ''' The reference time for all contained Report relative-times. '''
     reports:List['Report']
     ''' The contained Reports '''
 
@@ -86,7 +87,7 @@ class StructType(enum.IntEnum):
     REAL64 = 9
     TEXTSTR = 10
     BYTESTR = 11
-    # Compound types
+    # Complex types
     TP = 12
     TD = 13
     LABEL = 14

@@ -41,7 +41,7 @@ class TypeSeq:
             found = obj.regex.fullmatch(text)
             if found is not None:
                 return obj.parser(found)
-        raise ValueError(f'No possible type matched text: {text}')
+        raise ValueError(f'No possible literal type matched text: {text}')
 
 
 @TypeMatch.apply(r'undefined')

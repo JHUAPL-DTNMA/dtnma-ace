@@ -121,7 +121,7 @@ class Encoder:
             elif isinstance(obj.value, ReportSet):
                 params = {
                     'n': obj.value.nonce,
-                    'r': encode_datetime(obj.value.ref_time.value),
+                    'r': encode_datetime(obj.value.ref_time),
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)
@@ -145,7 +145,7 @@ class Encoder:
         # FIXME: special cases for recursion
         elif isinstance(obj, Report):
             params = {
-                't': encode_timedelta(obj.rel_time.value),
+                't': encode_timedelta(obj.rel_time),
                 's': obj.source,
             }
             self._encode_struct(buf, params)
