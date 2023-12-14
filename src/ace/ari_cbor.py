@@ -26,7 +26,7 @@ import logging
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType
+    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType, Table
 )
 from ace.cborutil import to_diag
 
@@ -105,7 +105,18 @@ class Decoder:
         if type_enum == StructType.AC:
             value = [self._item_to_obj(sub_item) for sub_item in item]
         elif type_enum == StructType.AM:
-            value = {key: self._item_to_obj(sub_item) for key, sub_item in item.items()}
+            value = {self._item_to_obj(key): self._item_to_obj(sub_item) for key, sub_item in item.items()}
+        elif type_enum == StructType.TBL:
+            item_it = iter(item)
+
+            ncol = next(item_it)
+            nrow = (len(item) - 1) // ncol
+            value = Table((nrow, ncol))
+
+            for row_ix in range(nrow):
+                for col_ix in range(ncol):
+                    value[row_ix, col_ix] = self._item_to_obj(next(item_it))
+
         elif type_enum == StructType.TP:
             value = self._item_to_timeval(item) + DTN_EPOCH
         elif type_enum == StructType.TD:
@@ -148,7 +159,7 @@ class Encoder:
                 int(obj.ident.type_enum),
                 obj.ident.name,
             ]
-    
+
             if obj.params is not None:
                 item.append([
                     self._obj_to_item(param)
@@ -170,8 +181,10 @@ class Encoder:
         ''' Convert a non-typed value into a CBOR item. '''
         if isinstance(value, list):
             item = [self._obj_to_item(obj) for obj in value]
-        elif isinstance(value, map):
-            item = {key: self._obj_to_item(obj) for key, obj in value.items()}
+        elif isinstance(value, dict):
+            item = {self._obj_to_item(key): self._obj_to_item(obj) for key, obj in value.items()}
+        elif isinstance(value, Table):
+            item = [value.shape[1]] + list(map(self._obj_to_item, value.flat))
         elif isinstance(value, datetime.datetime):
             diff = value - DTN_EPOCH
             item = self._timeval_to_item(diff)

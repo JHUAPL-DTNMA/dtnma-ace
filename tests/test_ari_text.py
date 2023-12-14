@@ -27,6 +27,7 @@ import io
 import logging
 import math
 import unittest
+import numpy
 from ace.ari import (
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
     ExecutionSet, ReportSet, Report
@@ -125,6 +126,17 @@ class TestAriText(unittest.TestCase):
             {LiteralARI(1): LiteralARI(1, type_enum=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
         ),
         ('/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
+        (
+            '/TBL/c=3;',
+            numpy.ndarray((0, 3))
+        ),
+        (
+            '/TBL/c=3;(1,2,3)(a,b,c)',
+            numpy.array([
+                [LiteralARI(1), LiteralARI(2), LiteralARI(3)],
+                [LiteralARI('a'), LiteralARI('b'), LiteralARI('c')],
+            ])
+        ),
         (
             '/EXECSET/n=null;(/adm/CTRL/name)',
             ExecutionSet(nonce=LiteralARI(None), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])

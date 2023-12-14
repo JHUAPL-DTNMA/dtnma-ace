@@ -103,6 +103,8 @@ class Encoder:
                 self._encode_list(buf, obj.value)
             elif obj.type_enum is StructType.AM:
                 self._encode_map(buf, obj.value)
+            elif obj.type_enum is StructType.TBL:
+                self._encode_tbl(buf, obj.value)
             elif obj.type_enum is StructType.TP or isinstance(obj.value, datetime.datetime):
                 self._encode_tp(buf, obj.value)
             elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
@@ -182,6 +184,14 @@ class Encoder:
                 self._encode_obj(buf, val)
 
         buf.write(')')
+
+    def _encode_tbl(self, buf, array):
+        params = {
+            'c': LiteralARI(array.shape[1]),
+        }
+        self._encode_struct(buf, params)
+        for row_ix in range(array.shape[0]):
+            self._encode_list(buf, array[row_ix,:].flat)
 
     def _encode_struct(self, buf, obj):
         for key, val in obj.items():

@@ -22,10 +22,11 @@
 ''' Parser configuration for ARI text decoding.
 '''
 import logging
+import numpy
 from ply import yacc
 from ace.ari import (
     Identity, RelativePath, ReferenceARI, LiteralARI, StructType,
-    ExecutionSet, ReportSet, Report
+    Table, ExecutionSet, ReportSet, Report
 )
 from ace.typing import LITERALS_BY_ENUM
 from . import util
@@ -79,6 +80,35 @@ def p_typedlit_ac(p):
 def p_typedlit_am(p):
     '''typedlit : SLASH AM ambracket'''
     p[0] = LiteralARI(type_enum=StructType.AM, value=p[3])
+
+
+def p_typedlit_tbl_empty(p):
+    '''typedlit : SLASH TBL structlist'''
+    ncol = int(p[3].get('c', 0))
+    table = Table((0, ncol))
+    p[0] = LiteralARI(type_enum=StructType.TBL, value=table)
+
+
+def p_typedlit_tbl_rows(p):
+    '''typedlit : SLASH TBL structlist rowlist'''
+    ncol = int(p[3].get('c', 0))
+    nrow = len(p[4])
+    table = Table((nrow, ncol))
+    for row_ix, row in enumerate(p[4]):
+        if len(row) != ncol:
+            raise RuntimeError('Table column count is mismatched')
+        table[row_ix,:] = row
+    p[0] = LiteralARI(type_enum=StructType.TBL, value=table)
+
+
+def p_rowlist_join(p):
+    'rowlist : rowlist acbracket'
+    p[0] = p[1] + [p[2]]
+
+
+def p_rowlist_end(p):
+    'rowlist : acbracket'
+    p[0] = [p[1]]
 
 
 def p_typedlit_execset(p):

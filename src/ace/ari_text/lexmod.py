@@ -48,6 +48,7 @@ tokens = (
     'IDENT',
     'AC',
     'AM',
+    'TBL',
     'EXECSET',
     'RPTSET',
     'SEGMENT',
@@ -72,13 +73,18 @@ def t_AM(tok):
     return tok
 
 
+def t_TBL(tok):
+    r'(TBL|19)/'
+    return tok
+
+
 def t_EXECSET(tok):
-    r'(EXECSET|19)/'
+    r'(EXECSET|20)/'
     return tok
 
 
 def t_RPTSET(tok):
-    r'(RPTSET|20)/'
+    r'(RPTSET|21)/'
     return tok
 
 

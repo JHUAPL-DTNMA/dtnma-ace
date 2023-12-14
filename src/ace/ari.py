@@ -33,6 +33,16 @@ DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 ''' Reference for absolute time points '''
 
 
+class Table(numpy.ndarray):
+    ''' Wrapper class to overload some numpy behavior. '''
+
+    def __new__(self, shape:tuple):
+        return super().__new__(self, shape, dtype=ARI)
+
+    def __eq__(self, other:'Table'):
+        return numpy.array_equal(self, other)
+
+
 @dataclass(eq=True, frozen=True)
 class ExecutionSet:
     ''' Internal representation of Execution-Set data. '''
@@ -139,7 +149,7 @@ class LiteralARI(ARI):
             for key, item in self.value.items():
                 key.visit(visitor)
                 item.visit(visitor)
-        elif isinstance(self.value, numpy.ndarray):
+        elif isinstance(self.value, Table):
             func = lambda item: item.visit(visitor)
             numpy.vectorize(func)(self.value)
         super().visit(visitor)
@@ -170,7 +180,7 @@ def coerce_literal(val):
             val = LiteralARI(value=val, type_enum=StructType.AC)
         elif isinstance(val, dict):
             val = LiteralARI(value=val, type_enum=StructType.AM)
-        elif isinstance(val, numpy.ndarray):
+        elif isinstance(val, Table):
             val = LiteralARI(value=val, type_enum=StructType.TBL)
         elif isinstance(val, datetime.datetime):
             val = LiteralARI(value=val, type_enum=StructType.TP)
