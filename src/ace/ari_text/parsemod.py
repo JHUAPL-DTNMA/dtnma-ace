@@ -56,7 +56,7 @@ def p_ari_noscheme(p):
 
 
 def p_ssp_primitive(p):
-    'ssp : SEGMENT'
+    'ssp : VALSEG'
     try:
         value = util.PRIMITIVE(p[1])
     except Exception as err:
@@ -145,7 +145,7 @@ def p_reportlist_end(p):
 
 
 def p_report(p):
-    'report : LPAREN SEGMENT EQ SEGMENT SC SEGMENT EQ ari SC acbracket RPAREN'
+    'report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN'
     rawtime = util.TYPEDLIT[StructType.TD](p[4])
     rel_time = LITERALS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
@@ -153,7 +153,7 @@ def p_report(p):
 
 
 def p_typedlit_single(p):
-    'typedlit : SLASH SEGMENT SLASH SEGMENT'
+    'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[2])
     except Exception as err:
@@ -209,7 +209,7 @@ def p_params_amlist(p):
 
 
 def p_ident_with_ns(p):
-    'ident : SLASH SEGMENT SLASH SEGMENT SLASH SEGMENT'
+    'ident : SLASH VALSEG SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[4])
     except Exception as err:
@@ -224,8 +224,7 @@ def p_ident_with_ns(p):
 
 
 def p_ident_relative(p):
-    'ident : DOTDOT SLASH SEGMENT SLASH SEGMENT'
-    print('PARSE', dir(p), p.lexer, p.parser)
+    'ident : DOTDOT SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[3])
     except Exception as err:
@@ -268,9 +267,8 @@ def p_amlist_end(p):
 
 
 def p_ampair(p):
-    'ampair : SEGMENT EQ ari'
-    key = LiteralARI(value=util.AMKEY(p[1]))
-    p[0] = {key: p[3]}
+    'ampair : ari EQ ari'
+    p[0] = {p[1]: p[3]}
 
 
 def p_structlist_join(p):
@@ -284,7 +282,7 @@ def p_structlist_end(p):
 
 
 def p_structpair(p):
-    'structpair : SEGMENT EQ SEGMENT SC'
+    'structpair : VALSEG EQ VALSEG SC'
     key = util.STRUCTKEY(p[1])
     p[0] = {key: p[3]}
 

@@ -62,6 +62,9 @@ class TestAriText(unittest.TestCase):
         ('0', 0),
         ('10', 10),
         ('-100', -100),
+        ('0x10', 16, '16'),
+        ('0b100', 4, '4'),
+        ('/INT/10', 10),
         ('/VAST/0', 0),
         ('/VAST/10', 10),
         ('/VAST/0xa', 0xa, '/VAST/10'),
@@ -71,11 +74,21 @@ class TestAriText(unittest.TestCase):
         ('ari:/INT/10', 10, '/INT/10'),
         # FLOAT
         ('0.0', 0.0),
+        ('1e3', 1000.0, '1000.0'),
+        ('0fx63d0', 1000.0, '1000.0'),
+        ('+0fx63d0', 1000.0, '1000.0'),
+        ('-0fx63d0', -1000.0, '-1000.0'),
+        ('0fx447a0000', 1000.0, '1000.0'),
+        ('0fx408f400000000000', 1000.0, '1000.0'),
         ('/REAL32/0.0', 0.0),
+        ('/REAL64/NaN', float('NaN')),
+        ('/REAL64/Infinity', float('Infinity')),
+        ('/REAL64/-Infinity', -float('Infinity')),
         ('/REAL64/0.0', 0.0),
         ('/REAL64/0.01', 0.01),
         ('/REAL64/1e2', 1e2, '/REAL64/100.0'),
         ('/REAL64/1e-2', 1e-2, '/REAL64/0.01'),
+        ('/REAL64/+1e2', 1e2, '/REAL64/100.0'),
         ('/REAL64/-1e2', -1e2, '/REAL64/-100.0'),
         ('/REAL64/1.25e2', 1.25e2, '/REAL64/125.0'),
         ('/REAL64/1e25', 1e25, '/REAL64/1e+25'),
@@ -111,6 +124,8 @@ class TestAriText(unittest.TestCase):
         ('/TD/1.5', datetime.timedelta(seconds=1.5), '/TD/PT1.5S'),
         # Extras
         ('/LABEL/test', 'test'),
+        ('/LABEL/null', 'null'),
+        ('/LABEL/undefined', 'undefined'),
         ('/CBOR/h%27a164746573748203f94480%27', base64.b16decode('A164746573748203F94480')),
         # Containers
         ('/AC/()', []),
@@ -208,6 +223,40 @@ class TestAriText(unittest.TestCase):
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), exp_loop)
 
+    LITERAL_OPTIONS = (
+        ('1000', dict(int_base=2), '0b1111101000'),
+        ('1000', dict(int_base=16), '0x3e8'),
+        ('/TP/20230102T030405Z', dict(time_text=False), '/TP/725943845.000000'),
+        ('/TD/PT3H', dict(time_text=False), '/TD/10800.000000'),
+        ('1e3', dict(float_form='g'), '1000.0'),
+        ('1e3', dict(float_form='f'), '1000.000000'),
+        ('1e3', dict(float_form='e'), '1.000000e+03'),
+        ('1e3', dict(float_form='x'), '0fx63d0'),
+        ('hi', dict(text_identity=False), '%22hi%22'),
+    )
+
+    def test_literal_text_options(self):
+        dec = ari_text.Decoder()
+        for row in self.LITERAL_OPTIONS:
+            with self.subTest(f'{row}'):
+                text_dn, opts, exp_loop = row
+                enc = ari_text.Encoder(ari_text.EncodeOptions(**opts))
+
+                ari_dn = dec.decode(io.StringIO(text_dn))
+                LOGGER.info('Got ARI %s', ari_dn)
+                self.assertIsInstance(ari_dn, LiteralARI)
+
+                loop = io.StringIO()
+                enc.encode(ari_dn, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertLess(0, loop.tell())
+                text_up = loop.getvalue()
+                self.assertEqual(text_up, exp_loop)
+
+                # Verify alternate text form decodes the same
+                ari_up = dec.decode(io.StringIO(text_up))
+                self.assertEqual(ari_dn, ari_up)
+
     REFERENCE_TEXTS = [
         'ari:/namespace/VAR/hello',
         'ari:/namespace/VAR/hello()',
@@ -237,23 +286,34 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(loop.getvalue(), text)
 
     INVALID_TEXTS = [
-        '/BOOL/10',
-        '/INT/%22hi%22',
-        '/TEXTSTR/3',
-        '/AC/3',
-        '/AM/3',
-        'ari:hello there',
-        'ari:/namespace/hello((',
+        ('ari:hello', 'ari:hello there'),
+        ('/BOOL/true', '/BOOL/10'),
+        ('/INT/3', '/INT/%22hi%22'),
+        ('/TEXTSTR/hi', '/TEXTSTR/3'),
+        ('/BYTESTR/\'hi\'', '/BYTESTR/3', '/BYTESTR/hi'),
+        ('/AC/()', '/AC/', '/AC/3'),
+        ('/AM/()', '/AM/' '/AM/3'),
+        ('/TBL/c=1;', '/TBL/' '/TBL/c=1;(1,2)'),
+        ('/LABEL/hi', '/LABEL/3', '/LABEL/%22hi%22'),
+        ('ari:/ns/EDD/hello', 'ari:/ns/EDD/hello(('),
     ]
+    ''' Valid ARI followed by invalid variations '''
 
     def test_invalid_text_failure(self):
         dec = ari_text.Decoder()
-        for text in self.INVALID_TEXTS:
+        for row in self.INVALID_TEXTS:
+            text = row[0]
             with self.subTest(text):
-                LOGGER.info('Testing text: %s', text)
-                with self.assertRaises(ari_text.ParseError):
-                    ari = dec.decode(io.StringIO(text))
-                    LOGGER.info('Instead got ARI %s', ari)
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+
+            for text in row[1:]:
+                with self.subTest(text):
+                    LOGGER.info('Testing text: %s', text)
+                    with self.assertRaises(ari_text.ParseError):
+                        ari = dec.decode(io.StringIO(text))
+                        LOGGER.info('Instead got ARI %s', ari)
 
     def test_complex_decode(self):
         text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'

@@ -555,7 +555,6 @@ class Encoder:
         return obj_stmt
 
     def _put_typeuse(self, obj:TypeUseMixin, parent:pyang.statements.Statement) -> pyang.statements.Statement:
-        print('use', obj.typeobj)
         if isinstance(obj.typeobj, TypeUse):
             if obj.typeobj.type_name:
                 if obj.typeobj.type_ns:

@@ -410,6 +410,8 @@ OBJREFS = {
     'var': ObjRefType(StructType.VAR),
     'ctrl': ObjRefType(StructType.CTRL),
     'oper': ObjRefType(StructType.OPER),
+    'sbr': ObjRefType(StructType.SBR),
+    'tbr': ObjRefType(StructType.TBR),
 }
 ANY = {
     'lit': AnyType(LiteralARI),

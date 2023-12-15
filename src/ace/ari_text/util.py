@@ -4,6 +4,7 @@ import base64
 import datetime
 import logging
 import re
+import struct
 from typing import List
 from ace.ari import UNDEFINED, StructType
 
@@ -68,6 +69,30 @@ def t_decfrac(found):
 @TypeMatch.apply(r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN')
 def t_float(found):
     return float(found[0])
+
+
+FLOAT_FORM = {
+    2: '!e',
+    4: '!f',
+    8: '!d',
+}
+''' Map from IEEE-754 encoded size and `struct` format char. '''
+
+
+# float as hex-encoded IEEE-754 binary
+@TypeMatch.apply(r'(?P<sign>[+-])?0fx(?P<raw>[0-9a-fA-F]+)')
+def t_floatraw(found):
+    neg = found.group('sign') == '-'
+    data = base64.b16decode(found['raw'], casefold=True)
+
+    try:
+        form = FLOAT_FORM[len(data)]
+    except KeyError:
+        raise ValueError('Raw floating point is not sized to 2, 4, or 8 bytes')
+    val = struct.unpack(form, data)[0]
+    if neg:
+        val = -val
+    return val
 
 
 # int is decimal, binary, or hexadecimal
@@ -169,6 +194,13 @@ def t_timeperiod(found):
 IDSEGMENT = TypeSeq([t_int, t_identity])
 ''' Either an integer or identity text. '''
 
+SINGLETONS = TypeSeq([
+    t_undefined,
+    t_null,
+    t_bool,
+])
+''' Types that match singleton values. '''
+
 
 def get_structtype(text):
     value = IDSEGMENT(text)
@@ -182,7 +214,7 @@ PRIMITIVE = TypeSeq([
     t_undefined,
     t_null,
     t_bool,
-    t_float,
+    t_float, t_floatraw,
     t_int,
     t_identity, t_tstr,
     t_bstr
@@ -197,8 +229,8 @@ TYPEDLIT = {
     StructType.UINT: TypeSeq([t_int]),
     StructType.VAST: TypeSeq([t_int]),
     StructType.UVAST: TypeSeq([t_int]),
-    StructType.REAL32: TypeSeq([t_float]),
-    StructType.REAL64: TypeSeq([t_float]),
+    StructType.REAL32: TypeSeq([t_float, t_floatraw]),
+    StructType.REAL64: TypeSeq([t_float, t_floatraw]),
     StructType.TEXTSTR: TypeSeq([t_identity, t_tstr]),
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),

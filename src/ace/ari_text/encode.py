@@ -21,16 +21,18 @@
 #
 ''' CODEC for converting ARI to and from text URI form.
 '''
-import datetime
+import base64
+from dataclasses import dataclass
 import logging
 from typing import TextIO
 from urllib.parse import quote
+import cbor2
 from ace.ari import (
     StructType, ARI, LiteralARI, ReferenceARI,
-    ExecutionSet, ReportSet, Report
+    ExecutionSet, ReportSet, Report, DTN_EPOCH
 )
 from ace.cborutil import to_diag
-from .util import t_identity
+from .util import t_identity, SINGLETONS
 
 LOGGER = logging.getLogger(__name__)
 
@@ -79,11 +81,35 @@ def encode_timedelta(value):
     return text
 
 
+def can_unquote(text):
+    ''' Determine if text can match an identity pattern. '''
+    try:
+        SINGLETONS(text)
+        return False
+    except:
+        pass
+    return t_identity.regex.fullmatch(text) is not None
+
+
+@dataclass
+class EncodeOptions:
+    ''' Preferences for text encoding variations. '''
+
+    int_base:int = 10
+    ''' One of 2, 10, or 16 '''
+    float_form:str = 'g'
+    ''' One of 'f' or 'g' for standard format, or 'x' for raw hex'''
+    text_identity:bool = True
+    ''' True if specific text can be left unquoted. '''
+    time_text:bool = True
+    ''' True if time values should be in text form. '''
+
+
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def __init__(self):
-        pass
+    def __init__(self, options:EncodeOptions=None):
+        self._options = options or EncodeOptions()
 
     def encode(self, obj:ARI, buf: TextIO):
         ''' Encode an ARI into UTF8 text.
@@ -105,10 +131,20 @@ class Encoder:
                 self._encode_map(buf, obj.value)
             elif obj.type_enum is StructType.TBL:
                 self._encode_tbl(buf, obj.value)
-            elif obj.type_enum is StructType.TP or isinstance(obj.value, datetime.datetime):
-                self._encode_tp(buf, obj.value)
-            elif obj.type_enum is StructType.TD or isinstance(obj.value, datetime.timedelta):
-                self._encode_td(buf, obj.value)
+            elif obj.type_enum is StructType.TP:
+                if self._options.time_text:
+                    text = encode_datetime(obj.value)
+                    buf.write(quote(text))
+                else:
+                    diff = (obj.value - DTN_EPOCH).total_seconds()
+                    buf.write(f'{diff:.6f}')
+            elif obj.type_enum is StructType.TD:
+                if self._options.time_text:
+                    text = encode_timedelta(obj.value)
+                    buf.write(quote(text))
+                else:
+                    diff = obj.value.total_seconds()
+                    buf.write(f'{diff:.6f}')
             elif obj.type_enum is StructType.LABEL:
                 # no need to quote identity
                 buf.write(obj.value)
@@ -126,12 +162,32 @@ class Encoder:
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)
             else:
-                if (isinstance(obj.value, str)
-                    and t_identity.regex.fullmatch(obj.value) is not None):
-                    # Shortcut for identity text
-                    buf.write(obj.value)
-                else:
-                    buf.write(quote(to_diag(obj.value), safe='.+'))
+                if isinstance(obj.value, int) and not isinstance(obj.value, bool):
+                    if self._options.int_base == 2:
+                        fmt = '0b{0:b}'
+                    elif self._options.int_base == 16:
+                        fmt = '0x{0:x}'
+                    else:
+                        fmt = '{0:d}'
+                    buf.write(fmt.format(obj.value))
+                    return
+                elif isinstance(obj.value, float):
+                    if self._options.float_form == 'x':
+                        # CBOR efficient length encoding
+                        data = cbor2.dumps(obj.value, canonical=True)
+                        buf.write('0fx')
+                        buf.write(base64.b16encode(data[1:]).decode('ascii').casefold())
+                        return
+                    elif self._options.float_form in {'f', 'e'}:
+                        buf.write(f'{{0:{self._options.float_form}}}'.format(obj.value))
+                        return
+                elif isinstance(obj.value, str):
+                    if can_unquote(obj.value) and self._options.text_identity:
+                        # Shortcut for identity text
+                        buf.write(obj.value)
+                        return
+
+                buf.write(quote(to_diag(obj.value), safe='.+'))
 
         elif isinstance(obj, ReferenceARI):
             if root:
@@ -200,10 +256,3 @@ class Encoder:
             self._encode_obj(buf, val, False)
             buf.write(';')
 
-    def _encode_tp(self, buf, value):
-        text = encode_datetime(value)
-        buf.write(quote(text))
-
-    def _encode_td(self, buf, value):
-        text = encode_timedelta(value)
-        buf.write(quote(text))

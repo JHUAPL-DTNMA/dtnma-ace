@@ -44,14 +44,12 @@ tokens = (
     'LPAREN',
     'RPAREN',
     'EQ',
-    'INT',
-    'IDENT',
     'AC',
     'AM',
     'TBL',
     'EXECSET',
     'RPTSET',
-    'SEGMENT',
+    'VALSEG',
 )
 
 # Function tokens are searched in declaration order
@@ -94,9 +92,9 @@ def t_DOTDOT(tok):
 
 
 # This is the same as RFC 3986 'segment-nz' production with some excluded
-# for AC/AM recursion.
-def t_SEGMENT(tok):
-    r'([a-zA-Z0-9\-\._~\!\*\+\:@]|%[0-9a-fA-F]{2})+'
+# for AC/AM recursion: "(" ")" ";" "="
+def t_VALSEG(tok):
+    r'([a-zA-Z0-9\-\._~\!\'\*\+\:@]|%[0-9a-fA-F]{2})+'
     tok.value = unquote(tok.value)
     return tok
 
