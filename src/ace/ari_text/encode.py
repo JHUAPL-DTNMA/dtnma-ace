@@ -24,7 +24,7 @@
 import base64
 from dataclasses import dataclass
 import logging
-from typing import TextIO
+from typing import TextIO, Union
 import urllib.parse
 import cbor2
 from ace.ari import (
@@ -161,13 +161,13 @@ class Encoder:
                 buf.write(obj.value)
             elif isinstance(obj.value, ExecutionSet):
                 params = {
-                    'n': obj.value.nonce,
+                    'n': to_diag(obj.value.nonce),
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.targets)
             elif isinstance(obj.value, ReportSet):
                 params = {
-                    'n': obj.value.nonce,
+                    'n': to_diag(obj.value.nonce),
                     'r': encode_datetime(obj.value.ref_time),
                 }
                 self._encode_struct(buf, params)
@@ -226,8 +226,6 @@ class Encoder:
             }
             self._encode_struct(buf, params)
             self._encode_list(buf, obj.items)
-        elif isinstance(obj, str):
-            buf.write(obj)
 
         else:
             raise TypeError(f'Unhandled object type {type(obj)} instance: {obj}')
@@ -261,18 +259,20 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_tbl(self, buf, array):
+    def _encode_tbl(self, buf, array:'numpy.ndarray'):
         params = {
-            'c': LiteralARI(array.shape[1]),
+            'c': str(array.shape[1]),
         }
         self._encode_struct(buf, params)
         for row_ix in range(array.shape[0]):
             self._encode_list(buf, array[row_ix,:].flat)
 
-    def _encode_struct(self, buf, obj):
+    def _encode_struct(self, buf, obj:Union[ARI, str]):
         for key, val in obj.items():
             buf.write(key)
             buf.write('=')
-            self._encode_obj(buf, val, False)
+            if isinstance(val, ARI):
+                self._encode_obj(buf, val, False)
+            else:
+                buf.write(quote(val))
             buf.write(';')
-

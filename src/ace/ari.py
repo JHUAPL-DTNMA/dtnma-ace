@@ -63,7 +63,7 @@ class Report:
 @dataclass(eq=True, frozen=True)
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
-    nonce:'LiteralARI'
+    nonce:Union[bytes, int, None]
     ''' Optional nonce value '''
     ref_time:datetime.datetime
     ''' The reference time for all contained Report relative-times. '''

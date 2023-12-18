@@ -113,7 +113,7 @@ def p_rowlist_end(p):
 
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
-    nonce = LiteralARI(util.NONCE(p[3].get('n', 'null')))
+    nonce = util.NONCE(p[3].get('n', 'null'))
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
@@ -123,7 +123,7 @@ def p_typedlit_execset(p):
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
-    nonce = LiteralARI(util.NONCE(p[3].get('n', 'null')))
+    nonce = util.NONCE(p[3].get('n', 'null'))
     rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
     ref_time = LITERALS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(

@@ -154,26 +154,26 @@ class TestAriText(unittest.TestCase):
         ),
         (
             '/EXECSET/n=null;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(None), targets=[
+            ExecutionSet(nonce=None, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
             '/EXECSET/n=1234;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(1234), targets=[
+            ExecutionSet(nonce=1234, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
             '/EXECSET/n=h%276869%27;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[
+            ExecutionSet(nonce=b'hi', targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
             '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
             ReportSet(
-                nonce=LiteralARI(None),
+                nonce=None,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
@@ -189,7 +189,7 @@ class TestAriText(unittest.TestCase):
         (
             '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=/adm/CTRL/other;(null))',
             ReportSet(
-                nonce=LiteralARI(1234),
+                nonce=1234,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(

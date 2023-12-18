@@ -125,7 +125,7 @@ class Decoder:
             value = self._item_to_timeval(item)
         elif type_id == StructType.EXECSET:
             value = ExecutionSet(
-                nonce=self._item_to_ari(item[0]),
+                nonce=item[0],
                 targets=[self._item_to_ari(sub) for sub in item[1:]]
             )
         elif type_id == StructType.RPTSET:
@@ -139,7 +139,7 @@ class Decoder:
                 rpts.append(rpt)
 
             value = ReportSet(
-                nonce=self._item_to_ari(item[0]),
+                nonce=item[0],
                 ref_time=(DTN_EPOCH + self._item_to_timeval(item[1])),
                 reports=rpts
             )
@@ -215,7 +215,7 @@ class Encoder:
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
-                self._ari_to_item(value.nonce)
+                value.nonce
             ] + list(map(self._ari_to_item, value.targets))
         elif isinstance(value, ReportSet):
             rpts_item = []
@@ -226,7 +226,7 @@ class Encoder:
                 ] + list(map(self._ari_to_item, rpt.items))
                 rpts_item.append(rpt_item)
             item = [
-                self._ari_to_item(value.nonce),
+                value.nonce,
                 self._val_to_item(value.ref_time)
             ] + rpts_item
         else:
