@@ -38,7 +38,7 @@ LOGGER = logging.getLogger(__name__)
 tokens = (
     'ARI_PREFIX',
     'SLASH',
-    'DOTDOT',
+    'DOT',
     'COMMA',
     'SC',
     'LPAREN',
@@ -86,8 +86,8 @@ def t_RPTSET(tok):
     return tok
 
 
-def t_DOTDOT(tok):
-    r'\.\.'
+def t_DOT(tok):
+    r'\.'
     return tok
 
 

@@ -120,7 +120,7 @@ class unique_object_names:  # pylint: disable=invalid-name
                 obj_list = getattr(obj, list_name)
                 LOGGER.debug('UniqueNames checking list %s', obj_list)
                 for top_obj in obj_list:
-                    if top_obj.name in seen_names and top_obj.name not in dupe_names:
+                    if top_obj.obj_id in seen_names and top_obj.obj_id not in dupe_names:
                         issuelist.append(Issue(
                             obj=top_obj,
                             detail=(
@@ -128,8 +128,8 @@ class unique_object_names:  # pylint: disable=invalid-name
                                 f'the name "{top_obj.name}" is duplicated'
                             ),
                         ))
-                        dupe_names.add(top_obj.name)
-                    seen_names.add(top_obj.name)
+                        dupe_names.add(top_obj.obj_id)
+                    seen_names.add(top_obj.obj_id)
                 count += 1
         return count
 
@@ -169,7 +169,7 @@ class valid_type_name:  # pylint: disable=invalid-name
         typeobj = ctr.typeobj
         if not typeobj:
             return 0
-        LOGGER.debug('Checking object %s type %s', top_obj.name, typeobj)
+        LOGGER.debug('Checking object %s type %s', top_obj.obj_id, typeobj)
 
         try:
             ctr.typeobj_bound(adm)

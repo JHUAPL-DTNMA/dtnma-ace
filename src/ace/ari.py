@@ -138,8 +138,8 @@ class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
     value:object = cbor2.undefined
-    ''' Literal value specific to :attr:`type_enum` '''
-    type_enum:Optional[StructType] = None
+    ''' Literal value specific to :attr:`type_id` '''
+    type_id:Optional[StructType] = None
     ''' ADM type of this value '''
 
     def visit(self, visitor:Callable[['ARI'], None]):
@@ -158,12 +158,12 @@ class LiteralARI(ARI):
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
 ''' The undefined value of the AMM '''
-NULL = LiteralARI(value=None, type_enum=StructType.NULL)
+NULL = LiteralARI(value=None, type_id=StructType.NULL)
 ''' The null value of the AMM '''
 
-TRUE = LiteralARI(value=True, type_enum=StructType.BOOL)
+TRUE = LiteralARI(value=True, type_id=StructType.BOOL)
 ''' The true value of the AMM '''
-FALSE = LiteralARI(value=False, type_enum=StructType.BOOL)
+FALSE = LiteralARI(value=False, type_id=StructType.BOOL)
 ''' The false value of the AMM '''
 
 
@@ -178,27 +178,27 @@ def coerce_literal(val):
         val = copy.copy(val)
     else:
         if isinstance(val, (tuple, list)):
-            val = LiteralARI(value=val, type_enum=StructType.AC)
+            val = LiteralARI(value=val, type_id=StructType.AC)
         elif isinstance(val, dict):
-            val = LiteralARI(value=val, type_enum=StructType.AM)
+            val = LiteralARI(value=val, type_id=StructType.AM)
         elif isinstance(val, Table):
-            val = LiteralARI(value=val, type_enum=StructType.TBL)
+            val = LiteralARI(value=val, type_id=StructType.TBL)
         elif isinstance(val, datetime.datetime):
-            val = LiteralARI(value=val, type_enum=StructType.TP)
+            val = LiteralARI(value=val, type_id=StructType.TP)
         elif isinstance(val, datetime.timedelta):
-            val = LiteralARI(value=val, type_enum=StructType.TD)
+            val = LiteralARI(value=val, type_id=StructType.TD)
         else:
             val = LiteralARI(value=val)
 
     # Recurse for containers
-    if val.type_enum == StructType.AC:
+    if val.type_id == StructType.AC:
         val.value = map(coerce_literal, val.value)
-    elif val.type_enum == StructType.AM:
+    elif val.type_id == StructType.AM:
         val.value = {
             coerce_literal(key): coerce_literal(subval)
             for key, subval in val.value.items()
         }
-    elif val.type_enum == StructType.TBL:
+    elif val.type_id == StructType.TBL:
         val.value = numpy.vectorize(coerce_literal)(val.value)
 
     return val
@@ -206,27 +206,24 @@ def coerce_literal(val):
 
 @dataclass
 class Identity:
-    ''' The identity of an object reference as a unique name-set.
+    ''' The identity of an object reference as a unique identifer-set.
     '''
 
-    namespace: Union[str, int, None] = None
-    ''' The None value indicates the absense of a URI path component '''
-    type_enum: Optional[StructType] = None
+    ns_id: Union[str, int, None] = None
+    ''' The None value indicates a module-relative path. '''
+    ns_rev: Optional[str] = None
+    ''' For the text-form ARI a specific module revision date. '''
+    type_id: Optional[StructType] = None
     ''' ADM type of the referenced object '''
-    name: Union[str, int, None] = None
+    obj_id: Union[str, int, None] = None
     ''' Name with the type removed '''
-
-
-class RelativePath(tuple):
-    ''' A URI Reference as a percent-decoded path-segment tuple.
-    '''
 
 
 @dataclass
 class ReferenceARI(ARI):
     ''' The data content of an ARI.
     '''
-    ident: Union[Identity, RelativePath]
+    ident: Identity
     ''' Identity of the referenced object '''
     params: Optional[List[ARI]] = None
     ''' Optional paramerization, None is different than empty list '''

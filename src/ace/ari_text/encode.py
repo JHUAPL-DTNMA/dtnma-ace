@@ -25,7 +25,7 @@ import base64
 from dataclasses import dataclass
 import logging
 from typing import TextIO
-from urllib.parse import quote
+import urllib.parse
 import cbor2
 from ace.ari import (
     StructType, ARI, LiteralARI, ReferenceARI,
@@ -35,6 +35,15 @@ from ace.cborutil import to_diag
 from .util import t_identity, SINGLETONS
 
 LOGGER = logging.getLogger(__name__)
+
+
+def quote(text):
+    ''' URL-escape each ID and value segment
+
+    :param text: The text to escape.
+    :return: The percent-encoded text.
+    '''
+    return urllib.parse.quote(text, safe='.+')
 
 
 def encode_datetime(value):
@@ -122,30 +131,32 @@ class Encoder:
     def _encode_obj(self, buf: TextIO, obj:ARI, root:bool=False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
-            if obj.type_enum is not None:
-                buf.write('/' + obj.type_enum.name + '/')
+            if obj.type_id is not None:
+                buf.write('/')
+                buf.write(obj.type_id.name)
+                buf.write('/')
 
-            if obj.type_enum is StructType.AC:
+            if obj.type_id is StructType.AC:
                 self._encode_list(buf, obj.value)
-            elif obj.type_enum is StructType.AM:
+            elif obj.type_id is StructType.AM:
                 self._encode_map(buf, obj.value)
-            elif obj.type_enum is StructType.TBL:
+            elif obj.type_id is StructType.TBL:
                 self._encode_tbl(buf, obj.value)
-            elif obj.type_enum is StructType.TP:
+            elif obj.type_id is StructType.TP:
                 if self._options.time_text:
                     text = encode_datetime(obj.value)
                     buf.write(quote(text))
                 else:
                     diff = (obj.value - DTN_EPOCH).total_seconds()
                     buf.write(f'{diff:.6f}')
-            elif obj.type_enum is StructType.TD:
+            elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(quote(text))
                 else:
                     diff = obj.value.total_seconds()
                     buf.write(f'{diff:.6f}')
-            elif obj.type_enum is StructType.LABEL:
+            elif obj.type_id is StructType.LABEL:
                 # no need to quote identity
                 buf.write(obj.value)
             elif isinstance(obj.value, ExecutionSet):
@@ -187,14 +198,23 @@ class Encoder:
                         buf.write(obj.value)
                         return
 
-                buf.write(quote(to_diag(obj.value), safe='.+'))
+                buf.write(quote(to_diag(obj.value)))
 
         elif isinstance(obj, ReferenceARI):
             if root:
                 buf.write('ari:')
-            buf.write(quote(f'/{obj.ident.namespace}'))
-            buf.write(f'/{obj.ident.type_enum.name}')
-            buf.write(quote(f'/{obj.ident.name}'))
+            if obj.ident.ns_id is None:
+                buf.write('.')
+            else:
+                buf.write('/')
+                buf.write(str(obj.ident.ns_id))
+            if obj.ident.ns_rev is not None:
+                buf.write('@')
+                buf.write(obj.ident.ns_rev)
+            buf.write('/')
+            buf.write(obj.ident.type_id.name)
+            buf.write('/')
+            buf.write(str(obj.ident.obj_id))
             if obj.params is not None:
                 self._encode_list(buf, obj.params)
 

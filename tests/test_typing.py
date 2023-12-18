@@ -230,7 +230,7 @@ class TestTyping(unittest.TestCase):
         LOGGER.info('array %s', inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
-        self.assertEqual(StructType.TBL, got.type_enum)
+        self.assertEqual(StructType.TBL, got.type_id)
         self.assertTrue(
             numpy.array_equal(inarray, got.value),
             msg=f'expect {inarray} got {got.value}'
@@ -242,7 +242,7 @@ class TestTyping(unittest.TestCase):
         LOGGER.info('in %s', inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
-        self.assertEqual(StructType.TBL, got.type_enum)
+        self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
         self.assertTrue(
             numpy.array_equal(inarray, got.value),
@@ -269,7 +269,7 @@ class TestTyping(unittest.TestCase):
         LOGGER.info('in %s', inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
-        self.assertEqual(StructType.TBL, got.type_enum)
+        self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
         outarray = numpy.array([
             [
@@ -289,7 +289,7 @@ class TestTyping(unittest.TestCase):
         LOGGER.info('in %s', inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
-        self.assertEqual(StructType.TBL, got.type_enum)
+        self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
         outarray = numpy.array([
             [

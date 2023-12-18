@@ -25,7 +25,7 @@ import logging
 import numpy
 from ply import yacc
 from ace.ari import (
-    Identity, RelativePath, ReferenceARI, LiteralARI, StructType,
+    Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
 from ace.typing import LITERALS_BY_ENUM
@@ -74,19 +74,19 @@ def p_ssp_typedlit(p):
 
 def p_typedlit_ac(p):
     'typedlit : SLASH AC acbracket'
-    p[0] = LiteralARI(type_enum=StructType.AC, value=p[3])
+    p[0] = LiteralARI(type_id=StructType.AC, value=p[3])
 
 
 def p_typedlit_am(p):
     '''typedlit : SLASH AM ambracket'''
-    p[0] = LiteralARI(type_enum=StructType.AM, value=p[3])
+    p[0] = LiteralARI(type_id=StructType.AM, value=p[3])
 
 
 def p_typedlit_tbl_empty(p):
     '''typedlit : SLASH TBL structlist'''
     ncol = int(p[3].get('c', 0))
     table = Table((0, ncol))
-    p[0] = LiteralARI(type_enum=StructType.TBL, value=table)
+    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
 def p_typedlit_tbl_rows(p):
@@ -98,7 +98,7 @@ def p_typedlit_tbl_rows(p):
         if len(row) != ncol:
             raise RuntimeError('Table column count is mismatched')
         table[row_ix,:] = row
-    p[0] = LiteralARI(type_enum=StructType.TBL, value=table)
+    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
 def p_rowlist_join(p):
@@ -118,7 +118,7 @@ def p_typedlit_execset(p):
         nonce=nonce,
         targets=p[4],
     )
-    p[0] = LiteralARI(type_enum=StructType.EXECSET, value=value)
+    p[0] = LiteralARI(type_id=StructType.EXECSET, value=value)
 
 
 def p_typedlit_rptset(p):
@@ -131,7 +131,7 @@ def p_typedlit_rptset(p):
         ref_time=ref_time.value,
         reports=p[4],
     )
-    p[0] = LiteralARI(type_enum=StructType.RPTSET, value=value)
+    p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)
 
 
 def p_reportlist_join(p):
@@ -169,7 +169,7 @@ def p_typedlit_single(p):
 
     try:
         p[0] = LITERALS_BY_ENUM[typ].convert(LiteralARI(
-            type_enum=typ,
+            type_id=typ,
             value=value
         ))
     except Exception as err:
@@ -216,22 +216,27 @@ def p_ident_with_ns(p):
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
 
+    mod = util.MODID(p[2])
+    if not isinstance(mod, tuple):
+        mod = (mod, None)
+
     p[0] = Identity(
-        namespace=util.IDSEGMENT(p[2]),
-        type_enum=typ,
-        name=util.IDSEGMENT(p[6]),
+        ns_id=mod[0],
+        ns_rev=mod[1],
+        type_id=typ,
+        obj_id=util.IDSEGMENT(p[6]),
     )
 
 
 def p_ident_relative(p):
-    'ident : DOTDOT SLASH VALSEG SLASH VALSEG'
+    'ident : DOT SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[3])
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
 
-    p[0] = RelativePath([p[1], typ, util.IDSEGMENT(p[5])])
+    p[0] = Identity(ns_id=None, type_id=typ, obj_id=util.IDSEGMENT(p[5]))
 
 
 def p_acbracket(p):

@@ -87,7 +87,7 @@ class BaseType:
         '''
         visitor(self)
 
-    def type_enums(self) -> Set[StructType]:
+    def type_ids(self) -> Set[StructType]:
         ''' Extract the set of ARI types available for this type. '''
         raise NotImplementedError()
 
@@ -101,17 +101,17 @@ class BaseType:
 class BuiltInType(BaseType):
     ''' Behavior related to built-in types.
 
-    :param type_enum: The :cls:`StructType` value related to the instance.
+    :param type_id: The :cls:`StructType` value related to the instance.
     '''
 
-    def __init__(self, type_enum:StructType):
-        self.type_enum = type_enum
+    def __init__(self, type_id:StructType):
+        self.type_id = type_id
 
     def __repr__(self):
-        return f'{type(self).__name__}(type_enum={self.type_enum!r})'
+        return f'{type(self).__name__}(type_id={self.type_id!r})'
 
-    def type_enums(self) -> Set[StructType]:
-        return set(self.type_enum)
+    def type_ids(self) -> Set[StructType]:
+        return set(self.type_id)
 
 
 class NullType(BuiltInType):
@@ -125,7 +125,7 @@ class NullType(BuiltInType):
     def get(self, obj:ARI) -> ARI:
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
         if obj.value is not None:
             return None
@@ -145,7 +145,7 @@ class BoolType(BuiltInType):
     def get(self, obj:ARI) -> ARI:
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
         if not (obj.value is True or obj.value is False):
             return None
@@ -174,19 +174,19 @@ class NumericType(BuiltInType):
         StructType.REAL64: float,
     }
 
-    def __init__(self, type_enum, dom_min, dom_max):
-        super().__init__(type_enum)
+    def __init__(self, type_id, dom_min, dom_max):
+        super().__init__(type_id)
         self.dom_min = dom_min
         self.dom_max = dom_max
 
     def get(self, obj:ARI) -> ARI:
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
         if not self._in_domain(obj.value):
             return None
-        return LiteralARI(obj.value, self.type_enum)
+        return LiteralARI(obj.value, self.type_id)
 
     def convert(self, obj:ARI) -> ARI:
         if obj == UNDEFINED:
@@ -195,19 +195,19 @@ class NumericType(BuiltInType):
             raise TypeError('Cannot convert an object-reference to numeric type')
 
         if obj.value is False or obj.value is None:
-            return LiteralARI(0, self.type_enum)
+            return LiteralARI(0, self.type_id)
         if obj.value is True:
-            return LiteralARI(1, self.type_enum)
+            return LiteralARI(1, self.type_id)
 
         if not self._in_domain(obj.value):
             raise ValueError(f'Numeric value outside domain [{self.dom_min},{self.dom_max}]: {obj.value}')
         # force the specific type wanted
-        return LiteralARI(self.VALUE_CLS[self.type_enum](obj.value), self.type_enum)
+        return LiteralARI(self.VALUE_CLS[self.type_id](obj.value), self.type_id)
 
     def _in_domain(self, value):
         if not isinstance(value, (int, float)):
             return False
-        if self.VALUE_CLS[self.type_enum] is float:
+        if self.VALUE_CLS[self.type_id] is float:
             if math.isnan(value) or math.isinf(value):
                 return True
 
@@ -229,9 +229,9 @@ class StringType(BuiltInType):
             return None
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_enum]):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             return None
         return obj
 
@@ -241,13 +241,13 @@ class StringType(BuiltInType):
         if not isinstance(obj, LiteralARI):
             raise TypeError(f'Cannot convert to numeric type: {obj}')
 
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             # something besides text string
             raise TypeError
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_enum]):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             raise TypeError
 
-        return LiteralARI(obj.value, self.type_enum)
+        return LiteralARI(obj.value, self.type_id)
 
 
 class TimeType(BuiltInType):
@@ -265,9 +265,9 @@ class TimeType(BuiltInType):
             return None
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_enum]):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             return None
         return obj
 
@@ -277,22 +277,22 @@ class TimeType(BuiltInType):
         if not isinstance(obj, LiteralARI):
             raise TypeError(f'Cannot convert to numeric type: {obj}')
 
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             raise TypeError
-        typlist = self.VALUE_CLS[self.type_enum]
+        typlist = self.VALUE_CLS[self.type_id]
         if not isinstance(obj.value, typlist):
             raise TypeError
 
         # coerce to native value class
         newval = obj.value
-        if self.type_enum == StructType.TP:
+        if self.type_id == StructType.TP:
             if not isinstance(obj.value, datetime.datetime):
                 newval = DTN_EPOCH + datetime.timedelta(seconds=obj.value)
-        elif self.type_enum == StructType.TD:
+        elif self.type_id == StructType.TD:
             if not isinstance(obj.value, datetime.timedelta):
                 newval = datetime.timedelta(seconds=obj.value)
 
-        return LiteralARI(newval, self.type_enum)
+        return LiteralARI(newval, self.type_id)
 
 
 class ContainerType(BuiltInType):
@@ -309,9 +309,9 @@ class ContainerType(BuiltInType):
             return None
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_enum]):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             return None
         return obj
 
@@ -321,24 +321,24 @@ class ContainerType(BuiltInType):
         if not isinstance(obj, LiteralARI):
             raise TypeError(f'Cannot convert to numeric type: {obj}')
 
-        if obj.type_enum is not None and obj.type_enum != self.type_enum:
+        if obj.type_id is not None and obj.type_id != self.type_id:
             # something besides text string
             raise TypeError
-        typ = self.VALUE_CLS[self.type_enum]
+        typ = self.VALUE_CLS[self.type_id]
         value = typ(obj.value)
 
-        return LiteralARI(value, self.type_enum)
+        return LiteralARI(value, self.type_id)
 
 
 class ObjRefType(BuiltInType):
 
-    def __init__(self, type_enum=None):
-        super().__init__(type_enum)
+    def __init__(self, type_id=None):
+        super().__init__(type_id)
 
     def get(self, obj:ARI) -> ARI:
         if not isinstance(obj, ReferenceARI):
             return None
-        if self.type_enum is not None and obj.ident.type_enum != self.type_enum:
+        if self.type_id is not None and obj.ident.type_id != self.type_id:
             return None
         return obj
 
@@ -348,7 +348,7 @@ class ObjRefType(BuiltInType):
         if not isinstance(obj, ReferenceARI):
             raise TypeError(f'Cannot convert to an object-reference type: {obj}')
 
-        if self.type_enum is not None and obj.ident.type_enum != self.type_enum:
+        if self.type_id is not None and obj.ident.type_id != self.type_id:
             raise ValueError()
         return obj
 
@@ -401,7 +401,7 @@ LITERALS = {
     'tbl': ContainerType(StructType.TBL),
 }
 LITERALS_BY_ENUM = {
-    typ.type_enum: typ for typ in LITERALS.values()
+    typ.type_id: typ for typ in LITERALS.values()
 }
 OBJREFS = {
     'typedef': ObjRefType(StructType.TYPEDEF),
@@ -448,8 +448,8 @@ class TypeUse(SemType):
             visitor(self.base)
         super().visit(visitor)
 
-    def type_enums(self) -> Set[StructType]:
-        return self.base.type_enums()
+    def type_ids(self) -> Set[StructType]:
+        return self.base.type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
         # extract the value before checks
@@ -496,9 +496,9 @@ class TypeUnion(SemType):
             typ.visit(visitor)
         super().visit(visitor)
 
-    def type_enums(self) -> Set[StructType]:
+    def type_ids(self) -> Set[StructType]:
         # set constructor will de-duplicate
-        return set([typ.type_enums() for typ in self.types])
+        return set([typ.type_ids() for typ in self.types])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         for typ in self.types:
@@ -534,16 +534,16 @@ class UniformList(SemType):
         self.type.visit(visitor)
         super().visit(visitor)
 
-    def type_enums(self) -> Set[StructType]:
+    def type_ids(self) -> Set[StructType]:
         # only one value type is valid
-        return self.type.type_enums()
+        return self.type.type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is None and obj == UNDEFINED:
+        if obj.type_id is None and obj == UNDEFINED:
             return None
-        if obj.type_enum != StructType.AC:
+        if obj.type_id != StructType.AC:
             return None
 
         for val in self.value:
@@ -555,10 +555,10 @@ class UniformList(SemType):
     def convert(self, obj:ARI) -> ARI:
         if not isinstance(obj, LiteralARI):
             raise TypeError()
-        if obj.type_enum is None and obj == UNDEFINED:
+        if obj.type_id is None and obj == UNDEFINED:
             return obj
-        if obj.type_enum != StructType.AC:
-            raise TypeError(f'Value to convert is not AC, it is {obj.type_enum}')
+        if obj.type_id != StructType.AC:
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
 
         rval = []
         for ival in self.value:
@@ -594,16 +594,16 @@ class TableTemplate(SemType):
             col.type.visit(visitor)
         super().visit(visitor)
 
-    def type_enums(self) -> Set[StructType]:
+    def type_ids(self) -> Set[StructType]:
         # only one value type is valid
         return set([StructType.TBL])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_enum is None and obj == UNDEFINED:
+        if obj.type_id is None and obj == UNDEFINED:
             return None
-        if obj.type_enum != StructType.TBL:
+        if obj.type_id != StructType.TBL:
             return None
 
         if obj.value.ndim != 2:
@@ -622,10 +622,10 @@ class TableTemplate(SemType):
     def convert(self, obj:ARI) -> ARI:
         if not isinstance(obj, LiteralARI):
             raise TypeError()
-        if obj.type_enum is None and obj == UNDEFINED:
+        if obj.type_id is None and obj == UNDEFINED:
             return obj
-        if obj.type_enum != StructType.TBL:
-            raise TypeError(f'Value to convert is not TBL, it is {obj.type_enum}')
+        if obj.type_id != StructType.TBL:
+            raise TypeError(f'Value to convert is not TBL, it is {obj.type_id}')
 
         if obj.value.ndim != 2:
             raise ValueError(f'TBL value must be a 2-dimensional array, is {obj.value.ndim}')

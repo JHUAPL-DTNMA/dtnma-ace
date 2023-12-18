@@ -56,9 +56,9 @@ def get_ident(obj: 'ace.models.ARI') -> ari.Identity:
     '''
     type_name, remain = obj.nm.split('.', maxsplit=1)
     ident = ari.Identity(
-        namespace=normalize_ident(obj.ns),
-        type_enum=ari.StructType[type_name.upper()],
-        name=normalize_ident(remain),
+        ns_id=normalize_ident(obj.ns),
+        type_id=ari.StructType[type_name.upper()],
+        obj_id=normalize_ident(remain),
     )
     return ident
 
@@ -71,15 +71,15 @@ def find_ident(db_sess:sqlalchemy.orm.Session, ident:ari.Identity):
     '''
     from ace import models, nickname
 
-    adm_ns = normalize_ident(ident.namespace)
-    obj_name = normalize_ident(ident.name)
+    adm_ns = normalize_ident(ident.ns_id)
+    obj_name = normalize_ident(ident.obj_id)
 
     try:
-        cls = nickname.ORM_TYPE[ident.type_enum]
+        cls = nickname.ORM_TYPE[ident.type_id]
     except KeyError:
         return None
 
-    LOGGER.debug('Searching for NS %s type %s name %s', ident.namespace, cls.name, obj_name)
+    LOGGER.debug('Searching for NS %s type %s name %s', ident.ns_id, cls.obj_id, obj_name)
     query = db_sess.query(cls).join(models.AdmFile).filter(
         models.AdmFile.norm_name == adm_ns,
         cls.norm_name == obj_name

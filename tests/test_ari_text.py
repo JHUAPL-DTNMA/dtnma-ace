@@ -132,13 +132,13 @@ class TestAriText(unittest.TestCase):
         ('/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
         (
             '/AC/(1,/UVAST/2)',
-            [LiteralARI(1), LiteralARI(2, type_enum=StructType.UVAST)]
+            [LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST)]
         ),
         ('/AM/()', {}),
         ('/AM/(1=1,2=3)', {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
         (
             '/AM/(1=/UVAST/1,2=3)',
-            {LiteralARI(1): LiteralARI(1, type_enum=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
+            {LiteralARI(1): LiteralARI(1, type_id=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
         ),
         ('/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
         (
@@ -154,15 +154,21 @@ class TestAriText(unittest.TestCase):
         ),
         (
             '/EXECSET/n=null;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(None), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+            ExecutionSet(nonce=LiteralARI(None), targets=[
+                ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
+            ])
         ),
         (
             '/EXECSET/n=1234;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(1234), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+            ExecutionSet(nonce=LiteralARI(1234), targets=[
+                ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
+            ])
         ),
         (
             '/EXECSET/n=h%276869%27;(/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[ReferenceARI(Identity('adm', StructType.CTRL, 'name'))])
+            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[
+                ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
+            ])
         ),
         (
             '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
@@ -171,7 +177,7 @@ class TestAriText(unittest.TestCase):
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
-                        source=ReferenceARI(Identity('adm', StructType.CTRL, 'name')),
+                        source=ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name')),
                         rel_time=datetime.timedelta(seconds=0),
                         items=[
                             LiteralARI(None)
@@ -187,7 +193,7 @@ class TestAriText(unittest.TestCase):
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
-                        source=ReferenceARI(Identity('adm', StructType.CTRL, 'other')),
+                        source=ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='other')),
                         rel_time=datetime.timedelta(seconds=0),
                         items=[
                             LiteralARI(None)
@@ -262,6 +268,8 @@ class TestAriText(unittest.TestCase):
         'ari:/namespace/VAR/hello()',
         'ari:/namespace/VAR/hello(/INT/10)',
         'ari:/namespace/VAR/hello(/other/CONST/hi)',
+        'ari:/namespace@2020-01-01/VAR/hello',
+        'ari:./VAR/hello',
         'ari:/bp-agent/CTRL/reset_all_counts()',
         'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
@@ -296,6 +304,7 @@ class TestAriText(unittest.TestCase):
         ('/TBL/c=1;', '/TBL/' '/TBL/c=1;(1,2)'),
         ('/LABEL/hi', '/LABEL/3', '/LABEL/%22hi%22'),
         ('ari:/ns/EDD/hello', 'ari:/ns/EDD/hello(('),
+        ('ari:./EDD/hello', 'ari:/./EDD/hello'),
     ]
     ''' Valid ARI followed by invalid variations '''
 
@@ -321,8 +330,8 @@ class TestAriText(unittest.TestCase):
         ari = dec.decode(io.StringIO(text))
         LOGGER.info('Got ARI %s', ari)
         self.assertIsInstance(ari, ARI)
-        self.assertEqual(ari.ident.namespace, 'amp-agent')
-#        self.assertEqual(ari.ident.type_enum, StructType.CTRL)
-        self.assertEqual(ari.ident.name, 'gen_rpts')
+        self.assertEqual(ari.ident.ns_id, 'amp-agent')
+        self.assertEqual(ari.ident.type_id, StructType.CTRL)
+        self.assertEqual(ari.ident.obj_id, 'gen_rpts')
         self.assertIsInstance(ari.params[0], LiteralARI)
-        self.assertEqual(ari.params[0].type_enum, StructType.AC)
+        self.assertEqual(ari.params[0].type_id, StructType.AC)

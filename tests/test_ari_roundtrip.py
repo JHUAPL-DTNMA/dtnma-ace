@@ -84,8 +84,8 @@ class TestAriRoundtrip(unittest.TestCase):
             LOGGER.info('Got ARI %s', ari_dn)
             self.assertIsInstance(ari_dn, ARI)
             if isinstance(ari_dn, ReferenceARI):
-                self.assertIsNotNone(ari_dn.ident.type_enum)
-                self.assertIsNotNone(ari_dn.ident.name)
+                self.assertIsNotNone(ari_dn.ident.type_id)
+                self.assertIsNotNone(ari_dn.ident.obj_id)
 
             cbor_loop = io.BytesIO()
             cbor_enc.encode(ari_dn, cbor_loop)
@@ -122,8 +122,8 @@ class TestAriRoundtrip(unittest.TestCase):
             LOGGER.info('Got ARI %s', ari_dn)
             self.assertIsInstance(ari_dn, ARI)
             if isinstance(ari_dn, ReferenceARI):
-                self.assertIsNotNone(ari_dn.ident.type_enum)
-                self.assertIsNotNone(ari_dn.ident.name)
+                self.assertIsNotNone(ari_dn.ident.type_id)
+                self.assertIsNotNone(ari_dn.ident.obj_id)
 
             text_loop = io.StringIO()
             text_enc.encode(ari_dn, text_loop)

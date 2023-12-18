@@ -73,21 +73,21 @@ class Converter:
                 for item in obj.params:
                     self(item)
 
-        elif obj.type_enum is StructType.AC:
+        elif obj.type_id is StructType.AC:
             for item in obj.value:
                 self(item)
 
-        elif obj.type_enum is StructType.AM:
+        elif obj.type_id is StructType.AM:
             for key, val in obj.value.items():
                 self(key)  # FIXME: replace item if key is modified
                 self(val)
 
     def _convert_ari(self, ari):
-        if self._mode == Mode.TO_NN and isinstance(ari.ident.namespace, str):
+        if self._mode == Mode.TO_NN and isinstance(ari.ident.ns_id, str):
             # Prefer nicknames
-            adm_name = ari.ident.namespace
-            obj_type = ari.ident.type_enum
-            obj_name = ari.ident.name
+            adm_name = ari.ident.ns_id
+            obj_type = ari.ident.type_id
+            obj_name = ari.ident.obj_id
 
             adm = self._adms.get_by_norm_name(adm_name)
             LOGGER.debug('Got ADM %s', adm)
@@ -117,8 +117,8 @@ class Converter:
                 return
 
             # ARI IDs from enums
-            ari.ident.namespace = adm.enum
-            ari.ident.name = obj.enum
+            ari.ident.ns_id = adm.enum
+            ari.ident.obj_id = obj.enum
 
             # Convert parameter types from text ARI as needed
             if isinstance(obj, models.ParamMixin) and obj.parameters is not None:
@@ -126,15 +126,15 @@ class Converter:
                     if spec.type == 'TNVC':
                         ari.params[ix] = TNVC(items=ari.params[ix].items)
 
-        if self._mode == Mode.FROM_NN and isinstance(ari.ident.namespace, int):
-            adm_enum = ari.ident.namespace
-            obj_enum = ari.ident.name
+        if self._mode == Mode.FROM_NN and isinstance(ari.ident.ns_id, int):
+            adm_enum = ari.ident.ns_id
+            obj_enum = ari.ident.obj_id
 
             adm = self._adms.get_by_enum(adm_enum)
             LOGGER.debug('Got ADM %s', adm)
-            obj = self._adms.get_child(adm, ORM_TYPE[ari.ident.type_enum], enum=obj_enum)
-            LOGGER.debug('ARI nickname %s name %s resolved to type %s name %s obj %s', ari.ident.namespace, ari.ident.name, ari.ident.type_enum, obj_enum, obj)
+            obj = self._adms.get_child(adm, ORM_TYPE[ari.ident.type_id], enum=obj_enum)
+            LOGGER.debug('ARI nickname %s name %s resolved to type %s name %s obj %s', ari.ident.ns_id, ari.ident.obj_id, ari.ident.type_id, obj_enum, obj)
 
             # ARI IDs from names
-            ari.ident.namespace = adm.norm_name
-            ari.ident.name = obj.norm_name
+            ari.ident.ns_id = adm.norm_name
+            ari.ident.obj_id = obj.norm_name

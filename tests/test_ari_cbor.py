@@ -130,6 +130,6 @@ class TestAriCbor(unittest.TestCase):
 #        ari = dec.decode(text)
 #        LOGGER.warning('Got ARI %s', ari)
 #        self.assertIsInstance(ari, (ReferenceARI, LiteralARI))
-#        self.assertEqual(ari.ident.namespace, 'IANA:Amp.Agent')
-#        self.assertEqual(ari.ident.name, 'Ctrl.gen_rpts')
+#        self.assertEqual(ari.ident.ns_id, 'IANA:Amp.Agent')
+#        self.assertEqual(ari.ident.obj_id, 'Ctrl.gen_rpts')
 #        self.assertIsInstance(ari.params[0], AC)

@@ -106,6 +106,11 @@ def t_identity(found):
     return found[0]
 
 
+@TypeMatch.apply(r'(?P<name>\!?[a-zA-Z_][a-zA-Z0-9_\-\.]*)(@(?P<rev>\d{4}-\d{2}-\d{2}))?')
+def t_modid(found):
+    return (found['name'], found['rev'])
+
+
 @TypeMatch.apply(r'"(?P<val>[^\"]*)"')
 def t_tstr(found):
     return found['val']
@@ -193,6 +198,9 @@ def t_timeperiod(found):
 
 IDSEGMENT = TypeSeq([t_int, t_identity])
 ''' Either an integer or identity text. '''
+
+MODID = TypeSeq([t_int, t_modid])
+''' Module namespace identity. '''
 
 SINGLETONS = TypeSeq([
     t_undefined,

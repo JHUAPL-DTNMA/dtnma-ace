@@ -70,9 +70,9 @@ class Decoder:
             if len(item) >= 3:
                 # Object reference
                 ident = Identity(
-                    namespace=item[0],
-                    type_enum=StructType(item[1]),
-                    name=item[2],
+                    ns_id=item[0],
+                    type_id=StructType(item[1]),
+                    obj_id=item[2],
                 )
 
                 params = None
@@ -86,10 +86,10 @@ class Decoder:
 
             elif len(item) == 2:
                 # Typed literal
-                type_enum = StructType(item[0])
-                value = self._item_to_val(item[1], type_enum)
+                type_id = StructType(item[0])
+                value = self._item_to_val(item[1], type_id)
                 res = LiteralARI(
-                    type_enum=type_enum,
+                    type_id=type_id,
                     value=value
                 )
             else:
@@ -102,13 +102,13 @@ class Decoder:
 
         return res
 
-    def _item_to_val(self, item, type_enum):
+    def _item_to_val(self, item, type_id):
         ''' Decode a CBOR item into an ARI value. '''
-        if type_enum == StructType.AC:
+        if type_id == StructType.AC:
             value = [self._item_to_ari(sub_item) for sub_item in item]
-        elif type_enum == StructType.AM:
+        elif type_id == StructType.AM:
             value = {self._item_to_ari(key): self._item_to_ari(sub_item) for key, sub_item in item.items()}
-        elif type_enum == StructType.TBL:
+        elif type_id == StructType.TBL:
             item_it = iter(item)
 
             ncol = next(item_it)
@@ -119,16 +119,16 @@ class Decoder:
                 for col_ix in range(ncol):
                     value[row_ix, col_ix] = self._item_to_ari(next(item_it))
 
-        elif type_enum == StructType.TP:
+        elif type_id == StructType.TP:
             value = self._item_to_timeval(item) + DTN_EPOCH
-        elif type_enum == StructType.TD:
+        elif type_id == StructType.TD:
             value = self._item_to_timeval(item)
-        elif type_enum == StructType.EXECSET:
+        elif type_id == StructType.EXECSET:
             value = ExecutionSet(
                 nonce=self._item_to_ari(item[0]),
                 targets=[self._item_to_ari(sub) for sub in item[1:]]
             )
-        elif type_enum == StructType.RPTSET:
+        elif type_id == StructType.RPTSET:
             rpts = []
             for rpt_item in item[2:]:
                 rpt = Report(
@@ -178,9 +178,9 @@ class Encoder:
         item = None
         if isinstance(obj, ReferenceARI):
             item = [
-                obj.ident.namespace,
-                int(obj.ident.type_enum),
-                obj.ident.name,
+                obj.ident.ns_id,
+                int(obj.ident.type_id),
+                obj.ident.obj_id,
             ]
 
             if obj.params is not None:
@@ -190,8 +190,8 @@ class Encoder:
                 ])
 
         elif isinstance(obj, LiteralARI):
-            if obj.type_enum is not None:
-                item = [obj.type_enum.value, self._val_to_item(obj.value)]
+            if obj.type_id is not None:
+                item = [obj.type_id.value, self._val_to_item(obj.value)]
             else:
                 item = self._val_to_item(obj.value)
 
