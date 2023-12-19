@@ -43,8 +43,9 @@ from ace.typing import (
 from ace.util import normalize_ident
 
 LOGGER = logging.getLogger(__name__)
-# : Directory containing this file
+
 SELFDIR = os.path.dirname(__file__)
+''' Directory containing this file '''
 
 AMM_MOD = 'ietf-amm'
 

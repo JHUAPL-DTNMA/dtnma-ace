@@ -21,6 +21,7 @@ classifiers = [
 
 dependencies = [
   "cbor2 ~=5.5",
+  "cbor-diag",
   "numpy",
   "PLY >= 3",
   "portion ~=2.4",

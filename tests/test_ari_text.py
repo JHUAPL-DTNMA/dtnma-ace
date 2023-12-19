@@ -239,6 +239,7 @@ class TestAriText(unittest.TestCase):
         ('1e3', dict(float_form='e'), '1.000000e+03'),
         ('1e3', dict(float_form='x'), '0fx63d0'),
         ('hi', dict(text_identity=False), '%22hi%22'),
+        ('/CBOR/h%27a164746573748203f94480%27', dict(cbor_diag=True), '/CBOR/' + ari_text.quote('<<{"test":[3,4.5]}>>')),
     )
 
     def test_literal_text_options(self):

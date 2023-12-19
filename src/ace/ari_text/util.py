@@ -6,6 +6,7 @@ import logging
 import re
 import struct
 from typing import List
+import cbor_diag
 from ace.ari import UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
@@ -138,9 +139,13 @@ def t_bstr(found):
         return bytes(val, 'ascii')
 
 
-@TypeMatch.apply(r'.*')
+@TypeMatch.apply(r'<<.*>>')
 def t_cbor_diag(found):
-    return found[0]
+    import cbor2
+    data = cbor2.loads(cbor_diag.diag2cbor(found[0]))
+    # workaround least-length float encoding from cbor_diag
+    val = cbor2.dumps(cbor2.loads(data), canonical=True)
+    return val
 
 
 def part_to_int(digits):
@@ -244,7 +249,7 @@ TYPEDLIT = {
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
     StructType.LABEL: TypeSeq([t_identity]),
-    StructType.CBOR: TypeSeq([t_bstr]),
+    StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
 }
 ''' Map from literal types to value parsers. '''
 

@@ -33,7 +33,7 @@ from ace.ari import (
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
 from .parsemod import new_parser
-from .encode import Encoder, EncodeOptions
+from .encode import Encoder, EncodeOptions, quote
 
 LOGGER = logging.getLogger(__name__)
 

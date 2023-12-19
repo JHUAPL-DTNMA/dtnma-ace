@@ -52,6 +52,26 @@ def to_diag(val) -> str:
         diag = f'"{val}"'
     elif isinstance(val, bytes):
         diag = f'h\'{val.hex()}\''
+    elif isinstance(val, (list, tuple)):
+        diag = '['
+        first = True
+        for sub in val:
+            if first:
+                first = False
+            else:
+                diag += ","
+            diag += to_diag(sub)
+        diag += ']'
+    elif isinstance(val, dict):
+        diag = '{'
+        first = True
+        for key, sub in val.items():
+            if first:
+                first = False
+            else:
+                diag += ","
+            diag += to_diag(key) + ":" + to_diag(sub)
+        diag += '}'
     else:
         raise ValueError(f'No CBOR diagnostic converstion for type {type(val)}: {val}')
     return diag

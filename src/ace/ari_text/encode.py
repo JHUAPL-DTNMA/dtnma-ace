@@ -112,6 +112,8 @@ class EncodeOptions:
     ''' True if specific text can be left unquoted. '''
     time_text:bool = True
     ''' True if time values should be in text form. '''
+    cbor_diag:bool = False
+    ''' True if CBOR values should be in diagnostic form. '''
 
 
 class Encoder:
@@ -159,6 +161,13 @@ class Encoder:
             elif obj.type_id is StructType.LABEL:
                 # no need to quote identity
                 buf.write(obj.value)
+            elif obj.type_id is StructType.CBOR:
+                if self._options.cbor_diag:
+                    buf.write(quote('<<'))
+                    buf.write(quote(to_diag(cbor2.loads(obj.value))))
+                    buf.write(quote('>>'))
+                else:
+                    buf.write(quote(to_diag(obj.value)))
             elif isinstance(obj.value, ExecutionSet):
                 params = {
                     'n': to_diag(obj.value.nonce),
