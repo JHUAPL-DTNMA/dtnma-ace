@@ -7,7 +7,7 @@ import math
 from typing import Callable, List, Optional, Set
 import numpy
 from portion import Interval
-from .ari import (DTN_EPOCH, StructType, ARI, LiteralARI, ReferenceARI, UNDEFINED, NULL, TRUE)
+from .ari import (DTN_EPOCH, StructType, ARI, LiteralARI, ReferenceARI, is_undefined, NULL, TRUE)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -95,6 +95,21 @@ class BaseType:
         raise NotImplementedError()
 
     def convert(self, obj:ARI) -> ARI:
+        ''' Force a literal conversion to this target type.
+
+        :param obj: The input ARI.
+        :return: The converted ARI.
+        :raise TypeError: if something is wrong with the input type.
+        :raise ValueError: if something is wrong with the input value.
+        '''
+        raise NotImplementedError()
+
+    def simplify(self, obj:ARI) -> ARI:
+        ''' Perform type simplification to avoid duplicate literal typing.
+
+        :param obj: The input ARI.
+        :return: The converted ARI.
+        '''
         raise NotImplementedError()
 
 
@@ -132,7 +147,7 @@ class NullType(BuiltInType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
         return NULL
 
@@ -152,9 +167,11 @@ class BoolType(BuiltInType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
-        if not isinstance(obj, LiteralARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             # Any obj-ref is truthy
             return TRUE
 
@@ -189,9 +206,11 @@ class NumericType(BuiltInType):
         return LiteralARI(obj.value, self.type_id)
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
-        if not isinstance(obj, LiteralARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             raise TypeError('Cannot convert an object-reference to numeric type')
 
         if obj.value is False or obj.value is None:
@@ -202,7 +221,10 @@ class NumericType(BuiltInType):
         if not self._in_domain(obj.value):
             raise ValueError(f'Numeric value outside domain [{self.dom_min},{self.dom_max}]: {obj.value}')
         # force the specific type wanted
-        return LiteralARI(self.VALUE_CLS[self.type_id](obj.value), self.type_id)
+        return LiteralARI(
+            value=self.VALUE_CLS[self.type_id](obj.value),
+            type_id=self.type_id
+        )
 
     def _in_domain(self, value):
         if not isinstance(value, (int, float)):
@@ -225,7 +247,7 @@ class StringType(BuiltInType):
     ''' Required value type for target string type. '''
 
     def get(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
             return None
@@ -235,11 +257,16 @@ class StringType(BuiltInType):
             return None
         return obj
 
+    def _coerce(self, obj):
+        self.VALUE_CLS[self.type_id]
+
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
-        if not isinstance(obj, LiteralARI):
-            raise TypeError(f'Cannot convert to numeric type: {obj}')
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
+            raise TypeError(f'Cannot convert to string type: {obj}')
 
         if obj.type_id is not None and obj.type_id != self.type_id:
             # something besides text string
@@ -261,7 +288,7 @@ class TimeType(BuiltInType):
     ''' Required value type for target time type. '''
 
     def get(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
             return None
@@ -272,9 +299,11 @@ class TimeType(BuiltInType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
-        if not isinstance(obj, LiteralARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             raise TypeError(f'Cannot convert to numeric type: {obj}')
 
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -305,7 +334,7 @@ class ContainerType(BuiltInType):
     ''' Required value type for target time type. '''
 
     def get(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
             return None
@@ -316,9 +345,11 @@ class ContainerType(BuiltInType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
-        if not isinstance(obj, LiteralARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             raise TypeError(f'Cannot convert to numeric type: {obj}')
 
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -343,7 +374,7 @@ class ObjRefType(BuiltInType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
         if not isinstance(obj, ReferenceARI):
             raise TypeError(f'Cannot convert to an object-reference type: {obj}')
@@ -361,14 +392,14 @@ class AnyType(BuiltInType):
         self.cls = cls
 
     def get(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return None
         if not isinstance(obj, self.cls):
             return None
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
         if not isinstance(obj, self.cls):
             raise TypeError(f'Cannot convert type: {obj}')
@@ -462,7 +493,7 @@ class TypeUse(SemType):
         return got
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
         got = self.base.convert(obj)
         invalid = self._constrain(got)
@@ -511,7 +542,7 @@ class TypeUnion(SemType):
         return None
 
     def convert(self, obj:ARI) -> ARI:
-        if obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
         for typ in self.types:
             try:
@@ -539,9 +570,9 @@ class UniformList(SemType):
         return self.type.type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
-        if not isinstance(obj, LiteralARI):
+        if is_undefined(obj):
             return None
-        if obj.type_id is None and obj == UNDEFINED:
+        if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id != StructType.AC:
             return None
@@ -553,15 +584,17 @@ class UniformList(SemType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
-        if not isinstance(obj, LiteralARI):
-            raise TypeError()
-        if obj.type_id is None and obj == UNDEFINED:
+        if is_undefined(obj):
             return obj
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj, type_id=StructType.AC)
+        elif not isinstance(obj, LiteralARI):
+            raise TypeError()
         if obj.type_id != StructType.AC:
             raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
 
         rval = []
-        for ival in self.value:
+        for ival in obj.value:
             rval.append(self.type.convert(ival))
 
         return LiteralARI(rval, StructType.AC)
@@ -599,9 +632,9 @@ class TableTemplate(SemType):
         return set([StructType.TBL])
 
     def get(self, obj:ARI) -> Optional[ARI]:
-        if not isinstance(obj, LiteralARI):
+        if is_undefined(obj):
             return None
-        if obj.type_id is None and obj == UNDEFINED:
+        if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id != StructType.TBL:
             return None
@@ -620,10 +653,10 @@ class TableTemplate(SemType):
         return obj
 
     def convert(self, obj:ARI) -> ARI:
+        if is_undefined(obj):
+            return obj
         if not isinstance(obj, LiteralARI):
             raise TypeError()
-        if obj.type_id is None and obj == UNDEFINED:
-            return obj
         if obj.type_id != StructType.TBL:
             raise TypeError(f'Value to convert is not TBL, it is {obj.type_id}')
 
@@ -635,8 +668,16 @@ class TableTemplate(SemType):
 
         rval = numpy.ndarray(obj.value.shape, dtype=ARI)
         for row_ix in range(nrows):
+            irow = obj.value[row_ix,:]
+            badcols = []
             for col_ix, col in enumerate(self.columns):
-                rval[row_ix, col_ix] = col.type.convert(obj.value[row_ix, col_ix])
+                try:
+                    rval[row_ix, col_ix] = col.type.convert(irow[col_ix])
+                except Exception as err:
+                    LOGGER.warning('Failed to convert col %s %s value %s: %s', col.name, col.type, irow[col_ix], err)
+                    badcols.append(col.name)
+            if badcols:
+                raise ValueError(f'Failed to convert columns {",".join(badcols)} for row {row_ix}: {irow}')
 
         return LiteralARI(rval, StructType.TBL)
 

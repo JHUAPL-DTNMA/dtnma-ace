@@ -42,6 +42,18 @@ class Table(numpy.ndarray):
     def __eq__(self, other:'Table'):
         return numpy.array_equal(self, other)
 
+    @staticmethod
+    def from_rows(rows:List[List]):
+        raise ValueError
+        if rows:
+            shape = (len(rows), len(rows[0]))
+        else:
+            shape = (0, 0)
+        obj = Table(shape)
+        for row_ix, row in enumerate(rows):
+            obj[row_ix,:] = row
+        return obj
+
 
 @dataclass(eq=True, frozen=True)
 class ExecutionSet:
@@ -142,6 +154,14 @@ class LiteralARI(ARI):
     type_id:Optional[StructType] = None
     ''' ADM type of this value '''
 
+    def __eq__(self, other:'LiteralARI') -> bool:
+        # check attributes in specific order
+        return (
+            isinstance(other, LiteralARI)
+            and self.type_id == other.type_id
+            and self.value == other.value
+        )
+
     def visit(self, visitor:Callable[['ARI'], None]):
         if isinstance(self.value, list):
             for item in self.value:
@@ -165,6 +185,15 @@ TRUE = LiteralARI(value=True, type_id=StructType.BOOL)
 ''' The true value of the AMM '''
 FALSE = LiteralARI(value=False, type_id=StructType.BOOL)
 ''' The false value of the AMM '''
+
+
+def is_undefined(val:ARI) -> bool:
+    ''' Logic to compare against the UNDEFINED value.
+
+    :param val: The value to check.
+    :return: True if equal to :obj:`UNDEFINED`.
+     '''
+    return val == UNDEFINED
 
 
 def coerce_literal(val):
@@ -192,14 +221,23 @@ def coerce_literal(val):
 
     # Recurse for containers
     if val.type_id == StructType.AC:
-        val.value = map(coerce_literal, val.value)
+        val = LiteralARI(
+            map(coerce_literal, val.value),
+            StructType.AC
+        )
     elif val.type_id == StructType.AM:
-        val.value = {
-            coerce_literal(key): coerce_literal(subval)
-            for key, subval in val.value.items()
-        }
+        val = LiteralARI(
+            {
+                coerce_literal(key): coerce_literal(subval)
+                for key, subval in val.value.items()
+            },
+            StructType.AM
+        )
     elif val.type_id == StructType.TBL:
-        val.value = numpy.vectorize(coerce_literal)(val.value)
+        val = LiteralARI(
+            numpy.vectorize(coerce_literal)(val.value),
+            StructType.TBL
+        )
 
     return val
 

@@ -25,6 +25,11 @@ import base64
 import cbor2
 import math
 
+_TSTR_TRANS = str.maketrans({
+    '\\': '\\\\',
+    '"': '\\"',
+})
+
 
 def to_diag(val) -> str:
     ''' Convert a Python object to CBOR diagnostic notation.
@@ -49,7 +54,7 @@ def to_diag(val) -> str:
         else:
             diag = f'{val}'
     elif isinstance(val, str):
-        diag = f'"{val}"'
+        diag = f'"{val.translate(_TSTR_TRANS)}"'
     elif isinstance(val, bytes):
         diag = f'h\'{val.hex()}\''
     elif isinstance(val, (list, tuple)):

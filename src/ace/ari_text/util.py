@@ -112,12 +112,28 @@ def t_modid(found):
     return (found['name'], found['rev'])
 
 
-@TypeMatch.apply(r'"(?P<val>[^\"]*)"')
+def unescape(esc:str) -> str:
+    ''' unescape tstr/bstr text
+    '''
+    esc_it = iter(esc)
+    txt = ''
+    while True:
+        try:
+            char = next(esc_it)
+        except StopIteration:
+            break
+        if char == '\\':
+            char = next(esc_it)
+        txt += char
+    return txt
+
+
+@TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
 def t_tstr(found):
-    return found['val']
+    return unescape(found['val'])
 
 
-@TypeMatch.apply(r'(?P<enc>h|b32|h32|b64)?\'(?P<val>[^\']*)\'')
+@TypeMatch.apply(r'(?P<enc>h|b32|h32|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
 def t_bstr(found):
     enc = found['enc']
     val = found['val']
@@ -136,7 +152,7 @@ def t_bstr(found):
             val += '=' * (4 - rem)
         return base64.b64decode(val)
     else:
-        return bytes(val, 'ascii')
+        return bytes(unescape(val), 'ascii')
 
 
 @TypeMatch.apply(r'<<.*>>')

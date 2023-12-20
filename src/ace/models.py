@@ -331,8 +331,10 @@ class AdmObjMixin(CommonMixin):
     # Enumeration for this ADM
     enum = Column(Integer, index=True)
 
-    if_feature_expr = Column(String)
-    ''' Feature-matching expression. '''
+    if_feature_expr = Column(PickleType)
+    ''' Feature-matching parsed expression.
+    See :func:`pyang.syntax.parse_if_feature_expr`.
+    '''
 
 
 class ParamMixin:

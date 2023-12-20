@@ -98,10 +98,13 @@ class TestAriText(unittest.TestCase):
         # TEXTSTR
         ('hi', 'hi'),
         ('%22hi%20there%22', 'hi there'),
+        ('%22hi%5C%22oh%22', 'hi"oh'),
         ('/TEXTSTR/hi', 'hi'),
         ('/TEXTSTR/%22hi%20there%22', 'hi there'),
         # BYTESTR
         ('%27hi%27', b'hi', 'h%276869%27'),
+        ('%27hi%5C%22oh%27', b'hi"oh', 'h%276869226f68%27'),
+        ('%27hi%5C%27oh%27', b'hi\'oh', 'h%276869276f68%27'),
         ('/BYTESTR/%27hi%27', b'hi', '/BYTESTR/h%276869%27'),
         # RFC 4648 test vectors
         ('h%27666F6F626172%27', b'foobar', 'h%27666f6f626172%27'),

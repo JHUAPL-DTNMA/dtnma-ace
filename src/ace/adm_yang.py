@@ -23,6 +23,7 @@
 '''
 
 from datetime import datetime
+import io
 import logging
 import optparse
 import os
@@ -30,15 +31,18 @@ from typing import TextIO, List
 import pyang.plugin
 import pyang.context
 import pyang.repository
+import pyang.syntax
 import pyang.translators.yang
+from ace import ari_text
+from ace.ari import ARI, ReferenceARI
+from ace.typing import (
+    SemType, TypeUse, TypeUnion, UniformList, TableTemplate, TableColumn
+)
 from ace.models import (
     TypeNameList, TypeNameItem,
     MetadataList, MetadataItem, AdmRevision, Feature,
     AdmFile, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
     Typedef, Const, Ctrl, Edd, Oper, Var
-)
-from ace.typing import (
-    SemType, TypeUse, TypeUnion, UniformList, TableTemplate, TableColumn
 )
 from ace.util import normalize_ident
 
@@ -112,6 +116,8 @@ class Decoder:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
 
+        self._ari_dec = ari_text.Decoder()
+
         # Set to an object while processing a top-level module
         self._module = None
         self._obj_pos = 0
@@ -150,17 +156,32 @@ class Decoder:
         (AMM_MOD, 'cddl'),
     )
 
+    def _check_ari(self, ari:ARI):
+        ''' Verify ARI references only imported modules. '''
+        if isinstance(ari, ReferenceARI):
+            if ari.ident.ns_id is not None and ari.ident.ns_id not in self._module.i_prefixes:
+                raise ValueError(f'ARI references module {ari.ident} that is not imported')
+
+    def _get_namespace(self, text):
+        ''' Resolve a possibly qualified identifier into a module name and statement name.
+        '''
+        if ':' in text:
+            adm_prefix, stmt_name = text.split(':', 2)
+            # resolve yang prefix to module name
+            stmt_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
+            stmt_ns = normalize_ident(stmt_ns)
+            if stmt_ns == self._module.arg:
+                stmt_ns = None
+            stmt_name = normalize_ident(stmt_name)
+        else:
+            stmt_ns = None
+            stmt_name = normalize_ident(text)
+        return (stmt_ns, stmt_name)
+
     def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
         typeobj = TypeUse()
 
-        if ':' in stmt.arg:
-            adm_prefix, type_name = stmt.arg.split(':', 2)
-            # resolve yang prefix to module name
-            type_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
-            typeobj.type_ns = normalize_ident(type_ns)
-            typeobj.type_name = normalize_ident(type_name)
-        else:
-            typeobj.type_name = normalize_ident(stmt.arg)
+        typeobj.type_ns, typeobj.type_name = self._get_namespace(stmt.arg)
 
         refinements = list(filter(None, [
             search_one_exp(stmt, kywd)
@@ -253,6 +274,22 @@ class Decoder:
             if enum_stmt:
                 obj.enum = int(enum_stmt.arg)
 
+            feat_stmt = search_one_exp(stmt, 'if-feature')
+            if feat_stmt:
+                expr = pyang.syntax.parse_if_feature_expr(feat_stmt.arg)
+
+                def resolve(val):
+                    ''' resolve import prefix to module name '''
+                    if isinstance(val, str):
+                        return self._get_namespace(val)
+                    else:
+                        op, arg1, arg2 = val
+                        arg1 = resolve(arg1)
+                        arg2 = resolve(arg2)
+                        return (op, arg1, arg2)
+
+                obj.if_feature_expr = resolve(expr)
+
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
             for param_stmt in search_all_exp(stmt, (AMM_MOD, 'parameter')):
@@ -273,6 +310,9 @@ class Decoder:
                 LOGGER.warning('const is missing init-value substatement')
             else:
                 obj.init_value = value_stmt.arg
+
+            ari = self._ari_dec.decode(io.StringIO(value_stmt.arg))
+            ari.visit(self._check_ari)
 
         elif issubclass(cls, Ctrl):
             result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
