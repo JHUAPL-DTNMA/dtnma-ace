@@ -35,6 +35,11 @@ from .lexmod import new_lexer
 from .parsemod import new_parser
 from .encode import Encoder, EncodeOptions, quote
 
+__all__ = (
+    'Encoder', 'EncodeOptions', quote,
+    'Decoder',
+)
+
 LOGGER = logging.getLogger(__name__)
 
 

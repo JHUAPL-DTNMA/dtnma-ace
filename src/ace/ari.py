@@ -43,8 +43,12 @@ class Table(numpy.ndarray):
         return numpy.array_equal(self, other)
 
     @staticmethod
-    def from_rows(rows:List[List]):
-        raise ValueError
+    def from_rows(rows:List[List]) -> 'Table':
+        ''' Construct and initialize a table from a list of rows.
+
+        :param rows: A row-major list of lists.
+        :return: A new Table object.
+        '''
         if rows:
             shape = (len(rows), len(rows[0]))
         else:
@@ -124,11 +128,11 @@ class StructType(enum.IntEnum):
     TBR = -10
 
 
-# All literal struct types
 LITERAL_TYPES = {
     typ for typ in StructType
     if typ.value >= 0
 }
+''' All literal types. '''
 
 
 class ARI:
@@ -191,55 +195,30 @@ def is_undefined(val:ARI) -> bool:
     ''' Logic to compare against the UNDEFINED value.
 
     :param val: The value to check.
-    :return: True if equal to :obj:`UNDEFINED`.
+    :return: True if equivalent to :obj:`UNDEFINED`.
      '''
-    return val == UNDEFINED
+    return (
+        isinstance(val, LiteralARI)
+        and val.value == UNDEFINED.value
+    )
 
 
-def coerce_literal(val):
-    ''' Coerce a Python value into a Literal ARI
+def is_null(val:ARI) -> bool:
+    ''' Logic to compare against the NULL value.
 
-    :param val: The Python value.
-    :return: The ARI value.
-    '''
-    import copy
-    if isinstance(val, LiteralARI):
-        val = copy.copy(val)
-    else:
-        if isinstance(val, (tuple, list)):
-            val = LiteralARI(value=val, type_id=StructType.AC)
-        elif isinstance(val, dict):
-            val = LiteralARI(value=val, type_id=StructType.AM)
-        elif isinstance(val, Table):
-            val = LiteralARI(value=val, type_id=StructType.TBL)
-        elif isinstance(val, datetime.datetime):
-            val = LiteralARI(value=val, type_id=StructType.TP)
-        elif isinstance(val, datetime.timedelta):
-            val = LiteralARI(value=val, type_id=StructType.TD)
-        else:
-            val = LiteralARI(value=val)
+    :param val: The value to check.
+    :return: True if equivalent to :obj:`NULL`.
+     '''
+    return (
+        isinstance(val, LiteralARI)
+        and val.value == NULL.value
+    )
 
-    # Recurse for containers
-    if val.type_id == StructType.AC:
-        val = LiteralARI(
-            map(coerce_literal, val.value),
-            StructType.AC
-        )
-    elif val.type_id == StructType.AM:
-        val = LiteralARI(
-            {
-                coerce_literal(key): coerce_literal(subval)
-                for key, subval in val.value.items()
-            },
-            StructType.AM
-        )
-    elif val.type_id == StructType.TBL:
-        val = LiteralARI(
-            numpy.vectorize(coerce_literal)(val.value),
-            StructType.TBL
-        )
 
-    return val
+def as_bool(val:ARI) -> bool:
+    if isinstance(val, LiteralARI) and val.value in (True, False):
+        return val.value
+    raise ValueError('as_bool given non-boolean value')
 
 
 @dataclass

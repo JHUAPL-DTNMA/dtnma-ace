@@ -7,7 +7,10 @@ import math
 from typing import Callable, List, Optional, Set
 import numpy
 from portion import Interval
-from .ari import (DTN_EPOCH, StructType, ARI, LiteralARI, ReferenceARI, is_undefined, NULL, TRUE)
+from .ari import (
+    DTN_EPOCH, StructType, Table,
+    ARI, LiteralARI, ReferenceARI, is_undefined, NULL, TRUE
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -107,10 +110,12 @@ class BaseType:
     def simplify(self, obj:ARI) -> ARI:
         ''' Perform type simplification to avoid duplicate literal typing.
 
+        The base type returns itself.
+
         :param obj: The input ARI.
         :return: The converted ARI.
         '''
-        raise NotImplementedError()
+        return obj
 
 
 class BuiltInType(BaseType):
@@ -391,17 +396,20 @@ class AnyType(BuiltInType):
         super().__init__(None)
         self.cls = cls
 
+    def __repr__(self):
+        return f'{type(self).__name__}(cls={self.cls.__name__})'
+
     def get(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return None
-        if not isinstance(obj, self.cls):
+        if self.cls is not None and not isinstance(obj, self.cls):
             return None
         return obj
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        if not isinstance(obj, self.cls):
+        if self.cls is not None and not isinstance(obj, self.cls):
             raise TypeError(f'Cannot convert type: {obj}')
         return obj
 
@@ -544,11 +552,18 @@ class TypeUnion(SemType):
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return obj
+
+        # try subtype get first then convert as a fallback
+        got = self.get(obj)
+        if got is not None:
+            return got
+
         for typ in self.types:
             try:
                 return typ.convert(obj)
             except (TypeError, ValueError):
                 continue
+
         raise TypeError('convert() failed to match a union type')
 
 
@@ -577,7 +592,7 @@ class UniformList(SemType):
         if obj.type_id != StructType.AC:
             return None
 
-        for val in self.value:
+        for val in obj.value:
             if self.type.get(val) is None:
                 return None
 
@@ -666,7 +681,7 @@ class TableTemplate(SemType):
         if ncols != len(self.columns):
             raise ValueError(f'TBL value has wrong number of columns: should be {len(self.columns)} is {ncols}')
 
-        rval = numpy.ndarray(obj.value.shape, dtype=ARI)
+        rval = Table(obj.value.shape)
         for row_ix in range(nrows):
             irow = obj.value[row_ix,:]
             badcols = []

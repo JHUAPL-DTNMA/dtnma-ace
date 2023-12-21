@@ -192,6 +192,10 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(UNDEFINED))
         self.assertEqual(TRUE, typ.get(TRUE))
         self.assertEqual(FALSE, typ.get(FALSE))
+        self.assertEqual(NULL, typ.get(NULL))
+        # non-matching types
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(123)))
 
     def test_union_convert(self):
         typ = TypeUnion(types=[BUILTINS['bool'], BUILTINS['null']])
@@ -200,9 +204,12 @@ class TestTyping(unittest.TestCase):
 
         self.assertEqual(TRUE, typ.convert(TRUE))
         self.assertEqual(FALSE, typ.convert(FALSE))
-        self.assertEqual(FALSE, typ.convert(NULL))
+        self.assertEqual(NULL, typ.convert(NULL))
+        # force the output type (in union order)
         self.assertEqual(TRUE, typ.convert(LiteralARI('hi')))
         self.assertEqual(FALSE, typ.convert(LiteralARI('')))
+        self.assertEqual(TRUE, typ.convert(LiteralARI(123)))
+        self.assertEqual(FALSE, typ.convert(LiteralARI(0)))
 
     def test_tblt_get(self):
         typ = TableTemplate(columns=[

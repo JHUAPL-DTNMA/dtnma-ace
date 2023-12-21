@@ -369,6 +369,8 @@ class Decoder:
 
         module = self._ctx.add_module(file_path or '<text>', buf.read(), primary_module=True)
         LOGGER.debug('Loaded %s', module)
+        if module is None:
+            raise RuntimeError(f'Failed to load module: {self._ctx.errors}')
         self._module = module
         self._obj_pos = 0
 
