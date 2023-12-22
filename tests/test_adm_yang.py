@@ -56,11 +56,11 @@ module empty {}
 '''
 
     def test_decode_empty(self):
-        dec = adm_yang.Decoder()
+        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
 
         buf = io.StringIO(self.EMPTY_MODULE)
         adm = dec.decode(buf)
-        self.assertIsInstance(adm, models.AdmFile)
+        self.assertIsInstance(adm, models.AdmModule)
 
         self.assertEqual('empty', adm.name)
 
@@ -78,11 +78,11 @@ module empty {
 '''
 
     def test_decode_noobject(self):
-        dec = adm_yang.Decoder()
+        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
 
         buf = io.StringIO(self.NOOBJECT_MODULE)
         adm = dec.decode(buf)
-        self.assertIsInstance(adm, models.AdmFile)
+        self.assertIsInstance(adm, models.AdmModule)
 
         self.assertEqual('empty', adm.name)
         self.assertEqual(0, len(adm.typedef))
@@ -93,13 +93,15 @@ module empty {
         self.assertEqual(0, len(adm.oper))
 
     def test_decode_minimal(self):
-        dec = adm_yang.Decoder()
+        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
 
         with open(self.TEST_FILE_PATH, 'r') as buf:
             adm = dec.decode(buf)
-        self.assertIsInstance(adm, models.AdmFile)
-        self.assertEqual(adm.abs_file_path,
-                         os.path.realpath(self.TEST_FILE_PATH))
+        self.assertIsInstance(adm, models.AdmModule)
+        self.assertEqual(
+            adm.source.abs_file_path,
+            os.path.realpath(self.TEST_FILE_PATH)
+        )
 
         self.assertEqual('test-adm-minimal', adm.name)
         self.assertEqual('test-adm-minimal', adm.norm_name)
@@ -224,7 +226,7 @@ module empty {
     @unittest.skip  # FIXME: reinstate later
     def test_loopback_obj(self):
         # Test per-object loopback with normal and special cases
-        dec = adm_yang.Decoder()
+        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
         enc = adm_yang.Encoder()
         for case in self.LOOPBACK_CASELIST:
             cls, json_in = case
@@ -239,7 +241,7 @@ module empty {
             self.assertEqual(json_in, json_out)
 
     def test_loopback_adm(self):
-        dec = adm_yang.Decoder()
+        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
         enc = adm_yang.Encoder()
 
         with open(self.TEST_FILE_PATH, 'r', encoding='utf-8') as buf:
@@ -269,7 +271,7 @@ module empty {
 
         for name in file_names:
             LOGGER.warning('Handling file %s', name)
-            dec = adm_yang.Decoder()
+            dec = adm_yang.Decoder(adm_yang.EmptyRepos())
             enc = adm_yang.Encoder()
 
             file_path = os.path.join(SELFDIR, 'adms', name)

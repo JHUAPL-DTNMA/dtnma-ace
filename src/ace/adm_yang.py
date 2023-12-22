@@ -41,7 +41,7 @@ from ace.typing import (
 from ace.models import (
     TypeNameList, TypeNameItem,
     MetadataList, MetadataItem, AdmRevision, Feature,
-    AdmFile, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
+    AdmSource, AdmModule, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
     Typedef, Const, Ctrl, Edd, Oper, Var
 )
 from ace.util import normalize_ident
@@ -90,11 +90,17 @@ def search_all_exp(stmt, kywd):
     return stmt.search(kywd, children=subs)
 
 
+class EmptyRepos(pyang.repository.Repository):
+
+    def get_modules_and_revisions(self, ctx):
+        return []
+
+
 class Decoder:
     ''' The decoder portion of this CODEC.
     '''
 
-    def __init__(self, modpath: List[str]=None):
+    def __init__(self, repos:pyang.repository.Repository):
         # Initializer copied from pyang.scripts.pyang_tool.run()
         if not pyang.plugin.plugins:
             plugindirs = [os.path.join(SELFDIR, 'pyang')]
@@ -105,10 +111,6 @@ class Decoder:
             p.add_opts(optparser)
         (opts, _args) = optparser.parse_args([])
 
-        if not modpath:
-            modpath = []
-        path = os.pathsep.join(modpath)
-        repos = pyang.repository.FileRepository(path, verbose=True)
         self._ctx = pyang.context.Context(repos)
         self._ctx.strict = True
         self._ctx.opts = opts
@@ -359,15 +361,16 @@ class Decoder:
 
             obj_list.append(obj)
 
-    def decode(self, buf: TextIO) -> AdmFile:
+    def decode(self, buf: TextIO) -> AdmModule:
         ''' Decode a single ADM from file.
 
         :param buf: The buffer to read from.
         :return: The decoded ORM root object.
         '''
         file_path = buf.name if hasattr(buf, 'name') else None
+        file_text = buf.read()
 
-        module = self._ctx.add_module(file_path or '<text>', buf.read(), primary_module=True)
+        module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True)
         LOGGER.debug('Loaded %s', module)
         if module is None:
             raise RuntimeError(f'Failed to load module: {self._ctx.errors}')
@@ -401,12 +404,14 @@ class Decoder:
             emsg = pyang.error.err_to_str(etag, eargs)
             LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
 
-        adm = AdmFile()
-
+        src = AdmSource()
+        src.file_text = file_text
         if file_path:
-            adm.abs_file_path = file_path
-            adm.last_modified = self.get_file_time(file_path)
+            src.abs_file_path = file_path
+            src.last_modified = self.get_file_time(file_path)
 
+        adm = AdmModule()
+        adm.source = src
         adm.name = module.arg
         # Normalize the intrinsic ADM name
         adm.norm_name = normalize_ident(adm.name)
@@ -458,7 +463,6 @@ class Encoder:
     ''' The encoder portion of this CODEC. '''
 
     def __init__(self):
-        modpath = []
 
         optparser = optparse.OptionParser('', add_help_option=False)
         for p in pyang.plugin.plugins:
@@ -468,8 +472,7 @@ class Encoder:
         # Consistent ordering
         opts.yang_canonical = True
 
-        path = os.pathsep.join(modpath)
-        repos = pyang.repository.FileRepository(path, verbose=True)
+        repos = EmptyRepos()
         self._ctx = pyang.context.Context(repos)
         self._ctx.strict = True
         self._ctx.opts = opts
@@ -477,7 +480,7 @@ class Encoder:
         self._module = None
         self._denorm_prefixes = None
 
-    def encode(self, adm: AdmFile, buf: TextIO):
+    def encode(self, adm: AdmModule, buf: TextIO):
         ''' Decode a single ADM from file.
 
         :param adm: The ORM root object.

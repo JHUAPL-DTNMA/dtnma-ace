@@ -21,12 +21,12 @@
 #
 ''' Basic constraints enforced from the ADM definitions.
 '''
-import json
+import io
 import logging
 import os
 from sqlalchemy import inspect, orm, func
-from ace import models, ari, nickname, util
-from ace.typing import TypeUse, BUILTINS
+from ace import models, ari, ari_text, nickname, util
+from ace.typing import TypeUse
 from .core import register, Issue
 
 LOGGER = logging.getLogger(__name__)
@@ -58,14 +58,14 @@ class unique_adm_names:  # pylint: disable=invalid-name
     def __call__(self, issuelist, obj, db_sess):
         count = 0
         for name in ('norm_name', 'enum'):
-            attr = getattr(models.AdmFile, name)
+            attr = getattr(models.AdmModule, name)
             search = (
-                db_sess.query(attr, func.count(models.AdmFile.id))
+                db_sess.query(attr, func.count(models.AdmModule.id))
                 .group_by(attr)
-                .having(func.count(models.AdmFile.id) > 1)
+                .having(func.count(models.AdmModule.id) > 1)
             )
             for row in search.all():
-                query = db_sess.query(models.AdmFile).filter(
+                query = db_sess.query(models.AdmModule).filter(
                     attr == row[0]
                 )
                 for adm in query.all():
@@ -81,15 +81,15 @@ class unique_adm_names:  # pylint: disable=invalid-name
 @register
 def same_file_name(issuelist, obj, _db_sess):
     ''' Ensure an ADM name matches its source file name. '''
-    if isinstance(obj, models.AdmFile):
-        if obj.abs_file_path is None:
+    if isinstance(obj, models.AdmModule):
+        if obj.source.abs_file_path is None:
             return 0
         int_name = obj.norm_name
-        ext_name = os.path.splitext(os.path.basename(obj.abs_file_path))[0]
+        ext_name = os.path.splitext(os.path.basename(obj.source.abs_file_path))[0]
         if int_name != ext_name:
             issuelist.append(Issue(
                 obj=obj,
-                detail=f'ADM name "{int_name}" stored in differently named file {obj.abs_file_path}'
+                detail=f'ADM name "{int_name}" stored in differently named file {obj.source.abs_file_path}'
             ))
         return 1
 
@@ -102,7 +102,7 @@ class unique_object_names:  # pylint: disable=invalid-name
 
     def __init__(self):
         self._list_attrs = []
-        mapper = inspect(models.AdmFile)
+        mapper = inspect(models.AdmModule)
         for column in mapper.attrs:
             if isinstance(column, orm.relationships.RelationshipProperty):
                 # Only care about ADM-member objects
@@ -113,14 +113,14 @@ class unique_object_names:  # pylint: disable=invalid-name
 
     def __call__(self, issuelist, obj, _db_sess):
         count = 0
-        if isinstance(obj, models.AdmFile):
+        if isinstance(obj, models.AdmModule):
             for list_name in self._list_attrs:
                 seen_names = set()
                 dupe_names = set()
                 obj_list = getattr(obj, list_name)
                 LOGGER.debug('UniqueNames checking list %s', obj_list)
                 for top_obj in obj_list:
-                    if top_obj.obj_id in seen_names and top_obj.obj_id not in dupe_names:
+                    if top_obj.norm_name in seen_names and top_obj.norm_name not in dupe_names:
                         issuelist.append(Issue(
                             obj=top_obj,
                             detail=(
@@ -128,8 +128,8 @@ class unique_object_names:  # pylint: disable=invalid-name
                                 f'the name "{top_obj.name}" is duplicated'
                             ),
                         ))
-                        dupe_names.add(top_obj.obj_id)
-                    seen_names.add(top_obj.obj_id)
+                        dupe_names.add(top_obj.norm_name)
+                    seen_names.add(top_obj.norm_name)
                 count += 1
         return count
 
@@ -141,7 +141,7 @@ class valid_type_name:  # pylint: disable=invalid-name
     def __call__(self, issuelist, obj, db_sess, adm=None):
         ''' Entrypoint for this functor. '''
         count = 0
-        if isinstance(obj, models.AdmFile):
+        if isinstance(obj, models.AdmModule):
             count += self._iter_call(issuelist, obj.const, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.edd, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
@@ -164,12 +164,12 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _check_typeobj(self, issuelist, top_obj, ctr:models.TypeUseMixin, db_sess, adm:models.AdmFile):
+    def _check_typeobj(self, issuelist, top_obj, ctr:models.TypeUseMixin, db_sess, adm:models.AdmModule):
         ''' Verify a single named type. '''
         typeobj = ctr.typeobj
         if not typeobj:
             return 0
-        LOGGER.debug('Checking object %s type %s', top_obj.obj_id, typeobj)
+        LOGGER.debug('Checking object %s type %s', top_obj.norm_name, typeobj)
 
         try:
             ctr.typeobj_bound(adm)
@@ -192,23 +192,27 @@ class valid_reference_ari:  # pylint: disable=invalid-name
     def __call__(self, issuelist, obj, db_sess, top_obj=None):
         ''' Entrypoint for this functor. '''
         count = 0
-        if isinstance(obj, models.AdmFile):
+        dec = ari_text.Decoder()
+        if isinstance(obj, models.AdmModule):
+            count += self._iter_call(issuelist, obj.const, db_sess)
             count += self._iter_call(issuelist, obj.var, db_sess)
-        elif isinstance(obj, models.Var):
-            if obj.initializer is not None:
-                items = obj.initializer.postfix.items
-                count += self._iter_call(issuelist, items, db_sess, top_obj=obj)
-        elif isinstance(obj, models.ARI):
-            # FIXME identify text ARIs differently
-            ident = util.get_ident(obj)
-            if not util.find_ident(db_sess, ident):
-                issuelist.append(Issue(
-                    obj=top_obj,
-                    detail=(
-                        f'Within the object named "{top_obj.name}" '
-                        f'the reference ARI for {ident} is not resolvable'
-                    ),
-                ))
+        elif isinstance(obj, (models.Const, models.Var)):
+            if obj.init_value is not None:
+
+                def checker(val):
+                    if not isinstance(val, ari.ReferenceARI):
+                        return
+                    if util.find_ident(db_sess, val.ident) is None:
+                        issuelist.append(Issue(
+                            obj=obj,
+                            detail=(
+                                f'Within the object named "{obj.name}" '
+                                f'the reference ARI for {val.ident} is not resolvable'
+                            ),
+                        ))
+
+                val = dec.decode(io.StringIO(obj.init_value))
+                val.visit(checker)
             count += 1
         return count
 

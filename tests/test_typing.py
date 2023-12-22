@@ -233,28 +233,22 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(0, StructType.VAST)))
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UVAST)))
 
-        inarray = numpy.ndarray((0, 3), dtype=ARI)
+        inarray = Table((0, 3))
         LOGGER.info('array %s', inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
-        self.assertTrue(
-            numpy.array_equal(inarray, got.value),
-            msg=f'expect {inarray} got {got.value}'
-        )
+        self.assertEqual(inarray, got.value)
 
-        inarray = numpy.array([
+        inarray = Table.from_rows([
             [LiteralARI(1), LiteralARI('hi'), LiteralARI(True)],
-        ], dtype=ARI)
+        ])
         LOGGER.info('in %s', inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
-        self.assertTrue(
-            numpy.array_equal(inarray, got.value),
-            msg=f'expect {inarray} got {got.value}'
-        )
+        self.assertEqual(inarray, got.value)
 
         # mismatched value type in last column
         self.assertEqual(LiteralARI(True), inarray[0, 2])
@@ -270,42 +264,36 @@ class TestTyping(unittest.TestCase):
             TableColumn(name='three', type=BUILTINS['bool']),
         ])
 
-        inarray = numpy.array([
+        inarray = Table.from_rows([
             [LiteralARI(1), LiteralARI('hi'), LiteralARI(True)],
-        ], dtype=ARI)
+        ])
         LOGGER.info('in %s', inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
-        outarray = numpy.array([
+        outarray = Table.from_rows([
             [
                 LiteralARI(1, StructType.INT),
                 LiteralARI('hi', StructType.TEXTSTR),
                 LiteralARI(True, StructType.BOOL)
             ],
-        ], dtype=ARI)
-        self.assertTrue(
-            numpy.array_equal(outarray, got.value),
-            msg=f'expect {outarray} got {got.value}'
-        )
+        ])
+        self.assertEqual(outarray, got.value)
 
-        inarray = numpy.array([
+        inarray = Table.from_rows([
             [LiteralARI(1), LiteralARI('hi'), LiteralARI('hi')],
-        ], dtype=ARI)
+        ])
         LOGGER.info('in %s', inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
         LOGGER.info('out %s', got.value)
-        outarray = numpy.array([
+        outarray = Table.from_rows([
             [
                 LiteralARI(1, StructType.INT),
                 LiteralARI('hi', StructType.TEXTSTR),
                 LiteralARI(True, StructType.BOOL)
             ],
-        ], dtype=ARI)
-        self.assertTrue(
-            numpy.array_equal(outarray, got.value),
-            msg=f'expect {outarray} got {got.value}'
-        )
+        ])
+        self.assertEqual(outarray, got.value)

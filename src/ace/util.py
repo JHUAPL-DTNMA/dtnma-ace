@@ -45,22 +45,7 @@ def normalize_ident(text: str) -> str:
     :return: Normalized text.
     '''
 
-    return text.casefold().replace("/", "_")
-
-
-def get_ident(obj: 'ace.models.ARI') -> ari.Identity:
-    ''' Extract an Ident object from an ADM's ARI.
-
-    :param obj: The ORM object from an ADM.
-    :return: The object identity.
-    '''
-    type_name, remain = obj.nm.split('.', maxsplit=1)
-    ident = ari.Identity(
-        ns_id=normalize_ident(obj.ns),
-        type_id=ari.StructType[type_name.upper()],
-        obj_id=normalize_ident(remain),
-    )
-    return ident
+    return text.casefold()
 
 
 def find_ident(db_sess:sqlalchemy.orm.Session, ident:ari.Identity):
@@ -71,17 +56,17 @@ def find_ident(db_sess:sqlalchemy.orm.Session, ident:ari.Identity):
     '''
     from ace import models, nickname
 
-    adm_ns = normalize_ident(ident.ns_id)
-    obj_name = normalize_ident(ident.obj_id)
+    ns_id = normalize_ident(ident.ns_id)
+    obj_id = normalize_ident(ident.obj_id)
 
     try:
         cls = nickname.ORM_TYPE[ident.type_id]
     except KeyError:
         return None
 
-    LOGGER.debug('Searching for NS %s type %s name %s', ident.ns_id, cls.obj_id, obj_name)
-    query = db_sess.query(cls).join(models.AdmFile).filter(
-        models.AdmFile.norm_name == adm_ns,
-        cls.norm_name == obj_name
+    LOGGER.debug('Searching for NS %s type %s name %s', ns_id, ident.type_id.name, obj_id)
+    query = db_sess.query(cls).join(models.AdmModule).filter(
+        models.AdmModule.norm_name == ns_id,
+        cls.norm_name == obj_id
     )
     return query.one_or_none()

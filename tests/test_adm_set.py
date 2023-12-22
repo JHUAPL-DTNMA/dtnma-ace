@@ -27,7 +27,7 @@ import os
 import shutil
 import unittest
 from ace.adm_set import AdmSet
-from ace.models import AdmFile
+from ace.models import AdmModule
 from util import TmpDir
 
 # : Directory containing this file
@@ -67,25 +67,25 @@ class TestAdmSet(unittest.TestCase):
 
         # no dir and no files
         adms_path = os.path.join(os.environ['XDG_DATA_HOME'], 'ace', 'adms')
-        self.assertEqual(0, adms.load_from_dir(adms_path))
+        self.assertEqual(0, adms.load_from_dirs([adms_path]))
         self.assertEqual(0, len(adms))
 
         # one new ADM
         os.makedirs(adms_path)
         shutil.copy(os.path.join(SELFDIR, 'test-adm-minimal.yang'), adms_path)
-        self.assertEqual(1, adms.load_from_dir(adms_path))
+        self.assertEqual(1, adms.load_from_dirs([adms_path]))
         self.assertEqual(1, len(adms))
 
         # cached state
         with self.assertLogs('ace.adm_set', logging.DEBUG) as logcm:
-            self.assertEqual(1, adms.load_from_dir(adms_path))
-        self.assertTrue([ent for ent in logcm.output if 'Skipping file' in ent])
+            self.assertEqual(1, adms.load_from_dirs([adms_path]))
+            self.assertTrue([ent for ent in logcm.output if 'Skipping file' in ent], msg=logcm.output)
         self.assertEqual(1, len(adms))
 
         # updated file
         with open(os.path.join(adms_path, 'test-adm-minimal.yang'), 'ab') as outfile:
             outfile.write(b'\r\n')
-        self.assertEqual(1, adms.load_from_dir(adms_path))
+        self.assertEqual(1, adms.load_from_dirs([adms_path]))
         self.assertEqual(1, len(adms))
 
     def test_load_default_dirs(self):
@@ -105,10 +105,10 @@ class TestAdmSet(unittest.TestCase):
         self.assertEqual(1, adms.load_default_dirs())
         self.assertEqual(1, len(adms))
         self.assertIn('test-adm-minimal', adms)
-        self.assertIsInstance(adms['test-adm-minimal'], AdmFile)
+        self.assertIsInstance(adms['test-adm-minimal'], AdmModule)
         self.assertEqual(frozenset(['test-adm-minimal']), adms.names())
         for adm in adms:
-            self.assertIsInstance(adm, AdmFile)
+            self.assertIsInstance(adm, AdmModule)
 
     def test_load_from_file(self):
         adms = AdmSet()

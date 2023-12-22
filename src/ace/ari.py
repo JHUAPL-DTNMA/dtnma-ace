@@ -226,14 +226,28 @@ class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
 
-    ns_id: Union[str, int, None] = None
+    ns_id:Union[str, int, None] = None
     ''' The None value indicates a module-relative path. '''
-    ns_rev: Optional[str] = None
+    ns_rev:Optional[str] = None
     ''' For the text-form ARI a specific module revision date. '''
-    type_id: Optional[StructType] = None
+    type_id:StructType = None
     ''' ADM type of the referenced object '''
-    obj_id: Union[str, int, None] = None
+    obj_id:Union[str, int] = None
     ''' Name with the type removed '''
+
+    def __str__(self):
+        ''' Pretty format the identity.
+        '''
+        text = ''
+        if self.ns_id is None:
+            text += '.'
+        else:
+            text += f'/{self.ns_id}'
+            if self.ns_rev:
+                text += f'@{self.ns_rev}'
+        text += f'/{self.type_id.name}'
+        text += f'/{self.obj_id}'
+        return text
 
 
 @dataclass

@@ -23,7 +23,9 @@
 '''
 import logging
 from typing import List
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, PickleType
+from sqlalchemy import (
+    Column, ForeignKey, Integer, String, DateTime, Text, PickleType
+)
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
 )
@@ -33,7 +35,7 @@ from ace.typing import BUILTINS, SemType, TypeUse
 
 LOGGER = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 13
+CURRENT_SCHEMA_VERSION = 14
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -97,7 +99,7 @@ class TypeUseMixin:
     typeobj = Column(PickleType)
     ''' An object derived from the :cls:`SemType` class. '''
 
-    def typeobj_bound(self, adm:'AdmFile') -> SemType:
+    def typeobj_bound(self, adm:'AdmModule') -> SemType:
         ''' Bind references to external BaseType objects from type names.
 
         :return: The :ivar:`typeobj` with all type references bound.
@@ -116,9 +118,9 @@ class TypeUseMixin:
                 if obj.type_ns is None:
                     # Search own ADM first, then built-ins
                     found = (
-                        db_sess.query(Typedef).join(AdmFile)
+                        db_sess.query(Typedef).join(AdmModule)
                         .filter(
-                            Typedef.admfile == adm,
+                            Typedef.module == adm,
                             Typedef.norm_name == obj.type_name
                         )
                     ).one_or_none()
@@ -131,9 +133,9 @@ class TypeUseMixin:
                         badtype.add(obj.type_name)
                 else:
                     other_adm = (
-                        db_sess.query(AdmFile)
+                        db_sess.query(AdmModule)
                         .filter(
-                            AdmFile.norm_name == obj.type_ns
+                            AdmModule.norm_name == obj.type_ns
                         )
                     ).one_or_none()
                     if other_adm is None:
@@ -141,9 +143,9 @@ class TypeUseMixin:
                         return
 
                     found = (
-                        db_sess.query(Typedef).join(AdmFile)
+                        db_sess.query(Typedef).join(AdmModule)
                         .filter(
-                            Typedef.admfile == other_adm,
+                            Typedef.module == other_adm,
                             Typedef.norm_name == obj.type_name
                         )
                     ).one_or_none()
@@ -194,16 +196,37 @@ class TypeNameItem(Base, TypeUseMixin):
     ''' Arbitrary optional text '''
 
 
-class AdmFile(Base):
-    ''' The ADM file itself and its source (filesystem) metadata '''
-    __tablename__ = "admfile"
+class AdmSource(Base):
+    ''' The original ADM file content and metadata from a successful load. '''
+    __tablename__ = 'adm_source'
 
-    # Unique ID of the row
     id = Column(Integer, primary_key=True)
-    # Fully resolved path from which the ADM was loaded
+    ''' Unique ID of the row '''
+
+    module = relationship('AdmModule')
+    ''' Derived ADM module content '''
+
     abs_file_path = Column(String)
-    # Modified Time from the source file
+    ''' Fully resolved path from which the ADM was loaded '''
     last_modified = Column(DateTime)
+    ''' Modified Time from the source file '''
+
+    file_text = Column(Text)
+    ''' Cached full file content. '''
+
+
+class AdmModule(Base):
+    ''' The ADM itself with relations to its attributes and objects '''
+    __tablename__ = "adm_module"
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
+    source_id = Column(Integer, ForeignKey('adm_source.id'))
+    source = relationship(
+        "AdmSource",
+        back_populates='module',
+        cascade="all, delete"
+    )
 
     # Normalized ADM name (for searching)
     name = Column(String)
@@ -220,52 +243,52 @@ class AdmFile(Base):
 
     revisions = relationship(
         "AdmRevision",
-        back_populates="admfile",
+        back_populates="module",
         order_by='asc(AdmRevision.position)',
         cascade="all, delete"
     )
 
     imports = relationship(
         "AdmImport",
-        back_populates="admfile",
+        back_populates="module",
         order_by='asc(AdmImport.position)',
         cascade="all, delete"
     )
     feature = relationship(
         "Feature",
-        back_populates="admfile",
+        back_populates="module",
         order_by='asc(Feature.position)',
         cascade="all, delete"
     )
 
     # references a list of contained objects
     typedef = relationship("Typedef",
-                           back_populates="admfile",
+                           back_populates="module",
                            order_by='asc(Typedef.position)',
                            cascade="all, delete")
     const = relationship("Const",
-                         back_populates="admfile",
+                         back_populates="module",
                          order_by='asc(Const.position)',
                          cascade="all, delete")
     ctrl = relationship("Ctrl",
-                        back_populates="admfile",
+                        back_populates="module",
                          order_by='asc(Ctrl.position)',
                         cascade="all, delete")
     edd = relationship("Edd",
-                       back_populates="admfile",
+                       back_populates="module",
                        order_by='asc(Edd.position)',
                        cascade="all, delete")
     oper = relationship("Oper",
-                        back_populates="admfile",
+                        back_populates="module",
                         order_by='asc(Oper.position)',
                         cascade="all, delete")
     var = relationship("Var",
-                       back_populates="admfile",
+                       back_populates="module",
                        order_by='asc(Var.position)',
                        cascade="all, delete")
 
     def __repr__(self):
-        repr_attrs = ('id', 'norm_name', 'abs_file_path', 'last_modified')
+        repr_attrs = ('id', 'norm_name')
         parts = [f"{attr}={getattr(self, attr)}" for attr in repr_attrs]
         return "ADM(" + ', '.join(parts) + ")"
 
@@ -275,9 +298,9 @@ class AdmRevision(Base, CommonMixin):
     __tablename__ = "adm_revision"
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="revisions")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="revisions")
     # ordinal of this item in the list
     position = Column(Integer)
 
@@ -290,9 +313,9 @@ class AdmImport(Base, CommonMixin):
     __tablename__ = "adm_import"
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="imports")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="imports")
     # ordinal of this item in the list
     position = Column(Integer)
 
@@ -308,9 +331,9 @@ class Feature(Base, CommonMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="feature")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="feature")
     # ordinal of this item in the module
     position = Column(Integer)
 
@@ -360,9 +383,9 @@ class Typedef(Base, AdmObjMixin, TypeUseMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="typedef")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="typedef")
 
 
 class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
@@ -371,9 +394,9 @@ class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="edd")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="edd")
 
 
 class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
@@ -382,9 +405,9 @@ class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="const")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="const")
 
     init_value = Column(String)
     ''' The initial and constant value as text ARI '''
@@ -396,9 +419,9 @@ class Ctrl(Base, AdmObjMixin, ParamMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="ctrl")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="ctrl")
 
     result_id = Column(Integer, ForeignKey("typename_item.id"))
     result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
@@ -411,9 +434,9 @@ class Oper(Base, AdmObjMixin, ParamMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="oper")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="oper")
 
     operands_id = Column(Integer, ForeignKey('typename_list.id'), nullable=False)
     operands = relationship("TypeNameList",
@@ -430,9 +453,9 @@ class Var(Base, AdmObjMixin, TypeUseMixin):
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
     # ID of the file from which this came
-    admfile_id = Column(Integer, ForeignKey("admfile.id"))
-    # Relationship to the :class:`AdmFile`
-    admfile = relationship("AdmFile", back_populates="var")
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="var")
 
     init_value = Column(String)
     ''' The initial and constant value as text ARI '''

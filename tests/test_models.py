@@ -42,15 +42,19 @@ class TestModels(unittest.TestCase):
         self._db_eng = None
 
     def test_simple(self):
-        self._db_sess.add(models.AdmFile(
+        src = models.AdmSource(
             abs_file_path='hi',
+        )
+        mod = models.AdmModule(
+            source=src,
             norm_name='hi',
             enum=10,
             metadata_list=models.MetadataList(),
-        ))
+        )
+        self._db_sess.add_all([src, mod])
         self._db_sess.commit()
 
-        objs = self._db_sess.query(models.AdmFile)
+        objs = self._db_sess.query(models.AdmModule)
         self.assertEqual(1, objs.count())
         adm = objs.first()
-        self.assertEqual('hi', adm.abs_file_path)
+        self.assertEqual('hi', adm.source.abs_file_path)
