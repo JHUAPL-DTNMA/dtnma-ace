@@ -39,3 +39,27 @@ class TmpDir:
 
     def __del__(self):
         self._dir.cleanup()
+
+
+from dataclasses import dataclass
+from ace import typing
+
+
+@dataclass
+class TypeSummary:
+
+    type:type
+    detail:object = None
+
+    @staticmethod
+    def from_type(obj:typing.BaseType):
+        summary = TypeSummary(type=type(obj))
+        if isinstance(obj, typing.BuiltInType):
+            summary.detail = obj.type_id
+        elif isinstance(obj, typing.TypeUse):
+            name = obj.type_name
+            if obj.type_ns is not None:
+                name.insert(0, obj.type_ns + ':')
+            summary.detail = name
+
+        return summary

@@ -25,12 +25,33 @@ import io
 import logging
 import os
 import unittest
+import portion
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from ace import adm_yang, models
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
+
+
+class TestAdmYangHelpers(unittest.TestCase):
+
+    RANGES = (
+        ('5', portion.singleton(5)),
+        ('5..20', portion.closed(5, 20)),
+        ('5..20 | 30..50', portion.closed(5, 20) | portion.closed(30, 50)),
+        ('min..10', portion.closed(float('-inf'), 10)),
+        # normalizing
+        ('5..20 | 10..30', portion.closed(5, 30)),
+    )
+
+    def test_range_from_text(self):
+        for row in self.RANGES:
+            with self.subTest(f'{row}'):
+                text, expect = row
+
+                got = adm_yang.range_from_text(text)
+                self.assertEqual(expect, got)
 
 
 class TestAdmYang(unittest.TestCase):

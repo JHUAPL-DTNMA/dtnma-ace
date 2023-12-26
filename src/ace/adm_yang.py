@@ -27,7 +27,8 @@ import io
 import logging
 import optparse
 import os
-from typing import TextIO, List
+from typing import TextIO
+import portion
 import pyang.plugin
 import pyang.context
 import pyang.repository
@@ -36,6 +37,7 @@ import pyang.translators.yang
 from ace import ari_text
 from ace.ari import ARI, ReferenceARI
 from ace.typing import (
+    Length, Pattern, Range,
     SemType, TypeUse, TypeUnion, UniformList, TableTemplate, TableColumn
 )
 from ace.models import (
@@ -88,6 +90,26 @@ def search_all_exp(stmt, kywd):
 
     subs = getattr(stmt, 'i_children', None)
     return stmt.search(kywd, children=subs)
+
+
+def range_from_text(text) -> portion.Interval:
+    ''' Parse a YANG "range" statement argument.
+    '''
+    parts = [part.strip() for part in text.split('|')]
+
+    ranges = portion.Interval()
+    for part in parts:
+        if '..' in part:
+            lower, upper = part.split('..', 2)
+            if lower == 'min':
+                lower = -float('inf')
+            if upper == 'max':
+                upper = float('inf')
+            ranges |= portion.closed(float(lower), float(upper))
+        else:
+            ranges |= portion.singleton(float(part))
+
+    return ranges
 
 
 class EmptyRepos(pyang.repository.Repository):
@@ -161,8 +183,9 @@ class Decoder:
     def _check_ari(self, ari:ARI):
         ''' Verify ARI references only imported modules. '''
         if isinstance(ari, ReferenceARI):
-            if ari.ident.ns_id is not None and ari.ident.ns_id not in self._module.i_prefixes:
-                raise ValueError(f'ARI references module {ari.ident} that is not imported')
+            imports = [mod[0] for mod in self._module.i_prefixes.values()]
+            if ari.ident.ns_id is not None and ari.ident.ns_id not in imports:
+                raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
 
     def _get_namespace(self, text):
         ''' Resolve a possibly qualified identifier into a module name and statement name.
@@ -172,8 +195,6 @@ class Decoder:
             # resolve yang prefix to module name
             stmt_ns = self._module.i_prefixes[adm_prefix][0]  # Just the module name, not revision
             stmt_ns = normalize_ident(stmt_ns)
-            if stmt_ns == self._module.arg:
-                stmt_ns = None
             stmt_name = normalize_ident(stmt_name)
         else:
             stmt_ns = None
@@ -193,11 +214,16 @@ class Decoder:
             if rfn.keyword == 'units':
                 typeobj.units = rfn.arg.strip()
             elif rfn.keyword == 'length':
-                pass  # FIXME
+                typeobj.constraints.append(Length(
+                    limit=int(rfn.arg)
+                ))
             elif rfn.keyword == 'pattern':
-                pass  # FIXME
+                typeobj.constraints.append(Pattern(
+                    pattern=rfn.arg,
+                ))
             elif rfn.keyword == 'range':
-                pass  # FIXME
+                ranges = range_from_text(rfn.arg)
+                typeobj.constraints.append(Range(ranges=ranges))
 
         return typeobj
 
@@ -244,18 +270,17 @@ class Decoder:
         return typeobj
 
     def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = TypeUnion()
-
         found_type_stmts = [
             type_stmt for type_stmt in stmt.substmts
             if type_stmt.keyword in self._type_handlers
         ]
 
+        types = []
         for type_stmt in found_type_stmts:
             subtype = self._type_handlers[type_stmt.keyword](type_stmt)
-            typeobj.types.append(subtype)
+            types.append(subtype)
 
-        return typeobj
+        return TypeUnion(types=tuple(types))
 
     def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
@@ -299,6 +324,9 @@ class Decoder:
                     name=param_stmt.arg,
                     typeobj=self._get_typeobj(param_stmt)
                 )
+                def_stmt = search_one_exp(param_stmt, (AMM_MOD, 'default'))
+                if def_stmt:
+                    item.default_value = def_stmt.arg
                 orm_val.items.append(item)
 
             obj.parameters = orm_val
@@ -394,7 +422,8 @@ class Decoder:
         for p in pyang.plugin.plugins:
             p.post_validate_ctx(self._ctx, modules)
 
-        self._ctx.errors.sort(key=lambda e: (e[0].ref, e[0].line))
+        # LOGGER.debug('errors: %s', [(e[0].ref, e[0].line) for e in self._ctx.errors])
+        self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
             elevel = pyang.error.err_level(etag)
             if pyang.error.is_warning(elevel):
@@ -573,6 +602,8 @@ class Encoder:
             for param in obj.parameters.items:
                 param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
                 self._put_typeuse(param, param_stmt)
+                if param.default_value:
+                    self._add_substmt(param_stmt, (AMM_MOD, 'default'), param.default_value)
 
         if issubclass(cls, TypeUseMixin):
             self._put_typeuse(obj, obj_stmt)

@@ -5,6 +5,7 @@ import unittest
 import portion
 from ace.typing import *
 from ace.ari import LiteralARI, ReferenceARI, UNDEFINED, NULL, TRUE, FALSE
+from util import TypeSummary
 
 LOGGER = logging.getLogger(__name__)
 
@@ -297,3 +298,43 @@ class TestTyping(unittest.TestCase):
             ],
         ])
         self.assertEqual(outarray, got.value)
+
+    TYPE_WALK = (
+        (
+            BUILTINS['int'],
+            [
+                TypeSummary(NumericType, StructType.INT),
+            ]
+        ),
+        (
+            TypeUnion(types=[BUILTINS['bool'], BUILTINS['null']]),
+            [
+                TypeSummary(TypeUnion, None),
+                TypeSummary(BoolType, StructType.BOOL),
+                TypeSummary(NullType, StructType.NULL),
+            ]
+        ),
+        (
+            TableTemplate(columns=[
+                TableColumn(name='one', type=BUILTINS['int']),
+                TableColumn(name='two', type=BUILTINS['textstr']),
+                TableColumn(name='three', type=BUILTINS['bool']),
+            ]),
+            [
+                TypeSummary(TableTemplate, None),
+                TypeSummary(NumericType, StructType.INT),
+                TypeSummary(StringType, StructType.TEXTSTR),
+                TypeSummary(BoolType, StructType.BOOL),
+            ]
+        ),
+    )
+
+    def test_type_walk(self):
+        for row in self.TYPE_WALK:
+            with self.subTest(f'{row}'):
+                root, expect = row
+                got = [
+                    TypeSummary.from_type(obj)
+                    for obj in type_walk(root)
+                ]
+                self.assertEqual(expect, got)

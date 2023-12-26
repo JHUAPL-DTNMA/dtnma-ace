@@ -21,6 +21,7 @@
 #
 ''' ORM models for the ADM and its contents.
 '''
+import copy
 import logging
 from typing import List
 from sqlalchemy import (
@@ -31,7 +32,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.orm.session import object_session
 from sqlalchemy.ext.orderinglist import ordering_list
-from ace.typing import BUILTINS, SemType, TypeUse
+from .typing import type_walk
 
 LOGGER = logging.getLogger(__name__)
 
@@ -87,80 +88,132 @@ class MetadataList(Base):
     )
 
 
-class TypeBindingError(RuntimeError):
+class TypeUseMixin:
+    ''' Common attributes for containing a :class:`typing` instance. '''
+    typeobj = Column(PickleType)
+    ''' An object derived from the :cls:`SemType` class. '''
+
+
+from typing import Callable
+from ace.typing import BUILTINS, BaseType, SemType, TypeUse
+
+
+class TypeResolverError(RuntimeError):
 
     def __init__(self, msg:str, badtypes:List):
         super().__init__(msg)
         self.badtypes = badtypes
 
 
-class TypeUseMixin:
-    ''' Common attributes for containing a :class:`typing` instance. '''
-    typeobj = Column(PickleType)
-    ''' An object derived from the :cls:`SemType` class. '''
+class TypeResolver:
+    ''' A caching recursive type resolver.
+    '''
 
-    def typeobj_bound(self, adm:'AdmModule') -> SemType:
+    def __init__(self):
+        self._cache = dict()
+        self._badtypes = None
+        self._db_sess = None
+
+    def resolve(self, typeobj:SemType, adm:'AdmModule') -> SemType:
         ''' Bind references to external BaseType objects from type names.
+        This function is not reentrant.
 
+        :param typeobj: The original unbound type object (and any children).
         :return: The :ivar:`typeobj` with all type references bound.
-        :raise TypeBindingError: If any required types are missing.
+        :raise TypeResolverError: If any required types are missing.
         '''
-        typeobj = self.typeobj
         if typeobj is None:
             return None
 
-        db_sess = object_session(self)
-        badtype = set()
+        self._badtypes = set()
+        self._db_sess = object_session(adm)
+        LOGGER.debug('Resolver started')
+        visitor = self._get_visitor(adm)
+        for sub_obj in type_walk(typeobj):
+            visitor(sub_obj)
+        LOGGER.debug('Resolver finished with %d bad', len(self._badtypes))
+        if self._badtypes:
+            raise TypeResolverError(f'Missing types to bind to: {self._badtypes}', self._badtypes)
 
-        def visitor(obj):
+        self._badtypes = None
+        self._db_sess = None
+        return typeobj
+
+    def _get_visitor(self, adm:'AdmModule') -> Callable:
+
+        def visitor(obj:'BaseType'):
             ''' Check cross-referenced type names. '''
+            basetypeobj = None
+            typedef = None
             if isinstance(obj, TypeUse):
-                if obj.type_ns is None:
+                if obj.base is not None:
+                    # already bound, nothing to do
+                    return
+
+                LOGGER.debug('type search for %s:%s', obj.type_ns, obj.type_name)
+                if obj.type_ns is None or obj.type_ns == adm.norm_name:
                     # Search own ADM first, then built-ins
                     found = (
-                        db_sess.query(Typedef).join(AdmModule)
+                        self._db_sess.query(Typedef).join(AdmModule)
                         .filter(
                             Typedef.module == adm,
                             Typedef.norm_name == obj.type_name
                         )
                     ).one_or_none()
-                    if found:
-                        # recursive binding
-                        obj.base = found.typeobj_bound(adm)
-                    elif obj.type_name in BUILTINS:
-                        obj.base = BUILTINS[obj.type_name]
+                    if found is not None:
+                        typedef = found
+                    elif obj.type_ns is None and obj.type_name in BUILTINS:
+                        basetypeobj = BUILTINS[obj.type_name]
                     else:
-                        badtype.add(obj.type_name)
+                        self._badtypes.add(obj.type_name)
                 else:
                     other_adm = (
-                        db_sess.query(AdmModule)
+                        self._db_sess.query(AdmModule)
                         .filter(
                             AdmModule.norm_name == obj.type_ns
                         )
                     ).one_or_none()
                     if other_adm is None:
-                        badtype.add((obj.type_ns, obj.type_name))
-                        return
+                        found = None
+                    else:
+                        found = (
+                            self._db_sess.query(Typedef).join(AdmModule)
+                            .filter(
+                                Typedef.module == other_adm,
+                                Typedef.norm_name == obj.type_name
+                            )
+                        ).one_or_none()
+                    if found is not None:
+                        typedef = found
+                    else:
+                        self._badtypes.add((obj.type_ns, obj.type_name))
 
-                    found = (
-                        db_sess.query(Typedef).join(AdmModule)
-                        .filter(
-                            Typedef.module == other_adm,
-                            Typedef.norm_name == obj.type_name
-                        )
-                    ).one_or_none()
-                    if found is None:
-                        badtype.add((obj.type_ns, obj.type_name))
+                if basetypeobj:
+                    obj.base = basetypeobj
+                elif typedef:
+                    key = (typedef.module.norm_name, typedef.norm_name)
+                    cached = self._cache.get(key)
+                    if cached:
+                        obj.base = cached
                     else:
                         # recursive binding
-                        obj.base = found.typeobj_bound(other_adm)
-                LOGGER.debug('bound %s:%s as %s', obj.type_ns, obj.type_name, obj.base)
+                        LOGGER.debug('recurse %s to %s %s', typedef.norm_name, typedef.module_id, adm.id)
+                        if typedef.module_id == adm.id:
+                            subvisitor = visitor
+                        else:
+                            subvisitor = self._get_visitor(typedef.module)
 
-        typeobj.visit(visitor)
-        if badtype:
-            raise TypeBindingError(f'Missing types to bind to: {badtype}', badtype)
+                        typeobj = copy.copy(typedef.typeobj)
+                        LOGGER.debug('recurse binding %s for %s', typedef.norm_name, typeobj)
+                        for sub_obj in type_walk(typeobj):
+                            subvisitor(sub_obj)
 
-        return typeobj
+                        obj.base = typeobj
+                        self._cache[key] = typeobj
+
+                LOGGER.debug('result for %s:%s bound %s', obj.type_ns, obj.type_name, obj.base)
+
+        return visitor
 
 
 class TypeNameList(Base):
@@ -194,6 +247,9 @@ class TypeNameItem(Base, TypeUseMixin):
     ''' Unique name for the item, the type comes from :class:`TypeUseMixin` '''
     description = Column(String)
     ''' Arbitrary optional text '''
+
+    default_value = Column(String)
+    ''' Optional default value for parameter as text ARI. '''
 
 
 class AdmSource(Base):

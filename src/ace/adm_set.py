@@ -25,7 +25,7 @@ a cache database.
 import logging
 import os
 from typing import BinaryIO, List, Optional, Set
-from pyang.repository import Repository, FileRepository
+from pyang.repository import Repository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 import xdg_base_dirs
@@ -40,7 +40,7 @@ class DbRepository(Repository):
         self._db_sess = db_sess
         self._file_entries = file_entries or []
 
-    def get_modules_and_revisions(self, ctx):
+    def get_modules_and_revisions(self, _ctx):
         found = self._db_sess.query(models.AdmModule)
 
         result = []
@@ -59,12 +59,15 @@ class DbRepository(Repository):
     def get_module_from_handle(self, handle):
         if isinstance(handle[1], int):
             found = (
-                self._db_sess.query(models.AdmSource.file_text)
+                self._db_sess.query(
+                    models.AdmSource.abs_file_path,
+                    models.AdmSource.file_text
+                )
                     .filter(models.AdmSource.id == handle[1])
                     .one()
             )
             file_text = found.file_text
-            return (handle, 'yang', file_text)
+            return (found.abs_file_path, 'yang', file_text)
         elif isinstance(handle[1], str):
             with os.open(handle[1], 'r') as infile:
                 file_text = infile.read()

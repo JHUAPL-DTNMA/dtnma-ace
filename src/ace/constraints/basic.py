@@ -172,8 +172,8 @@ class valid_type_name:  # pylint: disable=invalid-name
         LOGGER.debug('Checking object %s type %s', top_obj.norm_name, typeobj)
 
         try:
-            ctr.typeobj_bound(adm)
-        except models.TypeBindingError as err:
+            models.TypeResolver().resolve(ctr.typeobj, adm)
+        except models.TypeResolverError as err:
             issuelist.append(Issue(
                 obj=top_obj,
                 detail=(

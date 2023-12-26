@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 import datetime
 import logging
 import math
-from typing import Callable, List, Optional, Set
+import re
+from typing import Callable, List, Optional, Set, Tuple, Iterator
 import numpy
 from portion import Interval
 from .ari import (
@@ -51,6 +52,25 @@ class Length(Constraint):
 
 
 @dataclass
+class Pattern(Constraint):
+    ''' Limit the content of text string values.
+    '''
+
+    pattern:str
+    ''' The regular expression pattern. '''
+
+    def applicable(self) -> Set[StructType]:
+        return set([StructType.TEXTSTR])
+
+    def is_valid(self, obj:ARI) -> bool:
+        if isinstance(obj.value, (str, bytes)):
+            got = re.fullmatch(self.pattern, obj.value)
+            return got is not None
+        else:
+            raise TypeError(f'limit cannot be applied to {obj}')
+
+
+@dataclass
 class Range(Constraint):
     ''' Limit the range of numeric values.
     '''
@@ -80,15 +100,14 @@ class BaseType:
     ''' Base interface class for all type-defining classes.
     '''
 
-    def visit(self, visitor:Callable[['BaseType'], None]):
-        ''' Call a visitor on each type in a hierarchy of nested uses.
+    def children(self) -> List['BaseType']:
+        ''' Get the set of child types under this type object.
 
-        The base type calls the visitor on itself, so only composing types
-        need to override this function.
+        The base type returns an empty list.
 
-        :param visitor: The callable visitor for each type object.
+        :return: Any child type objects.
         '''
-        visitor(self)
+        return []
 
     def type_ids(self) -> Set[StructType]:
         ''' Extract the set of ARI types available for this type. '''
@@ -469,7 +488,7 @@ class TypeUse(SemType):
     ''' Use of and optional restriction on an other type. '''
 
     type_ns:Optional[str] = None
-    ''' Namespace of the base type, or None if a built-in type. '''
+    ''' Module-name of the base type, or None if a built-in type. '''
     type_name:Optional[str] = None
     ''' Name of the :ivar:`base` type to bind to, or None. '''
 
@@ -482,10 +501,11 @@ class TypeUse(SemType):
     constraints:List[Constraint] = field(default_factory=list)
     ''' Optional value constraints on this use. '''
 
-    def visit(self, visitor:Callable[['BaseType'], None]):
+    def children(self) -> List['BaseType']:
         if self.base:
-            visitor(self.base)
-        super().visit(visitor)
+            return [self.base]
+        else:
+            return []
 
     def type_ids(self) -> Set[StructType]:
         return self.base.type_ids()
@@ -496,7 +516,8 @@ class TypeUse(SemType):
         if got is not None:
             invalid = self._constrain(got)
             if invalid:
-                LOGGER.debug('TypeUse.get() invalid constraints: %s', invalid)
+                err = ', '.join(invalid)
+                LOGGER.debug('TypeUse.get() invalid constraints: %s', err)
                 return None
         return got
 
@@ -506,34 +527,33 @@ class TypeUse(SemType):
         got = self.base.convert(obj)
         invalid = self._constrain(got)
         if invalid:
-            raise ValueError(f'TypeUse.convert() invalid constraints: {invalid}')
+            err = ', '.join(invalid)
+            raise ValueError(f'TypeUse.convert() invalid constraints: {err}')
         return got
 
-    def _constrain(self, obj):
+    def _constrain(self, obj:ARI) -> List[str]:
         ''' Check constraints on a value.
 
         :param obj: The value to check.
         :return: A list of violated constraints.
         '''
         invalid = [
-            con
+            str(con)
             for con in self.constraints
             if not con.is_valid(obj)
         ]
         return invalid
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class TypeUnion(SemType):
     ''' A union of other types. '''
 
-    types:List[SemType] = field(default_factory=list)
+    types:Tuple[SemType] = field(default_factory=tuple)
     ''' The underlying types, with significant order. '''
 
-    def visit(self, visitor:Callable[['BaseType'], None]):
-        for typ in self.types:
-            typ.visit(visitor)
-        super().visit(visitor)
+    def children(self) -> List['BaseType']:
+        return [typ for typ in self.types]
 
     def type_ids(self) -> Set[StructType]:
         # set constructor will de-duplicate
@@ -574,11 +594,16 @@ class UniformList(SemType):
     type:SemType
     ''' Type for all items. '''
 
-    # FIXME list size limits?
+    min_elements:Optional[int] = None
+    ''' Lower limit on the size of the list. '''
+    max_elements:Optional[int] = None
+    ''' Upper limit on the size of the list. '''
 
-    def visit(self, visitor:Callable[['BaseType'], None]):
-        self.type.visit(visitor)
-        super().visit(visitor)
+    def children(self) -> List['BaseType']:
+        if self.type:
+            return [self.type]
+        else:
+            return []
 
     def type_ids(self) -> Set[StructType]:
         # only one value type is valid
@@ -590,6 +615,12 @@ class UniformList(SemType):
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id != StructType.AC:
+            return None
+
+        invalid = self._constrain(obj)
+        if invalid:
+            err = ', '.join(invalid)
+            LOGGER.debug('UniformList.get() invalid constraints: %s', err)
             return None
 
         for val in obj.value:
@@ -608,11 +639,26 @@ class UniformList(SemType):
         if obj.type_id != StructType.AC:
             raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
 
+        invalid = self._constrain(obj)
+        if invalid:
+            err = ', '.join(invalid)
+            raise ValueError(f'UniformList.convert() invalid constraints: {err}')
+
         rval = []
         for ival in obj.value:
             rval.append(self.type.convert(ival))
 
         return LiteralARI(rval, StructType.AC)
+
+    def _constrain(self, obj:ARI) -> List[str]:
+        ''' Check constraints on the list.
+        '''
+        invalid = []
+        if self.min_elements is not None and len(obj.value) < self.min_elements:
+            invalid.append(f'Size of list is smaller than the minimum of {self.min_elements}')
+        if self.max_elements is not None and len(obj.value) < self.max_elements:
+            invalid.append(f'Size of list is larger than the maximum of {self.max_elements}')
+        return invalid
 
 
 @dataclass
@@ -637,10 +683,8 @@ class TableTemplate(SemType):
     unique:List[List[str]] = field(default_factory=list)
     ''' Names of unique column tuples. '''
 
-    def visit(self, visitor:Callable[['BaseType'], None]):
-        for col in self.columns:
-            col.type.visit(visitor)
-        super().visit(visitor)
+    def children(self) -> List['BaseType']:
+        return [col.type for col in self.columns]
 
     def type_ids(self) -> Set[StructType]:
         # only one value type is valid
@@ -696,3 +740,26 @@ class TableTemplate(SemType):
 
         return LiteralARI(rval, StructType.TBL)
 
+
+def type_walk(root:BaseType) -> Iterator:
+    ''' Walk all type objects in a tree,
+    ignoring duplicates in cases of circular references.
+
+    :param root: The starting type to walk.
+    :return: an iterator over all unique type objects.
+    '''
+
+    seen = set()
+
+    def walk(typeobj:BaseType) -> None:
+        if id(typeobj) in seen:
+            LOGGER.warning('type_walk() already seen %s', typeobj)
+            return
+
+        seen.add(id(typeobj))
+        yield typeobj
+
+        for child in typeobj.children():
+            yield from walk(child)
+
+    yield from walk(root)
