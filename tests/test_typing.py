@@ -212,11 +212,237 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(TRUE, typ.convert(LiteralARI(123)))
         self.assertEqual(FALSE, typ.convert(LiteralARI(0)))
 
+    def test_ulist_get(self):
+        typ = UniformList(
+            base=BUILTINS['textstr'],
+            min_elements=1,
+            max_elements=3,
+        )
+
+        self.assertIsNone(typ.get(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi')
+            ]),
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi')
+            ]))
+        )
+        self.assertIsNotNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('one'),
+                LiteralARI('two'),
+                LiteralARI('three'),
+            ]))
+        )
+        # non-matching types
+        self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(123)))
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123)
+            ]))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[]))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('one'),
+                LiteralARI('two'),
+                LiteralARI('three'),
+                LiteralARI('four'),
+            ]))
+        )
+
+    def test_ulist_convert(self):
+        typ = UniformList(
+            base=BUILTINS['textstr'],
+            min_elements=1,
+            max_elements=3,
+        )
+
+        self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi', StructType.TEXTSTR)
+            ]),
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi')
+            ]))
+        )
+        with self.assertRaises(ValueError):
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('one'),
+                LiteralARI('two'),
+                LiteralARI('three'),
+                LiteralARI('four'),
+            ]))
+
+    def test_dlist_get(self):
+        typ = DiverseList(parts=[
+            BUILTINS['int'],
+            DiverseSeq(
+                base=BUILTINS['textstr'],
+                min_elements=0,
+                max_elements=1,
+            )
+        ])
+
+        self.assertIsNone(typ.get(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123)
+            ]),
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123)
+            ]))
+        )
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123),
+                LiteralARI('hi'),
+            ]),
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123),
+                LiteralARI('hi'),
+            ]))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[]))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi')
+            ]))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123),
+                LiteralARI('hi'),
+                LiteralARI('hi'),
+            ]))
+        )
+
+    def test_dlist_convert(self):
+        typ = DiverseList(parts=[
+            BUILTINS['int'],
+            DiverseSeq(
+                base=BUILTINS['textstr'],
+                min_elements=0,
+                max_elements=1,
+            )
+        ])
+
+        self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123, StructType.INT)
+            ]),
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123)
+            ]))
+        )
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123, StructType.INT),
+                LiteralARI('hi', StructType.TEXTSTR),
+            ]),
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123),
+                LiteralARI('hi'),
+            ]))
+        )
+        with self.assertRaises(ValueError):
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[]))
+        with self.assertRaises(ValueError):
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI('hi'),
+            ]))
+        with self.assertRaises(ValueError):
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[
+                LiteralARI(123),
+                LiteralARI('hi'),
+                LiteralARI('hi'),
+            ]))
+
+    def test_umap_get(self):
+        typ = UniformMap(
+            kbase=BUILTINS['uint'],
+            vbase=BUILTINS['textstr'],
+        )
+
+        self.assertIsNone(typ.get(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AM, value={}),
+            typ.get(LiteralARI(type_id=StructType.AM, value={}))
+        )
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI('hi')
+            }),
+            typ.get(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI('hi')
+            }))
+        )
+        self.assertIsNotNone(
+            typ.get(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(1): LiteralARI('one'),
+                LiteralARI(2): LiteralARI('two'),
+                LiteralARI(3): LiteralARI('three'),
+            }))
+        )
+        # non-matching types
+        self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(123)))
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI(123),
+            }))
+        )
+        self.assertIsNone(
+            typ.get(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI('hi'): LiteralARI('hello'),
+            }))
+        )
+
+    def test_umap_convert(self):
+        typ = UniformMap(
+            kbase=BUILTINS['uint'],
+            vbase=BUILTINS['textstr'],
+        )
+
+        self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
+
+        self.assertEqual(
+            LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI('hi', StructType.TEXTSTR)
+            }),
+            typ.convert(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI('hi')
+            }))
+        )
+        with self.assertRaises(TypeError):
+            typ.convert(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI(3): LiteralARI(123),
+            }))
+        with self.assertRaises(ValueError):
+            typ.convert(LiteralARI(type_id=StructType.AM, value={
+                LiteralARI('hi'): LiteralARI('hello'),
+            }))
+
     def test_tblt_get(self):
         typ = TableTemplate(columns=[
-            TableColumn(name='one', type=BUILTINS['int']),
-            TableColumn(name='two', type=BUILTINS['textstr']),
-            TableColumn(name='three', type=BUILTINS['bool']),
+            TableColumn(name='one', base=BUILTINS['int']),
+            TableColumn(name='two', base=BUILTINS['textstr']),
+            TableColumn(name='three', base=BUILTINS['bool']),
         ])
 
         self.assertIsNone(typ.get(NULL))
@@ -260,9 +486,9 @@ class TestTyping(unittest.TestCase):
 
     def test_tblt_convert(self):
         typ = TableTemplate(columns=[
-            TableColumn(name='one', type=BUILTINS['int']),
-            TableColumn(name='two', type=BUILTINS['textstr']),
-            TableColumn(name='three', type=BUILTINS['bool']),
+            TableColumn(name='one', base=BUILTINS['int']),
+            TableColumn(name='two', base=BUILTINS['textstr']),
+            TableColumn(name='three', base=BUILTINS['bool']),
         ])
 
         inarray = Table.from_rows([
@@ -316,9 +542,9 @@ class TestTyping(unittest.TestCase):
         ),
         (
             TableTemplate(columns=[
-                TableColumn(name='one', type=BUILTINS['int']),
-                TableColumn(name='two', type=BUILTINS['textstr']),
-                TableColumn(name='three', type=BUILTINS['bool']),
+                TableColumn(name='one', base=BUILTINS['int']),
+                TableColumn(name='two', base=BUILTINS['textstr']),
+                TableColumn(name='three', base=BUILTINS['bool']),
             ]),
             [
                 TypeSummary(TableTemplate, None),

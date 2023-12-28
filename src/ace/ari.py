@@ -89,8 +89,9 @@ class ReportSet:
 
 @enum.unique
 class StructType(enum.IntEnum):
-    ''' The enumeration of ADM data types from Section 10.3 of ARI draft.
+    ''' The enumeration of ARI value types from Section 10.3 of ARI draft.
     '''
+    LITERAL = 255
     # Primitive types
     NULL = 0
     BOOL = 1
@@ -108,7 +109,7 @@ class StructType(enum.IntEnum):
     TD = 13
     LABEL = 14
     CBOR = 15
-    LITTYPE = 16
+    ARITYPE = 16
     # ARI containers
     AC = 17
     AM = 18
@@ -117,6 +118,7 @@ class StructType(enum.IntEnum):
     EXECSET = 20
     RPTSET = 21
 
+    OBJECT = -256
     # AMM object types
     TYPEDEF = -12
     CONST = -2
@@ -126,13 +128,6 @@ class StructType(enum.IntEnum):
     OPER = -6
     SBR = -8
     TBR = -10
-
-
-LITERAL_TYPES = {
-    typ for typ in StructType
-    if typ.value >= 0
-}
-''' All literal types. '''
 
 
 class ARI:

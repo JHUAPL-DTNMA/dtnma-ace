@@ -28,7 +28,7 @@ from ace.ari import (
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
-from ace.typing import LITERALS_BY_ENUM
+from ace.typing import BUILTINS_BY_ENUM
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
@@ -125,7 +125,7 @@ def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
     nonce = util.NONCE(p[3].get('n', 'null'))
     rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
-    ref_time = LITERALS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
+    ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time.value,
@@ -147,7 +147,7 @@ def p_reportlist_end(p):
 def p_report(p):
     'report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN'
     rawtime = util.TYPEDLIT[StructType.TD](p[4])
-    rel_time = LITERALS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
+    rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
 
@@ -168,7 +168,7 @@ def p_typedlit_single(p):
         raise RuntimeError(err) from err
 
     try:
-        p[0] = LITERALS_BY_ENUM[typ].convert(LiteralARI(
+        p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(
             type_id=typ,
             value=value
         ))

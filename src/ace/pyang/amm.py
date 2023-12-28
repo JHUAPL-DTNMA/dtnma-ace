@@ -16,7 +16,7 @@ MODULE_PREFIX = 'amm'
 @dataclass
 class Ext:
     ''' Define an extension schema.
-    
+
     :param keyword: Keyword name.
     :param occurrence: Occurrence flag
     :param typename: Argument type name (or None)
@@ -100,30 +100,62 @@ MODULE_EXTENSIONS = (
         ],
     ),
     Ext('ulist', None,
-        subs=[
-            ((MODULE_NAME, 'type'), '1'),
-            ('min-elements', '?'),
-            ('max-elements', '?'),
-            ('description', '?'),
-            ('reference', '?'),
-        ],
+        subs=(
+            TYPE_USE
+            +[
+                ('min-elements', '?'),
+                ('max-elements', '?'),
+                ('description', '?'),
+                ('reference', '?'),
+            ]
+        ),
     ),
     Ext('dlist', None,
         subs=[
-            ((MODULE_NAME, 'type'), '*'),
-            ((MODULE_NAME, 'seq'), '*'),
+            ('$interleave',
+                TYPE_USE
+                +[((MODULE_NAME, 'seq'), '*')]
+            ),
             ('description', '?'),
             ('reference', '?'),
         ],
     ),
     Ext('seq', None,
+        subs=(
+            TYPE_USE
+            +[
+                ('min-elements', '1'),
+                ('max-elements', '1'),
+                ('description', '?'),
+                ('reference', '?'),
+            ]
+        ),
+    ),
+    Ext('umap', None,
         subs=[
-            ((MODULE_NAME, 'type'), '1'),
-            ('min-elements', '?'),
-            ('max-elements', '?'),
+            ((MODULE_NAME, 'keys'), '?'),
+            ((MODULE_NAME, 'values'), '?'),
             ('description', '?'),
             ('reference', '?'),
-        ],
+        ]
+    ),
+    Ext('keys', None,
+        subs=(
+            TYPE_USE
+            +[
+                ('description', '?'),
+                ('reference', '?'),
+            ]
+        )
+    ),
+    Ext('values', None,
+        subs=(
+            TYPE_USE
+            +[
+                ('description', '?'),
+                ('reference', '?'),
+            ]
+        )
     ),
     Ext('tblt', None,
         subs=[
@@ -272,7 +304,7 @@ MODULE_EXTENSIONS = (
         ),
         parents=[('grouping', '*')],
     ),
-    
+
     Ext('oper', 'identifier',
         subs=(
             obj_subs_pre + [
@@ -405,7 +437,7 @@ def _stmt_add_amm_children(ctx, stmt):
     for name in AMP_OBJ_NAMES:
         for obj_stmt in stmt.search(name):
             stmt.i_children.append(obj_stmt)
-            
+
             pyang.statements.v_init_has_children(ctx, obj_stmt)
             pyang.statements.v_expand_1_children(ctx, obj_stmt)
 #            logger.debug('expand %s %s', obj_stmt, obj_stmt.i_children)
@@ -428,7 +460,7 @@ def pyang_plugin_init():
     pyang.syntax.add_arg_type('OBJ-REF', check_objref)
     pyang.syntax.add_arg_type('ARI', check_ari)
     pyang.syntax.add_arg_type('EXPR', check_expr)
-    
+
     for ext in MODULE_EXTENSIONS:
         sub_stmts = ext.subs
         pyang.grammar.add_stmt((MODULE_NAME, ext.keyword), (ext.typename, sub_stmts))

@@ -231,12 +231,12 @@ SINGLETONS = TypeSeq([
 ''' Types that match singleton values. '''
 
 
-def get_structtype(text):
+def get_structtype(text:str) -> StructType:
     value = IDSEGMENT(text)
     if isinstance(value, int):
         return StructType(value)
     else:
-        return StructType[value]
+        return StructType[value.upper()]
 
 
 PRIMITIVE = TypeSeq([
@@ -266,6 +266,7 @@ TYPEDLIT = {
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
     StructType.LABEL: TypeSeq([t_identity]),
     StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
+    StructType.ARITYPE: get_structtype,
 }
 ''' Map from literal types to value parsers. '''
 

@@ -26,8 +26,10 @@ import logging
 import os
 import unittest
 import portion
+from typing import TextIO
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+from pyang.repository import FileRepository
 from ace import adm_yang, models
 
 LOGGER = logging.getLogger(__name__)
@@ -56,8 +58,6 @@ class TestAdmYangHelpers(unittest.TestCase):
 
 class TestAdmYang(unittest.TestCase):
 
-    TEST_FILE_PATH = os.path.join(SELFDIR, 'test-adm-minimal.yang')
-
     maxDiff = None
 
     def setUp(self):
@@ -66,7 +66,11 @@ class TestAdmYang(unittest.TestCase):
         models.Base.metadata.create_all(self._db_eng)
         self._db_sess = Session(self._db_eng)
 
+        self._adm_dec = adm_yang.Decoder(FileRepository(path=os.path.join(SELFDIR, 'adms')))
+
     def tearDown(self):
+        self._adm_dec = None
+
         self._db_sess.close()
         self._db_sess = None
         models.Base.metadata.drop_all(self._db_eng)
@@ -77,35 +81,50 @@ module empty {}
 '''
 
     def test_decode_empty(self):
-        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
-
         buf = io.StringIO(self.EMPTY_MODULE)
-        adm = dec.decode(buf)
+        adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
 
         self.assertEqual('empty', adm.name)
 
-    NOOBJECT_MODULE = '''\
-module empty {
-  namespace "ari:/empty";
+    NOOBJECT_MODULE_HEAD = '''\
+module example-mod {
+  namespace "ari:/example-mod/";
   prefix empty;
-  amm:enum "0";
 
   import ietf-amm {
     prefix amm;
   }
 
+  revision 2023-10-31 {
+    description
+      "Initial test";
+  }
+  amm:enum "255";
+'''
+    NOOBJECT_MODULE_TAIL = '''\
 }
 '''
 
+    def _get_mod_buf(self, body:str) -> TextIO:
+        buf = io.StringIO()
+        buf.write(self.NOOBJECT_MODULE_HEAD)
+        buf.write(body)
+        buf.write(self.NOOBJECT_MODULE_TAIL)
+
+        buf.seek(0)
+        return buf
+
     def test_decode_noobject(self):
-        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
-
-        buf = io.StringIO(self.NOOBJECT_MODULE)
-        adm = dec.decode(buf)
+        buf = self._get_mod_buf('')
+        adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
+        self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('empty', adm.name)
+        self.assertEqual('example-mod', adm.name)
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
         self.assertEqual(0, len(adm.typedef))
         self.assertEqual(0, len(adm.const))
         self.assertEqual(0, len(adm.edd))
@@ -114,18 +133,29 @@ module empty {
         self.assertEqual(0, len(adm.oper))
 
     def test_decode_minimal(self):
-        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
-
-        with open(self.TEST_FILE_PATH, 'r') as buf:
-            adm = dec.decode(buf)
+        buf = self._get_mod_buf('''
+  amm:edd edd1 {
+    amm:type int;
+    description
+      "EDD test_int";
+  }
+  amm:ctrl test1 {
+    amm:parameter id {
+      amm:type amm:any;
+    }
+    amm:parameter def {
+      amm:type amm:expr;
+    }
+  }
+''')
+        adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
-        self.assertEqual(
-            adm.source.abs_file_path,
-            os.path.realpath(self.TEST_FILE_PATH)
-        )
+        self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('test-adm-minimal', adm.name)
-        self.assertEqual('test-adm-minimal', adm.norm_name)
+        self.assertEqual('example-mod', adm.name)
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
 
         self.assertEqual(1, len(adm.ctrl))
         obj = adm.ctrl[0]
@@ -143,16 +173,59 @@ module empty {
 
     # As close to real YANG syntax as possible
     LOOPBACK_CASELIST = [
-        (models.Typedef, {
-            "name": "tblt_name",
-            "columns": [{"type": "textstr", "name": "rule1"},
-                        {"type": "textstr", "name": "rule2"},
-                        {"type": "uint", "name": "rule3"},
-                        {"type": "textstr", "name": "rule4"},
-                        {"type": "textstr", "name": "rule5"}
-                        ],
-            "description": "Tblt Rules description."
-        }),
+        '''\
+  amm:typedef typeobj {
+    amm:type uint;
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:ulist {
+      amm:type textstr;
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:umap {
+      amm:keys {
+        amm:type textstr;
+      }
+      amm:values {
+        amm:type uint;
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:umap {
+      amm:keys {
+        amm:type textstr;
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:umap {
+      amm:values {
+        amm:type uint;
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:tblt {
+      amm:column col1 {
+        amm:type textstr;
+      }
+    }
+  }
+''',
+    ]
+    '''
         (models.Var, {
             "name": "myname",
             "description": "Some long text",
@@ -243,44 +316,29 @@ module empty {
         # (models.Sbr, {}),
         # (models.Tbr, {}),
     ]
+    '''
 
-    @unittest.skip  # FIXME: reinstate later
-    def test_loopback_obj(self):
-        # Test per-object loopback with normal and special cases
-        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
-        enc = adm_yang.Encoder()
-        for case in self.LOOPBACK_CASELIST:
-            cls, json_in = case
-            LOGGER.warning('%s', json.dumps(json_in, indent=2))
-
-            orm_obj = dec.from_json_obj(cls, json_in)
-            self._db_sess.add(orm_obj)
-            self._db_sess.commit()
-
-            json_out = enc.to_json_obj(orm_obj)
-            LOGGER.warning('%s', json.dumps(json_out, indent=2))
-            self.assertEqual(json_in, json_out)
-
-    def test_loopback_adm(self):
-        dec = adm_yang.Decoder(adm_yang.EmptyRepos())
+    def test_loopback_examples(self):
         enc = adm_yang.Encoder()
 
-        with open(self.TEST_FILE_PATH, 'r', encoding='utf-8') as buf:
-            indata = buf.read()
-            buf.seek(0)
-            adm = dec.decode(buf)
-        LOGGER.warning('%s', indata)
+        for body in self.LOOPBACK_CASELIST:
+            with self.subTest(body):
+                buf_in = self._get_mod_buf(body)
+                LOGGER.info('input:\n%s', buf_in.getvalue())
 
-        outbuf = io.StringIO()
-        enc.encode(adm, outbuf)
-        outbuf.seek(0)
-        outdata = outbuf.getvalue()
-        LOGGER.warning('%s', outdata)
+                adm = self._adm_dec.decode(buf_in)
+                self.assertIsInstance(adm, models.AdmModule)
+                self.assertEqual(1, len(adm.imports))
+                self.assertEqual(1, len(adm.revisions))
+                LOGGER.info('sub %s', adm.typedef[0].typeobj)
+                self._db_sess.add(adm)
+                self._db_sess.commit()
 
-        # Compare as decoded JSON (the infoset, not the encoded bytes)
-        self.assertEqual(indata, outdata)
+                buf_out = io.StringIO()
+                enc.encode(adm, buf_out)
+                LOGGER.info('output:\n%s', buf_out.getvalue())
+                self.assertEqual(buf_in.getvalue(), buf_out.getvalue())
 
-    @unittest.skip  # FIXME: reinstate later
     def test_loopback_real_adms(self):
 
         def keep(name):
@@ -290,23 +348,31 @@ module empty {
         file_names = tuple(filter(keep, file_names))
         self.assertLess(0, len(file_names))
 
+        enc = adm_yang.Encoder()
+
         for name in file_names:
-            LOGGER.warning('Handling file %s', name)
-            dec = adm_yang.Decoder(adm_yang.EmptyRepos())
-            enc = adm_yang.Encoder()
+            with self.subTest(name):
+                LOGGER.info('Handling file %s', name)
 
-            file_path = os.path.join(SELFDIR, 'adms', name)
-            with open(file_path, 'r', encoding='utf-8') as buf:
-                indata = buf.read()
-                buf.seek(0)
-                adm = dec.decode(buf)
-            LOGGER.warning('%s', indata)
+                file_path = os.path.join(SELFDIR, 'adms', name)
+                with open(file_path, 'r', encoding='utf-8') as buf:
+                    indata = buf.read()
+                    LOGGER.debug('%s', indata)
+                    buf.seek(0)
+                    adm = self._adm_dec.decode(buf)
+                self.assertIsInstance(adm, models.AdmModule)
+                self.assertEqual(
+                    os.path.abspath(file_path),
+                    adm.source.abs_file_path
+                )
+                self._db_sess.add(adm)
+                self._db_sess.commit()
 
-            outbuf = io.StringIO()
-            enc.encode(adm, outbuf)
-            outbuf.seek(0)
-            outdata = outbuf.getvalue()
-            LOGGER.warning('%s', outdata)
+                outbuf = io.StringIO()
+                enc.encode(adm, outbuf)
+                outbuf.seek(0)
+                outdata = outbuf.getvalue()
+                LOGGER.debug('%s', outdata)
 
-            # Compare as decoded JSON (the infoset, not the encoded bytes)
-            self.assertEqual(indata, outdata)
+                # FIXME objects in original are not in canonical order
+                # self.assertEqual(indata, outdata)

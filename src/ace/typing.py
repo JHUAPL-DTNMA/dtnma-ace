@@ -5,7 +5,7 @@ import datetime
 import logging
 import math
 import re
-from typing import Callable, List, Optional, Set, Tuple, Iterator
+from typing import List, Optional, Set, Tuple, Iterator, Union
 import numpy
 from portion import Interval
 from .ari import (
@@ -196,7 +196,7 @@ class BoolType(BuiltInType):
         if not isinstance(obj, ARI):
             obj = LiteralARI(value=obj)
         elif not isinstance(obj, LiteralARI):
-            # Any obj-ref is truthy
+            # Any object reference is truthy
             return TRUE
 
         # FIXME compare Python logic with AMM requirements
@@ -267,6 +267,7 @@ class StringType(BuiltInType):
         StructType.BYTESTR: bytes,
         StructType.LABEL: str,
         StructType.CBOR: bytes,
+        StructType.ARITYPE: (str, int),
     }
     ''' Required value type for target string type. '''
 
@@ -280,9 +281,6 @@ class StringType(BuiltInType):
         if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             return None
         return obj
-
-    def _coerce(self, obj):
-        self.VALUE_CLS[self.type_id]
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
@@ -411,24 +409,25 @@ class ObjRefType(BuiltInType):
 class AnyType(BuiltInType):
     ''' Special non-union aggregation built-in types. '''
 
-    def __init__(self, cls):
-        super().__init__(None)
-        self.cls = cls
-
-    def __repr__(self):
-        return f'{type(self).__name__}(cls={self.cls.__name__})'
+    VALUE_CLS = {
+        StructType.LITERAL: LiteralARI,
+        StructType.OBJECT: ReferenceARI,
+    }
+    ''' Required value type for target time type. '''
 
     def get(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return None
-        if self.cls is not None and not isinstance(obj, self.cls):
+        typ = self.VALUE_CLS[self.type_id]
+        if not isinstance(obj, typ):
             return None
         return obj
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        if self.cls is not None and not isinstance(obj, self.cls):
+        typ = self.VALUE_CLS[self.type_id]
+        if not isinstance(obj, typ):
             raise TypeError(f'Cannot convert type: {obj}')
         return obj
 
@@ -449,18 +448,18 @@ LITERALS = {
     'textstr': StringType(StructType.TEXTSTR),
     'bytestr': StringType(StructType.BYTESTR),
 
-    'label': StringType(StructType.LABEL),
-    'cbor': StringType(StructType.CBOR),
     'tp': TimeType(StructType.TP),
     'td': TimeType(StructType.TD),
+
+    'label': StringType(StructType.LABEL),
+    'cbor': StringType(StructType.CBOR),
+    'aritype': StringType(StructType.ARITYPE),
 
     'ac': ContainerType(StructType.AC),
     'am': ContainerType(StructType.AM),
     'tbl': ContainerType(StructType.TBL),
 }
-LITERALS_BY_ENUM = {
-    typ.type_id: typ for typ in LITERALS.values()
-}
+''' Literal types, including ARI containers. '''
 OBJREFS = {
     'typedef': ObjRefType(StructType.TYPEDEF),
     'const': ObjRefType(StructType.CONST),
@@ -471,11 +470,19 @@ OBJREFS = {
     'sbr': ObjRefType(StructType.SBR),
     'tbr': ObjRefType(StructType.TBR),
 }
+''' Object reference types. '''
 ANY = {
-    'lit': AnyType(LiteralARI),
-    'obj-ref': AnyType(ReferenceARI),
+    'literal': AnyType(StructType.LITERAL),
+    'object': AnyType(StructType.OBJECT),
 }
+''' Special reserved types and behavior. '''
 BUILTINS = LITERALS | OBJREFS | ANY
+''' All builtin types by name. '''
+BUILTINS_BY_ENUM = {
+    typ.type_id: typ
+    for typ in BUILTINS.values()
+}
+''' Builtin types by enumeration. '''
 
 
 class SemType(BaseType):
@@ -591,7 +598,7 @@ class TypeUnion(SemType):
 class UniformList(SemType):
     ''' A list with uniform-typed items. '''
 
-    type:SemType
+    base:BaseType
     ''' Type for all items. '''
 
     min_elements:Optional[int] = None
@@ -600,14 +607,14 @@ class UniformList(SemType):
     ''' Upper limit on the size of the list. '''
 
     def children(self) -> List['BaseType']:
-        if self.type:
-            return [self.type]
+        if self.base:
+            return [self.base]
         else:
             return []
 
     def type_ids(self) -> Set[StructType]:
         # only one value type is valid
-        return self.type.type_ids()
+        return self.base.type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -624,7 +631,7 @@ class UniformList(SemType):
             return None
 
         for val in obj.value:
-            if self.type.get(val) is None:
+            if self.base.get(val) is None:
                 return None
 
         return obj
@@ -637,28 +644,200 @@ class UniformList(SemType):
         elif not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.AC:
-            raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id.name}')
 
         invalid = self._constrain(obj)
         if invalid:
             err = ', '.join(invalid)
             raise ValueError(f'UniformList.convert() invalid constraints: {err}')
 
-        rval = []
+        rvalue = []
         for ival in obj.value:
-            rval.append(self.type.convert(ival))
+            rvalue.append(self.base.convert(ival))
 
-        return LiteralARI(rval, StructType.AC)
+        return LiteralARI(rvalue, StructType.AC)
 
     def _constrain(self, obj:ARI) -> List[str]:
         ''' Check constraints on the list.
         '''
         invalid = []
         if self.min_elements is not None and len(obj.value) < self.min_elements:
-            invalid.append(f'Size of list is smaller than the minimum of {self.min_elements}')
-        if self.max_elements is not None and len(obj.value) < self.max_elements:
-            invalid.append(f'Size of list is larger than the maximum of {self.max_elements}')
+            invalid.append(f'Size of list {len(obj.value)} is smaller than the minimum of {self.min_elements}')
+        if self.max_elements is not None and len(obj.value) > self.max_elements:
+            invalid.append(f'Size of list {len(obj.value)} is larger than the maximum of {self.max_elements}')
         return invalid
+
+
+@dataclass
+class DiverseSeq:
+    ''' A sequence within a :cls:`DiverseList` object. '''
+
+    base:BaseType
+
+    min_elements:int
+    ''' Lower limit on the size of the sequence. '''
+    max_elements:int
+    ''' Upper limit on the size of the sequence. '''
+
+
+@dataclass
+class DiverseList(SemType):
+    ''' A list with non-uniform-typed items. '''
+
+    parts:List[Union[BaseType, DiverseSeq]]
+    ''' Type for each item or sequence. '''
+
+    def children(self) -> List['BaseType']:
+        types = []
+        for part in self.parts:
+            if isinstance(part, BaseType):
+                return types.append(part)
+            elif isinstance(part, DiverseSeq):
+                return types.append(part.base)
+        return types
+
+    def type_ids(self) -> Set[StructType]:
+        return set([typeobj.type_ids() for typeobj in self.children()])
+
+    def get(self, obj:ARI) -> Optional[ARI]:
+        if is_undefined(obj):
+            return None
+        if not isinstance(obj, LiteralARI):
+            return None
+        if obj.type_id != StructType.AC:
+            return None
+
+        # mutable copy of the list
+        remain = list(obj.value)
+        for part in self.parts:
+            if isinstance(part, BaseType):
+                try:
+                    val = remain.pop(0)
+                except IndexError:
+                    return None
+                if part.get(val) is None:
+                    return None
+
+            elif isinstance(part, DiverseSeq):
+                if len(remain) < part.min_elements:
+                    return None
+                max_elem = part.max_elements
+                got = 0
+                while remain and got < max_elem:
+                    # attempt a match
+                    val = remain[0]
+                    if part.base.get(val) is None:
+                        break
+
+                    remain.pop(0)
+                    got += 1
+
+        if remain:
+            # some items not captured
+            return None
+
+        return obj
+
+    def convert(self, obj:ARI) -> ARI:
+        if is_undefined(obj):
+            return obj
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj, type_id=StructType.AC)
+        elif not isinstance(obj, LiteralARI):
+            raise TypeError()
+        if obj.type_id != StructType.AC:
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id.name}')
+
+        rvalue = []
+        # mutable copy of the list
+        remain = list(obj.value)
+        for part in self.parts:
+            if isinstance(part, BaseType):
+                try:
+                    ival = remain.pop(0)
+                except IndexError:
+                    raise ValueError('list too short for dlist item')
+                rvalue.append(part.convert(ival))
+
+            elif isinstance(part, DiverseSeq):
+                if len(remain) < part.min_elements:
+                    raise ValueError('list too short for dlist sequence')
+                max_elem = part.max_elements
+                got = 0
+                while remain and got < max_elem:
+                    # attempt a match
+                    val = remain[0]
+                    try:
+                        rvalue.append(part.base.convert(val))
+                    except (TypeError, ValueError):
+                        break
+
+                    remain.pop(0)
+                    got += 1
+
+        if remain:
+            # some items not converted
+            raise ValueError('list too long for dlist type')
+
+        return LiteralARI(rvalue, StructType.AC)
+
+
+@dataclass
+class UniformMap(SemType):
+    ''' A map with uniform-typed items. '''
+
+    kbase:Optional[BaseType] = None
+    ''' Type for all keys. '''
+    vbase:Optional[BaseType] = None
+    ''' Type for all values. '''
+
+    def children(self) -> List['BaseType']:
+        return list(filter(None, [self.kbase, self.vbase]))
+
+    def type_ids(self) -> Set[StructType]:
+        return set([typeobj.type_ids() for typeobj in self.children()])
+
+    def get(self, obj:ARI) -> Optional[ARI]:
+        if is_undefined(obj):
+            return None
+        if not isinstance(obj, LiteralARI):
+            return None
+        if obj.type_id != StructType.AM:
+            return None
+
+        for key, val in obj.value.items():
+            if self.kbase is not None and self.kbase.get(key) is None:
+                return None
+            if self.vbase is not None and self.vbase.get(val) is None:
+                return None
+
+        return obj
+
+    def convert(self, obj:ARI) -> ARI:
+        if is_undefined(obj):
+            return obj
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj, type_id=StructType.AC)
+        elif not isinstance(obj, LiteralARI):
+            raise TypeError()
+        if obj.type_id != StructType.AM:
+            raise TypeError(f'Value to convert is not AM, it is {obj.type_id.name}')
+
+        rvalue = {}
+        for key, val in obj.value.items():
+            if self.kbase is not None:
+                rkey = self.kbase.convert(key)
+            else:
+                rkey = key
+            rkey = LiteralARI(value=rkey.value)  # enforce that AM uses untyped keys
+
+            if self.vbase is not None:
+                rval = self.vbase.convert(val)
+            else:
+                rval = val
+            rvalue[rkey] = rval
+
+        return LiteralARI(rvalue, StructType.AM)
 
 
 @dataclass
@@ -667,7 +846,7 @@ class TableColumn:
 
     name:str
     ''' Unique name of this column. '''
-    type:SemType
+    base:BaseType
     ''' Type for this column. '''
 
 
@@ -684,7 +863,7 @@ class TableTemplate(SemType):
     ''' Names of unique column tuples. '''
 
     def children(self) -> List['BaseType']:
-        return [col.type for col in self.columns]
+        return [col.base for col in self.columns]
 
     def type_ids(self) -> Set[StructType]:
         # only one value type is valid
@@ -706,7 +885,7 @@ class TableTemplate(SemType):
         # check each value against column schema
         for row_ix in range(nrows):
             for col_ix, col in enumerate(self.columns):
-                if col.type.get(obj.value[row_ix, col_ix]) is None:
+                if col.base.get(obj.value[row_ix, col_ix]) is None:
                     return None
 
         return obj
@@ -717,7 +896,7 @@ class TableTemplate(SemType):
         if not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.TBL:
-            raise TypeError(f'Value to convert is not TBL, it is {obj.type_id}')
+            raise TypeError(f'Value to convert is not TBL, it is {obj.type_id.name}')
 
         if obj.value.ndim != 2:
             raise ValueError(f'TBL value must be a 2-dimensional array, is {obj.value.ndim}')
@@ -725,20 +904,20 @@ class TableTemplate(SemType):
         if ncols != len(self.columns):
             raise ValueError(f'TBL value has wrong number of columns: should be {len(self.columns)} is {ncols}')
 
-        rval = Table(obj.value.shape)
+        rvalue = Table(obj.value.shape)
         for row_ix in range(nrows):
             irow = obj.value[row_ix,:]
             badcols = []
             for col_ix, col in enumerate(self.columns):
                 try:
-                    rval[row_ix, col_ix] = col.type.convert(irow[col_ix])
+                    rvalue[row_ix, col_ix] = col.base.convert(irow[col_ix])
                 except Exception as err:
-                    LOGGER.warning('Failed to convert col %s %s value %s: %s', col.name, col.type, irow[col_ix], err)
+                    LOGGER.warning('Failed to convert col %s %s value %s: %s', col.name, col.base, irow[col_ix], err)
                     badcols.append(col.name)
             if badcols:
                 raise ValueError(f'Failed to convert columns {",".join(badcols)} for row {row_ix}: {irow}')
 
-        return LiteralARI(rval, StructType.TBL)
+        return LiteralARI(rvalue, StructType.TBL)
 
 
 def type_walk(root:BaseType) -> Iterator:

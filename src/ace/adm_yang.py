@@ -27,7 +27,7 @@ import io
 import logging
 import optparse
 import os
-from typing import TextIO
+from typing import TextIO, Tuple
 import portion
 import pyang.plugin
 import pyang.context
@@ -38,7 +38,8 @@ from ace import ari_text
 from ace.ari import ARI, ReferenceARI
 from ace.typing import (
     Length, Pattern, Range,
-    SemType, TypeUse, TypeUnion, UniformList, TableTemplate, TableColumn
+    SemType, TypeUse, TypeUnion, UniformList, DiverseList, DiverseSeq,
+    UniformMap, TableTemplate, TableColumn
 )
 from ace.models import (
     TypeNameList, TypeNameItem,
@@ -168,7 +169,7 @@ class Decoder:
         type_stmt = found_type_stmts[0]
 
         typeobj = self._type_handlers[type_stmt.keyword](type_stmt)
-        LOGGER.debug('Got type %s', typeobj)
+        LOGGER.debug('Got type for %s: %s', type_stmt.keyword, typeobj)
         return typeobj
 
     _TYPE_REFINE_KWDS = (
@@ -187,7 +188,7 @@ class Decoder:
             if ari.ident.ns_id is not None and ari.ident.ns_id not in imports:
                 raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
 
-    def _get_namespace(self, text):
+    def _get_namespace(self, text:str) -> Tuple[str, str]:
         ''' Resolve a possibly qualified identifier into a module name and statement name.
         '''
         if ':' in text:
@@ -206,6 +207,7 @@ class Decoder:
 
         typeobj.type_ns, typeobj.type_name = self._get_namespace(stmt.arg)
 
+        # keep constraints in the same order as refinement statements
         refinements = list(filter(None, [
             search_one_exp(stmt, kywd)
             for kywd in self._TYPE_REFINE_KWDS
@@ -229,15 +231,37 @@ class Decoder:
 
     def _handle_ulist(self, stmt:pyang.statements.Statement) -> SemType:
         typeobj = UniformList(
-            type=self._get_typeobj(stmt)
+            base=self._get_typeobj(stmt)
         )
+
+        size_stmt = search_one_exp(stmt, 'min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = search_one_exp(stmt, 'max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
         return typeobj
 
     def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
-        pass
+        typeobj = DiverseList(
+            parts=[],  # FIXME populate
+        )
+        return typeobj
 
     def _handle_umap(self, stmt:pyang.statements.Statement) -> SemType:
-        pass
+        typeobj = UniformMap()
+
+        sub_stmt = search_one_exp(stmt, (AMM_MOD, 'keys'))
+        if sub_stmt:
+            typeobj.kbase = self._get_typeobj(sub_stmt)
+
+        sub_stmt = search_one_exp(stmt, (AMM_MOD, 'values'))
+        if sub_stmt:
+            typeobj.vbase = self._get_typeobj(sub_stmt)
+
+        return typeobj
 
     def _handle_tblt(self, stmt:pyang.statements.Statement) -> SemType:
         typeobj = TableTemplate()
@@ -246,9 +270,9 @@ class Decoder:
         for col_stmt in search_all_exp(stmt, (AMM_MOD, 'column')):
             col = TableColumn(
                 name=col_stmt.arg,
-                type=self._get_typeobj(col_stmt)
+                base=self._get_typeobj(col_stmt)
             )
-            if isinstance(col.type, TableTemplate):
+            if isinstance(col.base, TableTemplate):
                 LOGGER.warn('A table column is typed to contain another table')
             if col.name in col_names:
                 LOGGER.warn('A duplicate column name is present: %s', col)
@@ -398,6 +422,10 @@ class Decoder:
         file_path = buf.name if hasattr(buf, 'name') else None
         file_text = buf.read()
 
+        # clear internal cache
+        for mod in tuple(self._ctx.modules.values()):
+            self._ctx.del_module(mod)
+
         module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True)
         LOGGER.debug('Loaded %s', module)
         if module is None:
@@ -509,7 +537,7 @@ class Encoder:
         self._module = None
         self._denorm_prefixes = None
 
-    def encode(self, adm: AdmModule, buf: TextIO):
+    def encode(self, adm: AdmModule, buf: TextIO) -> None:
         ''' Decode a single ADM from file.
 
         :param adm: The ORM root object.
@@ -535,14 +563,14 @@ class Encoder:
             self._add_substmt(module, item.name, item.arg)
 
         for rev in adm.revisions:
-            rev_stmt = self._add_substmt(module, 'revision', rev.name)
+            sub_stmt = self._add_substmt(module, 'revision', rev.name)
             if rev.description:
-                self._add_substmt(rev_stmt, 'description', rev.description)
+                self._add_substmt(sub_stmt, 'description', rev.description)
 
         for feat in adm.feature:
-            rev_stmt = self._add_substmt(module, 'feature', feat.name)
+            sub_stmt = self._add_substmt(module, 'feature', feat.name)
             if feat.description:
-                self._add_substmt(rev_stmt, 'description', feat.description)
+                self._add_substmt(sub_stmt, 'description', feat.description)
 
         self._put_section(adm.typedef, Typedef, module)
         self._put_section(adm.const, Const, module)
@@ -564,13 +592,13 @@ class Encoder:
         self._module = None
         self._denorm_prefixes = None
 
-    def _denorm_tuple(self, val):
+    def _denorm_tuple(self, val:Tuple[str, str]) -> Tuple[str, str]:
         prefix, name = val
         if prefix in self._denorm_prefixes:
             prefix = self._denorm_prefixes[prefix]
         return (prefix, name)
 
-    def _add_substmt(self, parent, keyword, arg=None):
+    def _add_substmt(self, parent:pyang.statements.Statement, keyword:str, arg:str=None) -> pyang.statements.Statement:
         sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
         parent.substmts.append(sub_stmt)
         return sub_stmt
@@ -595,18 +623,33 @@ class Encoder:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
             if obj.description:
                 self._add_substmt(obj_stmt, 'description', obj.description)
+
             if obj.if_feature_expr:
-                self._add_substmt(obj_stmt, 'if-feature', obj.if_feature_expr)
+
+                def construct(item) -> str:
+                    if len(item) == 2:
+                        ns, name = self._denorm_tuple(item)
+                        if ns:
+                            return f'{ns}:{name}'
+                        else:
+                            return name
+                    elif len(item) == 3:
+                        op, arg1, arg2 = item
+                        arg1 = construct(arg1)
+                        arg2 = construct(arg2)
+                        return f'{arg1} {op} {arg2}'
+
+                self._add_substmt(obj_stmt, 'if-feature', construct(obj.if_feature_expr))
 
         if issubclass(cls, ParamMixin):
             for param in obj.parameters.items:
                 param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
-                self._put_typeuse(param, param_stmt)
+                self._put_typeobj(param.typeobj, param_stmt)
                 if param.default_value:
                     self._add_substmt(param_stmt, (AMM_MOD, 'default'), param.default_value)
 
         if issubclass(cls, TypeUseMixin):
-            self._put_typeuse(obj, obj_stmt)
+            self._put_typeobj(obj.typeobj, obj_stmt)
 
         '''
             elif key in {'initializer'}:
@@ -631,14 +674,48 @@ class Encoder:
 
         return obj_stmt
 
-    def _put_typeuse(self, obj:TypeUseMixin, parent:pyang.statements.Statement) -> pyang.statements.Statement:
-        if isinstance(obj.typeobj, TypeUse):
-            if obj.typeobj.type_name:
-                if obj.typeobj.type_ns:
-                    ns, name = self._denorm_tuple((obj.typeobj.type_ns, obj.typeobj.type_name))
-                    name = f'{ns}:{name}'
-                else:
-                    name = obj.typeobj.type_name
-                self._add_substmt(parent, (AMM_MOD, 'type'), name)
+    def _put_typeobj(self, typeobj:SemType, parent:pyang.statements.Statement) -> pyang.statements.Statement:
+        if isinstance(typeobj, TypeUse):
+            if typeobj.type_ns:
+                ns, name = self._denorm_tuple((typeobj.type_ns, typeobj.type_name))
+                name = f'{ns}:{name}'
+            else:
+                name = typeobj.type_name
+            self._add_substmt(parent, (AMM_MOD, 'type'), name)
+
+        elif isinstance(typeobj, UniformList):
+            ulist_stmt = self._add_substmt(parent, (AMM_MOD, 'ulist'))
+            self._put_typeobj(typeobj.base, ulist_stmt)
+
+        elif isinstance(typeobj, DiverseList):
+            dlist_stmt = self._add_substmt(parent, (AMM_MOD, 'dlist'))
+            # FIXME more statements
+
+        elif isinstance(typeobj, UniformMap):
+            umap_stmt = self._add_substmt(parent, (AMM_MOD, 'umap'))
+
+            if typeobj.kbase:
+                sub_stmt = self._add_substmt(umap_stmt, (AMM_MOD, 'keys'))
+                self._put_typeobj(typeobj.kbase, sub_stmt)
+
+            if typeobj.vbase:
+                sub_stmt = self._add_substmt(umap_stmt, (AMM_MOD, 'values'))
+                self._put_typeobj(typeobj.vbase, sub_stmt)
+
+        elif isinstance(typeobj, TableTemplate):
+            tblt_stmt = self._add_substmt(parent, (AMM_MOD, 'tblt'))
+
+            for col in typeobj.columns:
+                col_stmt = self._add_substmt(tblt_stmt, (AMM_MOD, 'column'), col.name)
+                self._put_typeobj(col.base, col_stmt)
+
+            if typeobj.key is not None:
+                self._add_substmt(tblt_stmt, (AMM_MOD, 'key'), typeobj.key)
+            for uniq in typeobj.unique:
+                self._add_substmt(tblt_stmt, (AMM_MOD, 'unique'), uniq)
+
+        elif isinstance(typeobj, TypeUnion):
+            pass
+
         else:
-            raise TypeError(f'Unhandled type object: {obj.typeobj}')
+            raise TypeError(f'Unhandled type object: {typeobj}')
