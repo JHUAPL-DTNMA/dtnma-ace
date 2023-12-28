@@ -38,15 +38,15 @@ class Length(Constraint):
     count of bytes.
     '''
 
-    limit:int
-    ''' The largest valid length. '''
+    ranges:Interval
+    ''' The Interval representing valid lengths. '''
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.TEXTSTR, StructType.BYTESTR, StructType.CBOR])
 
     def is_valid(self, obj:ARI) -> bool:
         if isinstance(obj.value, (str, bytes)):
-            return len(obj.value) <= self.limit
+            return len(obj.value) in self.ranges
         else:
             raise TypeError(f'limit cannot be applied to {obj}')
 

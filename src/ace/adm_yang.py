@@ -25,6 +25,7 @@
 from datetime import datetime
 import io
 import logging
+import math
 import optparse
 import os
 from typing import TextIO, Tuple
@@ -93,10 +94,16 @@ def search_all_exp(stmt, kywd):
     return stmt.search(kywd, children=subs)
 
 
-def range_from_text(text) -> portion.Interval:
+def range_from_text(text:str) -> portion.Interval:
     ''' Parse a YANG "range" statement argument.
     '''
     parts = [part.strip() for part in text.split('|')]
+
+    def from_num(text:str):
+        try:
+            return int(text)
+        except (ValueError, OverflowError):
+            return float(text)
 
     ranges = portion.Interval()
     for part in parts:
@@ -106,11 +113,26 @@ def range_from_text(text) -> portion.Interval:
                 lower = -float('inf')
             if upper == 'max':
                 upper = float('inf')
-            ranges |= portion.closed(float(lower), float(upper))
+            ranges |= portion.closed(from_num(lower), from_num(upper))
         else:
-            ranges |= portion.singleton(float(part))
+            ranges |= portion.singleton(from_num(part))
 
     return ranges
+
+
+def range_to_text(ranges:portion.Interval) -> str:
+    ''' Construct a YANG "range" statement argument.
+    '''
+    parts = []
+    for port in ranges:
+        if port.lower == port.upper:
+            parts.append(f'{port.lower}')
+        else:
+            lower = 'min' if math.isinf(port.lower) else port.lower
+            upper = 'max' if math.isinf(port.upper) else port.upper
+            parts.append(f'{lower}..{upper}')
+
+    return ' | '.join(parts)
 
 
 class EmptyRepos(pyang.repository.Repository):
@@ -216,13 +238,10 @@ class Decoder:
             if rfn.keyword == 'units':
                 typeobj.units = rfn.arg.strip()
             elif rfn.keyword == 'length':
-                typeobj.constraints.append(Length(
-                    limit=int(rfn.arg)
-                ))
+                ranges = range_from_text(rfn.arg)
+                typeobj.constraints.append(Length(ranges=ranges))
             elif rfn.keyword == 'pattern':
-                typeobj.constraints.append(Pattern(
-                    pattern=rfn.arg,
-                ))
+                typeobj.constraints.append(Pattern(pattern=rfn.arg))
             elif rfn.keyword == 'range':
                 ranges = range_from_text(rfn.arg)
                 typeobj.constraints.append(Range(ranges=ranges))
@@ -365,8 +384,9 @@ class Decoder:
             else:
                 obj.init_value = value_stmt.arg
 
-            ari = self._ari_dec.decode(io.StringIO(value_stmt.arg))
-            ari.visit(self._check_ari)
+                # actually check the content
+                ari = self._ari_dec.decode(io.StringIO(value_stmt.arg))
+                ari.visit(self._check_ari)
 
         elif issubclass(cls, Ctrl):
             result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
@@ -377,8 +397,12 @@ class Decoder:
                 )
 
         elif issubclass(cls, Oper):
-            # FIXME populate these
             obj.operands = TypeNameList()
+            for opnd_stmt in search_all_exp(stmt, (AMM_MOD, 'operand')):
+                obj.operands.items.append(TypeNameItem(
+                    name=opnd_stmt.arg,
+                    typeobj=self._get_typeobj(opnd_stmt)
+                ))
 
             result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
             if result_stmt:
@@ -544,23 +568,29 @@ class Encoder:
         :param buf: The buffer to write into.
         '''
         module = pyang.statements.new_statement(None, None, None, 'module', adm.name)
-        pyang.statements.v_init_module(self._ctx, module)
         self._module = module
         self._denorm_prefixes = {}
 
+        self._add_substmt(module, 'yang-version', '1.1')
         self._add_substmt(module, 'namespace', f'ari:/{adm.name}/')
-        self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.enum))
+
+        for item in adm.metadata_list.items:
+            self._add_substmt(module, item.name, item.arg)
 
         for imp in adm.imports:
             imp_stmt = self._add_substmt(module, 'import', imp.name)
             self._add_substmt(imp_stmt, 'prefix', imp.prefix)
 
-            # local bookkeeping
-            module.i_prefixes[imp.prefix] = imp.name
-            self._denorm_prefixes[imp.name] = imp.prefix
+        # init after local prefix and imports defined
+        pyang.statements.v_init_module(self._ctx, module)
 
-        for item in adm.metadata_list.items:
-            self._add_substmt(module, item.name, item.arg)
+        # local bookkeeping
+        for prefix, modtup in module.i_prefixes.items():
+            modname = modtup[0]
+            self._denorm_prefixes[modname] = prefix
+
+        # prefixed keyword after v_init_module
+        self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.enum))
 
         for rev in adm.revisions:
             sub_stmt = self._add_substmt(module, 'revision', rev.name)
@@ -619,9 +649,9 @@ class Encoder:
         obj_stmt = self._add_substmt(module, kywd, obj.name)
 
         if issubclass(cls, AdmObjMixin):
-            if obj.enum:
+            if obj.enum is not None:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'enum'), str(obj.enum))
-            if obj.description:
+            if obj.description is not None:
                 self._add_substmt(obj_stmt, 'description', obj.description)
 
             if obj.if_feature_expr:
@@ -651,26 +681,23 @@ class Encoder:
         if issubclass(cls, TypeUseMixin):
             self._put_typeobj(obj.typeobj, obj_stmt)
 
-        '''
-            elif key in {'initializer'}:
-                # Type EXPR
-                json_val = {
-                    'type': orm_val.type,
-                    'postfix-expr': self._get_ac(orm_val.postfix),
-                }
+        if issubclass(cls, (Const, Var)):
+            if obj.init_value:
+                self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
 
-            elif key in {'action', 'definition'}:
-                # Type AC
-                json_val = self._get_ac(orm_val)
+        elif issubclass(cls, Ctrl):
+            if obj.result:
+                res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                self._put_typeobj(obj.result.typeobj, res_stmt)
 
-            elif key == 'in-type':
-                json_val = [parm.type for parm in orm_val]
+        elif issubclass(cls, Oper):
+            for operand in obj.operands.items:
+                opnd_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'operand'), operand.name)
+                self._put_typeobj(obj.result.typeobj, opnd_stmt)
 
-            else:
-                json_val = orm_val
-
-            json_obj[key] = json_val
-        '''
+            if obj.result:
+                res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                self._put_typeobj(obj.result.typeobj, res_stmt)
 
         return obj_stmt
 
@@ -681,7 +708,18 @@ class Encoder:
                 name = f'{ns}:{name}'
             else:
                 name = typeobj.type_name
-            self._add_substmt(parent, (AMM_MOD, 'type'), name)
+            type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), name)
+
+            if typeobj.units:
+                self._add_substmt(type_stmt, 'units', typeobj.units)
+
+            for cnst in typeobj.constraints:
+                if isinstance(cnst, Length):
+                    self._add_substmt(type_stmt, 'length', range_to_text(cnst.ranges))
+                elif isinstance(cnst, Pattern):
+                    self._add_substmt(type_stmt, 'pattern', cnst.pattern)
+                elif isinstance(cnst, Range):
+                    self._add_substmt(type_stmt, 'range', range_to_text(cnst.ranges))
 
         elif isinstance(typeobj, UniformList):
             ulist_stmt = self._add_substmt(parent, (AMM_MOD, 'ulist'))
@@ -715,7 +753,10 @@ class Encoder:
                 self._add_substmt(tblt_stmt, (AMM_MOD, 'unique'), uniq)
 
         elif isinstance(typeobj, TypeUnion):
-            pass
+            union_stmt = self._add_substmt(parent, (AMM_MOD, 'union'))
+
+            for sub in typeobj.types:
+                self._put_typeobj(sub, union_stmt)
 
         else:
             raise TypeError(f'Unhandled type object: {typeobj}')

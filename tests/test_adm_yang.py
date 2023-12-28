@@ -42,17 +42,32 @@ class TestAdmYangHelpers(unittest.TestCase):
         ('5', portion.singleton(5)),
         ('5..20', portion.closed(5, 20)),
         ('5..20 | 30..50', portion.closed(5, 20) | portion.closed(30, 50)),
-        ('min..10', portion.closed(float('-inf'), 10)),
+        ('min..10', portion.closed(-float('inf'), 10)),
+        ('10..max', portion.closed(10, float('inf'))),
         # normalizing
-        ('5..20 | 10..30', portion.closed(5, 30)),
+        ('5..20 | 10..30', portion.closed(5, 30), 'from'),
     )
 
     def test_range_from_text(self):
         for row in self.RANGES:
+            row = list(row)
+            if len(row) > 2 and row.pop(2) != 'from':
+                continue
             with self.subTest(f'{row}'):
                 text, expect = row
 
                 got = adm_yang.range_from_text(text)
+                self.assertEqual(expect, got)
+
+    def test_range_to_text(self):
+        for row in self.RANGES:
+            row = list(row)
+            if len(row) > 2 and row.pop(2) != 'to':
+                continue
+            with self.subTest(f'{row}'):
+                expect, ranges = row
+
+                got = adm_yang.range_to_text(ranges)
                 self.assertEqual(expect, got)
 
 
@@ -89,6 +104,7 @@ module empty {}
 
     NOOBJECT_MODULE_HEAD = '''\
 module example-mod {
+  yang-version 1.1;
   namespace "ari:/example-mod/";
   prefix empty;
 
@@ -100,7 +116,7 @@ module example-mod {
     description
       "Initial test";
   }
-  amm:enum "255";
+  amm:enum 255;
 '''
     NOOBJECT_MODULE_TAIL = '''\
 }
@@ -135,11 +151,13 @@ module example-mod {
     def test_decode_minimal(self):
         buf = self._get_mod_buf('''
   amm:edd edd1 {
+    amm:enum 4;
     amm:type int;
     description
       "EDD test_int";
   }
   amm:ctrl test1 {
+    amm:enum 5;
     amm:parameter id {
       amm:type amm:any;
     }
@@ -175,18 +193,25 @@ module example-mod {
     LOOPBACK_CASELIST = [
         '''\
   amm:typedef typeobj {
-    amm:type uint;
+    amm:enum 2;
+    amm:type uint {
+      range "10..40";
+    }
   }
 ''',
         '''\
   amm:typedef typeobj {
+    amm:enum 2;
     amm:ulist {
-      amm:type textstr;
+      amm:type textstr {
+        length "min..255";
+      }
     }
   }
 ''',
         '''\
   amm:typedef typeobj {
+    amm:enum 2;
     amm:umap {
       amm:keys {
         amm:type textstr;
@@ -199,6 +224,7 @@ module example-mod {
 ''',
         '''\
   amm:typedef typeobj {
+    amm:enum 2;
     amm:umap {
       amm:keys {
         amm:type textstr;
@@ -208,6 +234,7 @@ module example-mod {
 ''',
         '''\
   amm:typedef typeobj {
+    amm:enum 2;
     amm:umap {
       amm:values {
         amm:type uint;
@@ -217,6 +244,7 @@ module example-mod {
 ''',
         '''\
   amm:typedef typeobj {
+    amm:enum 2;
     amm:tblt {
       amm:column col1 {
         amm:type textstr;
@@ -224,86 +252,91 @@ module example-mod {
     }
   }
 ''',
+
+        '''\
+  amm:const val {
+    amm:enum 2;
+    amm:type textstr;
+    amm:init-value "hi";
+  }
+''',
+
+        '''\
+  amm:edd val {
+    amm:enum 2;
+    amm:type textstr {
+      pattern '.*hello.*';
+    }
+  }
+''',
+        '''\
+  amm:edd val {
+    amm:enum 2;
+    amm:parameter opt {
+      amm:type uint;
+    }
+    amm:type textstr;
+  }
+''',
+        '''\
+  amm:var val {
+    amm:enum 2;
+    amm:type int;
+  }
+''',
+        '''\
+  amm:var val {
+    amm:enum 2;
+    amm:type int;
+    amm:init-value "3";
+  }
+''',
+
+        '''\
+  amm:ctrl dothing {
+    amm:enum 2;
+    amm:parameter one {
+      amm:type int;
+    }
+    amm:parameter two {
+      amm:type amm:expr;
+    }
+    description
+      "do a thing";
+  }
+''',
+        '''\
+  amm:ctrl dothing {
+    amm:enum 2;
+    amm:parameter one {
+      amm:type int;
+    }
+    amm:result val {
+      amm:type int;
+    }
+    description
+      "do a thing";
+  }
+''',
+
+        '''\
+  amm:oper sum {
+    amm:enum 2;
+    amm:parameter count {
+      amm:type uint;
+    }
+    amm:operand vals {
+      amm:type amm:numeric;
+    }
+    amm:result total {
+      amm:type amm:numeric;
+    }
+    description
+      "sum together values";
+  }
+''',
     ]
     '''
-        (models.Var, {
-            "name": "myname",
-            "description": "Some long text",
-            "type": "int",
-        }),
-        (models.Var, {
-            "name": "myname",
-            "description": "Some long text",
-            "type": "int",
-            "initializer": {
-                "type": "int",
-                "postfix-expr": [
-                    {
-                        "ns": "Amp/Agent",
-                        "nm": "edd.num_tbr",
-                    },
-                ]
-            },
-        }),
-        (models.Edd, {
-            "name": "edd_name1",
-            "type": "textstr",
-            "description": "Description of an Edd"
-        }),
-        (models.Edd, {
-            "name": "edd_name2",
-            "type": "uvast",
-            "description": "Second description of an Edd"
-        }),
-        (models.Const, {
-            "name": "const_name",
-            "type": "textstr",
-            "description": "A description of a Const",
-            "value": "some_value"
-        }),
-        (models.Const, {
-            "name": "mac_name",
-            "description": "A description of a Macro",
-            "action": [{
-                "ns": "DTN/bpsec",
-                "nm": "Edd.num_bad_tx_bib_blks_src"
-            }, {
-                "ns": "Amp/Agent",
-                "nm": "Oper.plusUINT"
-            }]
-        }),
-        (models.Const, {
-            "name": "rptt_name",
-            "definition": [
-                {
-                    "ns": "DTN/bpsec",
-                    "nm": "Edd.num_good_tx_bcb_blk"
-                }, {
-                    "ns": "DTN/bpsec",
-                    "nm": "Edd.num_bad_tx_bcb_blk"
-                }],
-            "description": "A description of a Rptt",
-        }),
-        (models.Ctrl, {
-            "name": "ctrl_name",
-            "description": "A description of a Ctrl",
-        }),
-        (models.Ctrl, {
-            "name": "another_ctrl_name",
-            "parmspec": [{
-                "type": "ARI",
-                "name": "id"
-            },
-                {
-                "type": "EXPR",
-                "name": "def"
-            },
-                {
-                "type": "BYTE",
-                "name": "type"
-            }],
-            "description": "another Ctrl description",
-        }),
         (models.Oper, {
             "name": "some_op_name",
             "result-type": "int",
@@ -313,9 +346,6 @@ module example-mod {
             ],
             "description": "a description of an Operator"
         }),
-        # (models.Sbr, {}),
-        # (models.Tbr, {}),
-    ]
     '''
 
     def test_loopback_examples(self):
@@ -330,7 +360,6 @@ module example-mod {
                 self.assertIsInstance(adm, models.AdmModule)
                 self.assertEqual(1, len(adm.imports))
                 self.assertEqual(1, len(adm.revisions))
-                LOGGER.info('sub %s', adm.typedef[0].typeobj)
                 self._db_sess.add(adm)
                 self._db_sess.commit()
 
@@ -356,8 +385,8 @@ module example-mod {
 
                 file_path = os.path.join(SELFDIR, 'adms', name)
                 with open(file_path, 'r', encoding='utf-8') as buf:
-                    indata = buf.read()
-                    LOGGER.debug('%s', indata)
+                    text_in = buf.read()
+                    LOGGER.debug('ADM source:\n%s', text_in)
                     buf.seek(0)
                     adm = self._adm_dec.decode(buf)
                 self.assertIsInstance(adm, models.AdmModule)
@@ -368,11 +397,22 @@ module example-mod {
                 self._db_sess.add(adm)
                 self._db_sess.commit()
 
-                outbuf = io.StringIO()
-                enc.encode(adm, outbuf)
-                outbuf.seek(0)
-                outdata = outbuf.getvalue()
-                LOGGER.debug('%s', outdata)
+                out_first = io.StringIO()
+                enc.encode(adm, out_first)
+                text_first = out_first.getvalue()
+                LOGGER.debug('out first:\n%s', text_first)
 
-                # FIXME objects in original are not in canonical order
-                # self.assertEqual(indata, outdata)
+                out_first.seek(0)
+                adm = self._adm_dec.decode(out_first)
+                self.assertIsInstance(adm, models.AdmModule)
+                self._db_sess.add(adm)
+                self._db_sess.commit()
+
+                out_second = io.StringIO()
+                enc.encode(adm, out_second)
+                text_second = out_second.getvalue()
+                LOGGER.debug('out second:\n%s', text_second)
+
+                # source ADM objects in original are not in canonical order
+                # but loopback text outputs will be
+                self.assertEqual(text_first, text_second)

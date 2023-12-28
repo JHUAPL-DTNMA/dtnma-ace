@@ -81,7 +81,7 @@ TYPE_USE = [
 # : List of extension statements defined by the module
 MODULE_EXTENSIONS = (
     # : ARI enum assignment
-    Ext('enum', 'uint64',
+    Ext('enum', 'integer',
         parents=([
             ('module', '1'),
         ] + [(name, '?') for name in AMP_OBJ_NAMES])
@@ -247,21 +247,13 @@ MODULE_EXTENSIONS = (
             obj_subs_pre
             +TYPE_USE + [
                 ((MODULE_NAME, 'parameter'), '*'),
-                ('$choice', [
-                    [((MODULE_NAME, 'init-value'), '?')],
-                    [((MODULE_NAME, 'init-expr'), '?')],
-                ]),
+                ((MODULE_NAME, 'init-value'), '?'),
                 ('uses', '*'),
             ] + obj_subs_post
         ),
         parents=[('module', '*')]
     ),
     Ext('init-value', 'ARI',
-        parents=[
-            ((MODULE_NAME, 'var'), '?'),
-        ]
-    ),
-    Ext('init-expr', 'EXPR',
         parents=[
             ((MODULE_NAME, 'var'), '?'),
         ]
@@ -342,19 +334,8 @@ def check_int(min_val, max_val):
     return checker
 
 
-def check_objref(val):
-    ''' Verify the syntax for an OBJ-REF ARI. '''
-    logger.debug('Verifying OBJ-REF for %s', val)
-    return True
-
-
 def check_ari(val):
     ''' Verify the text is an ARI. '''
-    return True
-
-
-def check_expr(val):
-    ''' Verify the text is an EXPR-constrained AC. '''
     return True
 
 
@@ -405,11 +386,6 @@ def _stmt_check_intlabels(ctx, stmt):
                 ('but not both'))
 
 
-def _stmt_check_objref(ctx, stmt):
-    ''' Verify OBJ-REF reference itself is valid. '''
-    return True
-
-
 def _stmt_check_enum_value(ctx, stmt):
     ''' Verify all enum have an associated value. '''
     if (stmt.parent.keyword == (MODULE_NAME, 'int-label')
@@ -456,10 +432,7 @@ def pyang_plugin_init():
     # Register that we handle extensions from the associated YANG module
     pyang.grammar.register_extension_module(MODULE_NAME)
     # Extension argument types
-    pyang.syntax.add_arg_type('uint64', check_int(0, 2 ** 64 - 1))
-    pyang.syntax.add_arg_type('OBJ-REF', check_objref)
     pyang.syntax.add_arg_type('ARI', check_ari)
-    pyang.syntax.add_arg_type('EXPR', check_expr)
 
     for ext in MODULE_EXTENSIONS:
         sub_stmts = ext.subs
@@ -528,11 +501,6 @@ def pyang_plugin_init():
         [(MODULE_NAME, 'oper')],
         _stmt_check_oper_result
     )
-#    pyang.statements.add_validation_fun(
-#        'reference_1',
-#        [(MODULE_NAME, 'item')],
-#        _stmt_check_objref
-#    )
 
     # Register special error codes
     pyang.error.add_error_code(

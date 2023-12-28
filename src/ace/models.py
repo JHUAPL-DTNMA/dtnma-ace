@@ -19,6 +19,7 @@
 # the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
+from sqlalchemy.ext.hybrid import hybrid_property
 ''' ORM models for the ADM and its contents.
 '''
 import copy
@@ -303,6 +304,10 @@ class AdmModule(Base):
         order_by='asc(AdmRevision.position)',
         cascade="all, delete"
     )
+
+    @hybrid_property
+    def latest_revision(self):
+        return max(rev.name for rev in self.revisions)
 
     imports = relationship(
         "AdmImport",
