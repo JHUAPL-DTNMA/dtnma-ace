@@ -688,10 +688,10 @@ class Sequence(SemType):
         return self.base.type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
-        return list(map(self.base.get, obj))
+        raise NotImplementedError
 
     def convert(self, obj:ARI) -> ARI:
-        rvalue = list(map(self.base.convert, obj))
+        rvalue = list(map(self.base.convert, obj.value))
         return LiteralARI(rvalue, StructType.AC)
 
     def take(self, remain:List[ARI]) -> List[ARI]:
