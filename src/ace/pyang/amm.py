@@ -67,16 +67,24 @@ MODULE_STMT_ALLOW = (
     (MODULE_NAME, 'enum'),
 ) + AMP_OBJ_NAMES
 
-TYPE_USE = [
-    ('$choice', [
+
+def type_use(parent:str) -> List:
+    opts = [
         [((MODULE_NAME, 'type'), '1')],
         [((MODULE_NAME, 'ulist'), '1')],
         [((MODULE_NAME, 'dlist'), '1')],
         [((MODULE_NAME, 'umap'), '1')],
         [((MODULE_NAME, 'tblt'), '1')],
         [((MODULE_NAME, 'union'), '1')],
-    ]),
-]
+    ]
+    if parent in ('dlist', 'parameter', 'operand'):
+        opts.append(
+            [((MODULE_NAME, 'seq'), '*')]
+        )
+    return [
+        ('$choice', opts),
+    ]
+
 
 # : List of extension statements defined by the module
 MODULE_EXTENSIONS = (
@@ -101,7 +109,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('ulist', None,
         subs=(
-            TYPE_USE
+            type_use('ulist')
             +[
                 ('min-elements', '?'),
                 ('max-elements', '?'),
@@ -112,20 +120,17 @@ MODULE_EXTENSIONS = (
     ),
     Ext('dlist', None,
         subs=[
-            ('$interleave',
-                TYPE_USE
-                +[((MODULE_NAME, 'seq'), '*')]
-            ),
+            ('$interleave', type_use('dlist')),
             ('description', '?'),
             ('reference', '?'),
         ],
     ),
     Ext('seq', None,
         subs=(
-            TYPE_USE
+            type_use('seq')
             +[
-                ('min-elements', '1'),
-                ('max-elements', '1'),
+                ('min-elements', '?'),
+                ('max-elements', '?'),
                 ('description', '?'),
                 ('reference', '?'),
             ]
@@ -141,7 +146,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('keys', None,
         subs=(
-            TYPE_USE
+            type_use('keys')
             +[
                 ('description', '?'),
                 ('reference', '?'),
@@ -150,7 +155,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('values', None,
         subs=(
-            TYPE_USE
+            type_use('values')
             +[
                 ('description', '?'),
                 ('reference', '?'),
@@ -170,7 +175,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('column', 'identifier',
         subs=(
-            TYPE_USE
+            type_use('column')
             +[
                 ('description', '?'),
                 ('reference', '?'),
@@ -202,7 +207,7 @@ MODULE_EXTENSIONS = (
     Ext('typedef', 'identifier',
         subs=(
             obj_subs_pre
-            +TYPE_USE
+            +type_use('obj')
             +obj_subs_post
         ),
         parents=[('module', '*')]
@@ -219,7 +224,7 @@ MODULE_EXTENSIONS = (
     Ext('const', 'identifier',
         subs=(
             obj_subs_pre
-            +TYPE_USE
+            +type_use('obj')
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
                 ((MODULE_NAME, 'init-value'), '1'),
@@ -235,7 +240,7 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'parameter'), '*'),
                 ('uses', '*'),
             ]
-            +TYPE_USE
+            +type_use('obj')
             +obj_subs_post
         ),
         parents=[('module', '*')]
@@ -245,7 +250,7 @@ MODULE_EXTENSIONS = (
         'var', 'identifier',
         subs=(
             obj_subs_pre
-            +TYPE_USE + [
+            +type_use('obj') + [
                 ((MODULE_NAME, 'parameter'), '*'),
                 ((MODULE_NAME, 'init-value'), '?'),
                 ('uses', '*'),
@@ -271,7 +276,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('parameter', 'identifier',
         subs=(
-            TYPE_USE
+            type_use('parameter')
             +[
                 ((MODULE_NAME, 'default'), '?'),
                 ('description', '?'),
@@ -288,7 +293,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('result', 'identifier',
         subs=(
-            TYPE_USE
+            type_use('result')
             +[
                 ('description', '?'),
                 ('reference', '?'),
@@ -310,7 +315,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('operand', 'identifier',
         subs=(
-            TYPE_USE
+            type_use('operand')
             +[
                 ('description', '?'),
                 ('reference', '?'),

@@ -285,9 +285,8 @@ class TestTyping(unittest.TestCase):
     def test_dlist_get(self):
         typ = DiverseList(parts=[
             BUILTINS['int'],
-            DiverseSeq(
+            Sequence(
                 base=BUILTINS['textstr'],
-                min_elements=0,
                 max_elements=1,
             )
         ])
@@ -331,9 +330,8 @@ class TestTyping(unittest.TestCase):
     def test_dlist_convert(self):
         typ = DiverseList(parts=[
             BUILTINS['int'],
-            DiverseSeq(
+            Sequence(
                 base=BUILTINS['textstr'],
-                min_elements=0,
                 max_elements=1,
             )
         ])
@@ -524,6 +522,38 @@ class TestTyping(unittest.TestCase):
             ],
         ])
         self.assertEqual(outarray, got.value)
+
+    def test_seq_take(self):
+        typ = Sequence(
+            base=BUILTINS['textstr'],
+            max_elements=1,
+        )
+
+        items = [
+            LiteralARI(1),
+            LiteralARI('hi'),
+        ]
+        got = typ.take(items)
+        self.assertEqual(0, len(got))
+        self.assertEqual(2, len(items))
+
+        items = [
+            LiteralARI('hi'),
+            LiteralARI(1),
+        ]
+        got = typ.take(items)
+        self.assertEqual(1, len(got))
+        self.assertEqual(1, len(items))
+        self.assertEqual([LiteralARI('hi')], got)
+
+        items = [
+            LiteralARI('hi'),
+            LiteralARI('oh'),  # don't care
+        ]
+        got = typ.take(items)
+        self.assertEqual(1, len(got))
+        self.assertEqual(1, len(items))
+        self.assertEqual([LiteralARI('hi')], got)
 
     TYPE_WALK = (
         (

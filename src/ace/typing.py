@@ -556,7 +556,7 @@ class TypeUse(SemType):
 class TypeUnion(SemType):
     ''' A union of other types. '''
 
-    types:Tuple[SemType] = field(default_factory=tuple)
+    types:List[SemType] = field(default_factory=list)
     ''' The underlying types, with significant order. '''
 
     def children(self) -> List['BaseType']:
@@ -651,10 +651,7 @@ class UniformList(SemType):
             err = ', '.join(invalid)
             raise ValueError(f'UniformList.convert() invalid constraints: {err}')
 
-        rvalue = []
-        for ival in obj.value:
-            rvalue.append(self.base.convert(ival))
-
+        rvalue = list(map(self.base.convert, obj.value))
         return LiteralARI(rvalue, StructType.AC)
 
     def _constrain(self, obj:ARI) -> List[str]:
@@ -669,31 +666,72 @@ class UniformList(SemType):
 
 
 @dataclass
-class DiverseSeq:
-    ''' A sequence within a :cls:`DiverseList` object. '''
+class Sequence(SemType):
+    ''' A sequence within a :cls:`DiverseList` or
+    for a greedy last parameter/operand.
+
+    The value itself is handled as a List[ARI], not an ARI
+    '''
 
     base:BaseType
+    ''' Type restriction within the sequence. '''
 
-    min_elements:int
+    min_elements:Optional[int] = None
     ''' Lower limit on the size of the sequence. '''
-    max_elements:int
+    max_elements:Optional[int] = None
     ''' Upper limit on the size of the sequence. '''
+
+    def children(self) -> List['BaseType']:
+        return [self.base]
+
+    def type_ids(self) -> Set[StructType]:
+        return self.base.type_ids()
+
+    def get(self, obj:ARI) -> Optional[ARI]:
+        return list(map(self.base.get, obj))
+
+    def convert(self, obj:ARI) -> ARI:
+        rvalue = list(map(self.base.convert, obj))
+        return LiteralARI(rvalue, StructType.AC)
+
+    def take(self, remain:List[ARI]) -> List[ARI]:
+        ''' Match as many given parameters from a list as allowed.
+
+        :param remain: A mutable list to remove matching items from.
+        :return: The matched items.
+        :raise ValueError: If the operation cannot be performed.
+        '''
+        got = []
+        while (remain and
+               (self.max_elements is None or len(got) < self.max_elements)):
+            # attempt a match
+            val = remain[0]
+            if self.base.get(val) is None:
+                # first non-matching value
+                break
+
+            got.append(remain.pop(0))
+
+        if self.min_elements is not None and len(got) < self.min_elements:
+            raise ValueError('list too short for sequence')
+
+        return got
 
 
 @dataclass
 class DiverseList(SemType):
     ''' A list with non-uniform-typed items. '''
 
-    parts:List[Union[BaseType, DiverseSeq]]
+    parts:List[BaseType]
     ''' Type for each item or sequence. '''
 
     def children(self) -> List['BaseType']:
         types = []
         for part in self.parts:
-            if isinstance(part, BaseType):
-                return types.append(part)
-            elif isinstance(part, DiverseSeq):
+            if isinstance(part, Sequence):
                 return types.append(part.base)
+            elif isinstance(part, BaseType):
+                return types.append(part)
         return types
 
     def type_ids(self) -> Set[StructType]:
@@ -710,27 +748,19 @@ class DiverseList(SemType):
         # mutable copy of the list
         remain = list(obj.value)
         for part in self.parts:
-            if isinstance(part, BaseType):
+            if isinstance(part, Sequence):
+                try:
+                    part.take(remain)
+                except ValueError:
+                    return None
+
+            elif isinstance(part, BaseType):
                 try:
                     val = remain.pop(0)
                 except IndexError:
                     return None
                 if part.get(val) is None:
                     return None
-
-            elif isinstance(part, DiverseSeq):
-                if len(remain) < part.min_elements:
-                    return None
-                max_elem = part.max_elements
-                got = 0
-                while remain and got < max_elem:
-                    # attempt a match
-                    val = remain[0]
-                    if part.base.get(val) is None:
-                        break
-
-                    remain.pop(0)
-                    got += 1
 
         if remain:
             # some items not captured
@@ -752,28 +782,17 @@ class DiverseList(SemType):
         # mutable copy of the list
         remain = list(obj.value)
         for part in self.parts:
-            if isinstance(part, BaseType):
+            if isinstance(part, Sequence):
+                got = part.take(remain)
+                for ival in got:
+                    rvalue.append(part.base.convert(ival))
+
+            elif isinstance(part, BaseType):
                 try:
                     ival = remain.pop(0)
                 except IndexError:
                     raise ValueError('list too short for dlist item')
                 rvalue.append(part.convert(ival))
-
-            elif isinstance(part, DiverseSeq):
-                if len(remain) < part.min_elements:
-                    raise ValueError('list too short for dlist sequence')
-                max_elem = part.max_elements
-                got = 0
-                while remain and got < max_elem:
-                    # attempt a match
-                    val = remain[0]
-                    try:
-                        rvalue.append(part.base.convert(val))
-                    except (TypeError, ValueError):
-                        break
-
-                    remain.pop(0)
-                    got += 1
 
         if remain:
             # some items not converted
@@ -932,7 +951,6 @@ def type_walk(root:BaseType) -> Iterator:
 
     def walk(typeobj:BaseType) -> None:
         if id(typeobj) in seen:
-            LOGGER.warning('type_walk() already seen %s', typeobj)
             return
 
         seen.add(id(typeobj))

@@ -39,8 +39,8 @@ from ace import ari_text
 from ace.ari import ARI, ReferenceARI
 from ace.typing import (
     Length, Pattern, Range,
-    SemType, TypeUse, TypeUnion, UniformList, DiverseList, DiverseSeq,
-    UniformMap, TableTemplate, TableColumn
+    SemType, TypeUse, TypeUnion, UniformList, DiverseList,
+    UniformMap, TableTemplate, TableColumn, Sequence
 )
 from ace.models import (
     TypeNameList, TypeNameItem,
@@ -176,6 +176,7 @@ class Decoder:
             (AMM_MOD, 'umap'): self._handle_umap,
             (AMM_MOD, 'tblt'): self._handle_tblt,
             (AMM_MOD, 'union'): self._handle_union,
+            (AMM_MOD, 'seq'): self._handle_seq,
         }
 
     def _get_typeobj(self, parent: pyang.statements.Statement) -> SemType:
@@ -324,6 +325,21 @@ class Decoder:
             types.append(subtype)
 
         return TypeUnion(types=tuple(types))
+
+    def _handle_seq(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = Sequence(
+            base=self._get_typeobj(stmt)
+        )
+
+        size_stmt = search_one_exp(stmt, 'min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = search_one_exp(stmt, 'max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
+        return typeobj
 
     def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
@@ -693,7 +709,7 @@ class Encoder:
         elif issubclass(cls, Oper):
             for operand in obj.operands.items:
                 opnd_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'operand'), operand.name)
-                self._put_typeobj(obj.result.typeobj, opnd_stmt)
+                self._put_typeobj(operand.typeobj, opnd_stmt)
 
             if obj.result:
                 res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
@@ -725,9 +741,16 @@ class Encoder:
             ulist_stmt = self._add_substmt(parent, (AMM_MOD, 'ulist'))
             self._put_typeobj(typeobj.base, ulist_stmt)
 
+            if typeobj.min_elements is not None:
+                self._add_substmt(ulist_stmt, 'min-elements', str(typeobj.min_elements))
+            if typeobj.max_elements is not None:
+                self._add_substmt(ulist_stmt, 'max-elements', str(typeobj.max_elements))
+
         elif isinstance(typeobj, DiverseList):
             dlist_stmt = self._add_substmt(parent, (AMM_MOD, 'dlist'))
-            # FIXME more statements
+
+            for part in typeobj.parts:
+                self._put_typeobj(part, dlist_stmt)
 
         elif isinstance(typeobj, UniformMap):
             umap_stmt = self._add_substmt(parent, (AMM_MOD, 'umap'))
@@ -757,6 +780,15 @@ class Encoder:
 
             for sub in typeobj.types:
                 self._put_typeobj(sub, union_stmt)
+
+        elif isinstance(typeobj, Sequence):
+            seq_stmt = self._add_substmt(parent, (AMM_MOD, 'seq'))
+            self._put_typeobj(typeobj.base, seq_stmt)
+
+            if typeobj.min_elements is not None:
+                self._add_substmt(seq_stmt, 'min-elements', str(typeobj.min_elements))
+            if typeobj.max_elements is not None:
+                self._add_substmt(seq_stmt, 'max-elements', str(typeobj.max_elements))
 
         else:
             raise TypeError(f'Unhandled type object: {typeobj}')

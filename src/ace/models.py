@@ -205,12 +205,14 @@ class TypeResolver:
                             subvisitor = self._get_visitor(typedef.module)
 
                         typeobj = copy.copy(typedef.typeobj)
+                        # cache object before recursion
+                        self._cache[key] = typeobj
+
                         LOGGER.debug('recurse binding %s for %s', typedef.norm_name, typeobj)
                         for sub_obj in type_walk(typeobj):
                             subvisitor(sub_obj)
 
                         obj.base = typeobj
-                        self._cache[key] = typeobj
 
                 LOGGER.debug('result for %s:%s bound %s', obj.type_ns, obj.type_name, obj.base)
 

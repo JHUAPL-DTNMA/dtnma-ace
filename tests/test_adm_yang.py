@@ -326,7 +326,9 @@ module example-mod {
       amm:type uint;
     }
     amm:operand vals {
-      amm:type amm:numeric;
+      amm:seq {
+        amm:type amm:numeric;
+      }
     }
     amm:result total {
       amm:type amm:numeric;
@@ -336,17 +338,6 @@ module example-mod {
   }
 ''',
     ]
-    '''
-        (models.Oper, {
-            "name": "some_op_name",
-            "result-type": "int",
-            "in-type": [
-                "int",
-                "int",
-            ],
-            "description": "a description of an Operator"
-        }),
-    '''
 
     def test_loopback_examples(self):
         enc = adm_yang.Encoder()
