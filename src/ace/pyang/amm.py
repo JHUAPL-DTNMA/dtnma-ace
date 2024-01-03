@@ -1,16 +1,19 @@
 
 from dataclasses import dataclass, field
-import re
+import io
 import logging
+import re
 from typing import List, Tuple
 import pyang
 from pyang.error import err_add
+from ace.ari_text import Decoder
 
 logger = logging.getLogger(__name__)
 
-# : Extension module name to hook onto
 MODULE_NAME = 'ietf-amm'
+''' Extension module name to hook onto '''
 MODULE_PREFIX = 'amm'
+''' Extension prefix '''
 
 
 @dataclass
@@ -187,12 +190,12 @@ MODULE_EXTENSIONS = (
     Ext('unique', 'string'),
     Ext('union', None,
         subs=[
-            ((MODULE_NAME, 'type'), '*'),
+            ('$interleave', type_use('union')),
             ('description', '?'),
             ('reference', '?'),
         ],
     ),
-    # : Type narrowing extensions
+    # Type narrowing extensions
     Ext('cddl', 'string',
         parents=[((MODULE_NAME, 'type'), '?')]
     ),
@@ -204,7 +207,7 @@ MODULE_EXTENSIONS = (
         parents=[((MODULE_NAME, 'type'), '?')]
     ),
 
-    # : managed objects
+    # managed objects
     Ext('typedef', 'identifier',
         subs=(
             obj_subs_pre
@@ -247,8 +250,7 @@ MODULE_EXTENSIONS = (
         parents=[('module', '*')]
     ),
 
-    Ext(
-        'var', 'identifier',
+    Ext('var', 'identifier',
         subs=(
             obj_subs_pre
             +type_use('obj') + [
@@ -261,6 +263,7 @@ MODULE_EXTENSIONS = (
     ),
     Ext('init-value', 'ARI',
         parents=[
+            ((MODULE_NAME, 'const'), '?'),
             ((MODULE_NAME, 'var'), '?'),
         ]
     ),
@@ -327,22 +330,19 @@ MODULE_EXTENSIONS = (
 )
 
 
-def check_int(min_val, max_val):
-    ''' Verify numeric statement argument. '''
+class AriChecker:
+    ''' Verify that text is a well-formed ARI. '''
 
-    def checker(val):
+    def __init__(self):
+        self._dec = Decoder()
+
+    def __call__(self, val:str) -> bool:
+        buf = io.StringIO(val)
         try:
-            val = int(val)
-            return (val >= min_val and val <= max_val)
-        except TypeError:
+            self._dec.decode(buf)
+            return True
+        except:
             return False
-
-    return checker
-
-
-def check_ari(val):
-    ''' Verify the text is an ARI. '''
-    return True
 
 
 def _stmt_check_namespace(ctx, stmt):
@@ -425,10 +425,6 @@ def _stmt_add_amm_children(ctx, stmt):
 #            logger.debug('expand %s %s', obj_stmt, obj_stmt.i_children)
 
 
-def _stmt_check_oper_result(ctx, stmt):
-    pass
-
-
 def pyang_plugin_init():
     ''' Called by plugin framework to initialize this plugin.
     '''
@@ -438,7 +434,7 @@ def pyang_plugin_init():
     # Register that we handle extensions from the associated YANG module
     pyang.grammar.register_extension_module(MODULE_NAME)
     # Extension argument types
-    pyang.syntax.add_arg_type('ARI', check_ari)
+    pyang.syntax.add_arg_type('ARI', AriChecker())
 
     for ext in MODULE_EXTENSIONS:
         sub_stmts = ext.subs
@@ -450,12 +446,6 @@ def pyang_plugin_init():
             except Exception as err:
                 logger.error('Failed to add substatement "%s" "%s": %s' % (name, ext.keyword, err))
                 raise
-
-    pyang.statements.data_keywords += [
-        (MODULE_NAME, 'parameter'),
-        (MODULE_NAME, 'operand'),
-        (MODULE_NAME, 'result'),
-    ]
 
     # Add validation step, stages are listed in :mod:`pyang.statements`
 #    pyang.statements.add_validation_var(
@@ -501,11 +491,6 @@ def pyang_plugin_init():
         'expand_1',
         ['module', 'submodule'],
         _stmt_add_amm_children
-    )
-    pyang.statements.add_validation_fun(
-        'expand_2',
-        [(MODULE_NAME, 'oper')],
-        _stmt_check_oper_result
     )
 
     # Register special error codes
