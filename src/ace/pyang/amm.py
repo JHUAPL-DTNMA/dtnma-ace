@@ -426,14 +426,14 @@ def _stmt_add_amm_children(ctx, stmt):
 
 
 def _stmt_check_oper_result(ctx, stmt):
-    logger.debug('oper %s %s', stmt, stmt.search_one((MODULE_NAME, 'result'), children=stmt.i_children))
+    pass
 
 
 def pyang_plugin_init():
     ''' Called by plugin framework to initialize this plugin.
     '''
     import sys
-    logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 
     # Register that we handle extensions from the associated YANG module
     pyang.grammar.register_extension_module(MODULE_NAME)
@@ -448,7 +448,7 @@ def pyang_plugin_init():
             try:
                 pyang.grammar.add_to_stmts_rules([name], [((MODULE_NAME, ext.keyword), occurr)])
             except Exception as err:
-                print('Failed to add substatement "%s" "%s": %s' % (name, ext.keyword, err))
+                logger.error('Failed to add substatement "%s" "%s": %s' % (name, ext.keyword, err))
                 raise
 
     pyang.statements.data_keywords += [
