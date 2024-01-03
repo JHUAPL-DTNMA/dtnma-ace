@@ -311,6 +311,14 @@ class Decoder:
             ]
             typeobj.unique.append(col_names)
 
+        size_stmt = search_one_exp(stmt, 'min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = search_one_exp(stmt, 'max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
         return typeobj
 
     def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
@@ -774,6 +782,11 @@ class Encoder:
                 self._add_substmt(tblt_stmt, (AMM_MOD, 'key'), typeobj.key)
             for uniq in typeobj.unique:
                 self._add_substmt(tblt_stmt, (AMM_MOD, 'unique'), uniq)
+
+            if typeobj.min_elements is not None:
+                self._add_substmt(tblt_stmt, 'min-elements', str(typeobj.min_elements))
+            if typeobj.max_elements is not None:
+                self._add_substmt(tblt_stmt, 'max-elements', str(typeobj.max_elements))
 
         elif isinstance(typeobj, TypeUnion):
             union_stmt = self._add_substmt(parent, (AMM_MOD, 'union'))

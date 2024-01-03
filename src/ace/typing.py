@@ -402,7 +402,7 @@ class ObjRefType(BuiltInType):
             raise TypeError(f'Cannot convert to an object-reference type: {obj}')
 
         if self.type_id is not None and obj.ident.type_id != self.type_id:
-            raise ValueError()
+            raise ValueError(f'Need an object-reference type {self.type_id} but have: {obj.ident.type_id}')
         return obj
 
 
@@ -880,6 +880,10 @@ class TableTemplate(SemType):
     ''' Name of the key column. '''
     unique:List[List[str]] = field(default_factory=list)
     ''' Names of unique column tuples. '''
+    min_elements:Optional[int] = None
+    ''' Lower limit on the number of rows. '''
+    max_elements:Optional[int] = None
+    ''' Upper limit on the number of rows. '''
 
     def children(self) -> List['BaseType']:
         return [col.base for col in self.columns]
@@ -896,12 +900,14 @@ class TableTemplate(SemType):
         if obj.type_id != StructType.TBL:
             return None
 
-        if obj.value.ndim != 2:
+        invalid = self._constrain(obj)
+        if invalid:
+            err = ', '.join(invalid)
+            LOGGER.debug('TableTemplate.get() invalid constraints: %s', err)
             return None
-        nrows, ncols = obj.value.shape
-        if ncols != len(self.columns):
-            return None
+
         # check each value against column schema
+        nrows, _ = obj.value.shape
         for row_ix in range(nrows):
             for col_ix, col in enumerate(self.columns):
                 if col.base.get(obj.value[row_ix, col_ix]) is None:
@@ -917,12 +923,12 @@ class TableTemplate(SemType):
         if obj.type_id != StructType.TBL:
             raise TypeError(f'Value to convert is not TBL, it is {obj.type_id.name}')
 
-        if obj.value.ndim != 2:
-            raise ValueError(f'TBL value must be a 2-dimensional array, is {obj.value.ndim}')
-        nrows, ncols = obj.value.shape
-        if ncols != len(self.columns):
-            raise ValueError(f'TBL value has wrong number of columns: should be {len(self.columns)} is {ncols}')
+        invalid = self._constrain(obj)
+        if invalid:
+            err = ', '.join(invalid)
+            raise ValueError(f'TableTemplate.convert() invalid constraints: {err}')
 
+        nrows, _ = obj.value.shape
         rvalue = Table(obj.value.shape)
         for row_ix in range(nrows):
             irow = obj.value[row_ix,:]
@@ -937,6 +943,24 @@ class TableTemplate(SemType):
                 raise ValueError(f'Failed to convert columns {",".join(badcols)} for row {row_ix}: {irow}')
 
         return LiteralARI(rvalue, StructType.TBL)
+
+    def _constrain(self, obj:ARI) -> List[str]:
+        ''' Check constraints on the shape of the table.
+        '''
+        invalid = []
+        if obj.value.ndim != 2:
+            invalid.append(f'TBL value must be a 2-dimensional array, is {obj.value.ndim}')
+            return
+        nrows, ncols = obj.value.shape
+
+        if ncols != len(self.columns):
+            raise ValueError(f'TBL value has wrong number of columns: should be {len(self.columns)} is {ncols}')
+
+        if self.min_elements is not None and nrows < self.min_elements:
+            invalid.append(f'Number of rows {nrows} is smaller than the minimum of {self.min_elements}')
+        if self.max_elements is not None and nrows > self.max_elements:
+            invalid.append(f'Number of rows {nrows} is larger than the maximum of {self.max_elements}')
+        return invalid
 
 
 def type_walk(root:BaseType) -> Iterator:

@@ -98,9 +98,10 @@ MODULE_EXTENSIONS = (
     # : Type structure extensions
     Ext('type', 'identifier-ref',
         subs=[
+            ('units', '?'),
+            ('range', '?'),
             ('length', '?'),
             ('pattern', '?'),
-            ('range', '?'),
             ((MODULE_NAME, 'int-labels'), '?'),
             ((MODULE_NAME, 'cddl'), '?'),
             ('description', '?'),

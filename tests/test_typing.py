@@ -3,8 +3,17 @@
 import logging
 import unittest
 import portion
-from ace.typing import *
-from ace.ari import LiteralARI, ReferenceARI, UNDEFINED, NULL, TRUE, FALSE
+from ace.typing import (
+    BUILTINS, type_walk,
+    NullType, BoolType, NumericType, StringType,
+    TypeUse, Range,
+    TypeUnion, UniformList, DiverseList, UniformMap,
+    TableTemplate, TableColumn, Sequence
+)
+from ace.ari import (
+    StructType, Table, LiteralARI, ReferenceARI, Identity,
+    UNDEFINED, NULL, TRUE, FALSE
+)
 from util import TypeSummary
 
 LOGGER = logging.getLogger(__name__)
@@ -144,6 +153,42 @@ class TestTyping(unittest.TestCase):
             typ.convert(LiteralARI(0, StructType.VAST))
         with self.assertRaises(TypeError):
             typ.convert(LiteralARI(0, StructType.UVAST))
+
+    def test_edd_get(self):
+        typ = BUILTINS['edd']
+
+        self.assertIsNone(typ.get(NULL))
+        self.assertIsNone(typ.get(TRUE))
+        self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertIsNone(typ.get(LiteralARI(123)))
+
+        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.get(ref))
+
+        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+
+    def test_edd_convert(self):
+        typ = BUILTINS['edd']
+
+        self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
+        with self.assertRaises(TypeError):
+            typ.convert(NULL)
+        with self.assertRaises(TypeError):
+            typ.convert(TRUE)
+        with self.assertRaises(TypeError):
+            typ.convert(FALSE)
+        with self.assertRaises(TypeError):
+            typ.convert(LiteralARI('hi'))
+
+        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.convert(ref))
+
+        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        with self.assertRaises(ValueError):
+            typ.convert(ref)
 
     def test_typeuse_int_range_get(self):
         typ = TypeUse(base=BUILTINS['int'], constraints=[

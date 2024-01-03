@@ -25,7 +25,7 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 import datetime
 from dataclasses import dataclass
 import enum
-from typing import Callable, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union
 import cbor2
 import numpy
 
@@ -133,8 +133,8 @@ class StructType(enum.IntEnum):
 class ARI:
     ''' Base class for all forms of ARI. '''
 
-    def visit(self, visitor:Callable[['ARI'], None]):
-        ''' Call a visitor on this ARI and each ARI in a collection.
+    def visit(self, visitor:Callable[['ARI'], None]) -> None:
+        ''' Call a visitor on this ARI and each child ARI.
 
         The base type calls the visitor on itself, so only composing types
         need to override this function.
@@ -142,6 +142,16 @@ class ARI:
         :param visitor: The callable visitor for each type object.
         '''
         visitor(self)
+
+    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
+        ''' Call a mapping on this ARI and each child ARI.
+
+        The base type calls the function on itself, so only composing types
+        need to override this function.
+
+        :param func: The callable visitor for each type object.
+        '''
+        return func(self)
 
 
 @dataclass(eq=True, frozen=True)
@@ -161,7 +171,7 @@ class LiteralARI(ARI):
             and self.value == other.value
         )
 
-    def visit(self, visitor:Callable[['ARI'], None]):
+    def visit(self, visitor:Callable[['ARI'], None]) -> None:
         if isinstance(self.value, list):
             for item in self.value:
                 item.visit(visitor)
@@ -173,6 +183,30 @@ class LiteralARI(ARI):
             func = lambda item: item.visit(visitor)
             numpy.vectorize(func)(self.value)
         super().visit(visitor)
+
+    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
+        lfunc = lambda item: item.map(func)
+
+        result = None
+        if isinstance(self.value, list):
+            rvalue = list(map(lfunc, self.value))
+            result = LiteralARI(rvalue, self.type_id)
+
+        elif isinstance(self.value, dict):
+            rvalue = {
+                lfunc(key): lfunc(val)
+                for key, val in self.value.items()
+            }
+            result = LiteralARI(rvalue, self.type_id)
+
+        elif isinstance(self.value, Table):
+            rvalue = numpy.vectorize(lfunc)(self.value)
+            result = LiteralARI(rvalue, self.type_id)
+
+        else:
+            result = super().map(func)
+
+        return result
 
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
@@ -251,5 +285,29 @@ class ReferenceARI(ARI):
     '''
     ident: Identity
     ''' Identity of the referenced object '''
-    params: Optional[List[ARI]] = None
+    params: Union[List[ARI], Dict[LiteralARI, ARI], None] = None
     ''' Optional paramerization, None is different than empty list '''
+
+    def visit(self, visitor:Callable[['ARI'], None]) -> None:
+        if isinstance(self.params, list):
+            for val in self.params:
+                val.visit(visitor)
+        elif isinstance(self.params, dict):
+            for key, val in self.params.items():
+                key.visit(visitor)
+                val.visit(visitor)
+        super().visit(visitor)
+
+    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
+        lfunc = lambda item: item.map(func)
+
+        rparams = None
+        if isinstance(self.params, list):
+            rparams = list(map(lfunc, self.params))
+        elif isinstance(self.params, dict):
+            rparams = {
+                lfunc(key): lfunc(val)
+                for key, val in self.params.items()
+            }
+
+        return ReferenceARI(self.ident, rparams)
