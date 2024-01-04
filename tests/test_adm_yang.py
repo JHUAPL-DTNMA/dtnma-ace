@@ -168,6 +168,54 @@ module example-mod {
 ''')
         adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.name)
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(1, len(adm.ctrl))
+        obj = adm.ctrl[0]
+        self.assertIsInstance(obj, models.Ctrl)
+        self.assertEqual("test1", obj.name)
+        self.assertEqual(2, len(obj.parameters.items))
+        self.assertEqual("id", obj.parameters.items[0].name)
+        self.assertEqual("any", obj.parameters.items[0].typeobj.type_name)
+
+        self.assertEqual(1, len(adm.edd))
+        obj = adm.edd[0]
+        self.assertIsInstance(obj, models.Edd)
+        self.assertEqual("edd1", obj.name)
+        self.assertEqual("int", obj.typeobj.type_name)
+
+    def test_decode_groupings(self):
+        buf = self._get_mod_buf('''
+  amm:edd edd1 {
+    amm:enum 4;
+    amm:type int;
+    description
+      "EDD test_int";
+  }
+  grouping paramgrp {
+    amm:parameter id {
+      amm:type amm:any;
+    }
+    amm:parameter def {
+      amm:type amm:expr;
+    }
+  }
+  amm:ctrl test1 {
+    amm:enum 5;
+    uses paramgrp;
+  }
+''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
         self.assertEqual('example-mod', adm.name)

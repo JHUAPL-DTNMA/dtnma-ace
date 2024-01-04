@@ -196,15 +196,12 @@ MODULE_EXTENSIONS = (
         ],
     ),
     # Type narrowing extensions
-    Ext('cddl', 'string',
-        parents=[((MODULE_NAME, 'type'), '?')]
-    ),
+    Ext('cddl', 'string'),
     Ext('int-labels', None,
         subs=[
             ('enum', '*'),
             ('bit', '*'),
         ],
-        parents=[((MODULE_NAME, 'type'), '?')]
     ),
 
     # managed objects
@@ -262,10 +259,6 @@ MODULE_EXTENSIONS = (
         parents=[('module', '*')]
     ),
     Ext('init-value', 'ARI',
-        parents=[
-            ((MODULE_NAME, 'const'), '?'),
-            ((MODULE_NAME, 'var'), '?'),
-        ]
     ),
 
     Ext('ctrl', 'identifier',
@@ -446,6 +439,11 @@ def pyang_plugin_init():
             except Exception as err:
                 logger.error('Failed to add substatement "%s" "%s": %s' % (name, ext.keyword, err))
                 raise
+
+    # Allow these to be present in "grouping" and for "uses"
+    pyang.statements.add_data_keyword((MODULE_NAME, 'parameter'))
+    pyang.statements.add_data_keyword((MODULE_NAME, 'operand'))
+    pyang.statements.add_data_keyword((MODULE_NAME, 'result'))
 
     # Add validation step, stages are listed in :mod:`pyang.statements`
 #    pyang.statements.add_validation_var(
