@@ -92,7 +92,7 @@ def type_use(parent:str) -> List:
 # : List of extension statements defined by the module
 MODULE_EXTENSIONS = (
     # : ARI enum assignment
-    Ext('enum', 'integer',
+    Ext('enum', 'non-negative-integer',
         parents=([
             ('module', '1'),
         ] + [(name, '?') for name in AMP_OBJ_NAMES])
