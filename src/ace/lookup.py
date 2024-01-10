@@ -189,7 +189,8 @@ class TypeResolver:
                         ident = None
                 except TypeError:
                     ident = None
-            if ident is None:
-                self._badtypes.add(cnst.base_ari.ident)
-            else:
-                cnst.base_ident = ident
+
+                if ident is None:
+                    self._badtypes.add(cnst.base_ari.ident)
+                else:
+                    cnst.base_ident = ident
