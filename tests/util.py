@@ -57,9 +57,6 @@ class TypeSummary:
         if isinstance(obj, typing.BuiltInType):
             summary.detail = obj.type_id
         elif isinstance(obj, typing.TypeUse):
-            name = obj.type_name
-            if obj.type_ns is not None:
-                name.insert(0, obj.type_ns + ':')
-            summary.detail = name
+            summary.detail = obj.type_text
 
         return summary

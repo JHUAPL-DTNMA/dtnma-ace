@@ -21,12 +21,13 @@
 #
 ''' Test the adm_set module and AdmSet class.
 '''
+import io
 import logging
 import os
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace import models, typing, constraints
+from ace import ari, ari_text, models, typing, constraints
 
 SELFDIR = os.path.dirname(__file__)
 LOGGER = logging.getLogger(__name__)
@@ -41,7 +42,11 @@ class BaseTest(unittest.TestCase):
         models.Base.metadata.create_all(self._db_eng)
         self._db_sess = Session(self._db_eng, autoflush=False)
 
+        self._ari_dec = ari_text.Decoder()
+
     def tearDown(self):
+        self._ari_dec = None
+
         self._db_sess.close()
         self._db_sess = None
         models.Base.metadata.drop_all(self._db_eng)
@@ -52,6 +57,9 @@ class BaseTest(unittest.TestCase):
         self.assertEqual(check_name, issue.check_name)
         self.assertEqual(obj_ref, issue.obj)
         self.assertRegex(issue.detail, detail_re)
+
+    def _from_text(self, text:str) -> ari.ARI:
+        return self._ari_dec.decode(io.StringIO(text))
 
     def _add_mod(self, abs_file_path, name, enum):
         src = models.AdmSource(
@@ -150,10 +158,12 @@ class TestConstraintsBasic(BaseTest):
             name='myadm',
             enum=200,
         )
+        val = 'ari:/INT/10'
         adm.var.append(models.Var(
             name='someval',
-            typeobj=typing.TypeUse(type_name='asdf'),
-            init_value='ari:/INT/10',
+            typeobj=typing.TypeUse(type_ari='asdf'),
+            init_value=val,
+            init_ari=self._from_text(val)
         ))
         self._db_sess.commit()
 
@@ -184,10 +194,12 @@ class TestConstraintsBasic(BaseTest):
             enum=201,
         )
 
+        val = 'ari:/AC/(/adm_a/CTRL/control_a,/adm_a/CTRL/control_c,/adm_c/CTRL/control_a)'
         adm_b.const.append(models.Const(
             name='macro',
-            typeobj=typing.TypeUse(type_name='ac'),
-            init_value='ari:/AC/(/adm_a/CTRL/control_a,/adm_a/CTRL/control_c,/adm_c/CTRL/control_a)',
+            typeobj=typing.TypeUse(type_ari=ari.LiteralARI(ari.StructType.AC, ari.StructType.ARITYPE)),
+            init_value=val,
+            init_ari=self._from_text(val),
         ))
 
         self._db_sess.commit()

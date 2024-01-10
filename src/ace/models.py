@@ -19,10 +19,8 @@
 # the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-from sqlalchemy.ext.hybrid import hybrid_property
 ''' ORM models for the ADM and its contents.
 '''
-import copy
 import logging
 from typing import List
 from sqlalchemy import (
@@ -31,13 +29,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
 )
-from sqlalchemy.orm.session import object_session
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
-from .typing import type_walk
 
-LOGGER = logging.getLogger(__name__)
-
-CURRENT_SCHEMA_VERSION = 14
+CURRENT_SCHEMA_VERSION = 15
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -95,130 +90,6 @@ class TypeUseMixin:
     ''' An object derived from the :cls:`SemType` class. '''
 
 
-from typing import Callable
-from ace.typing import BUILTINS, BaseType, SemType, TypeUse
-
-
-class TypeResolverError(RuntimeError):
-
-    def __init__(self, msg:str, badtypes:List):
-        super().__init__(msg)
-        self.badtypes = badtypes
-
-
-class TypeResolver:
-    ''' A caching recursive type resolver.
-    '''
-
-    def __init__(self):
-        self._cache = dict()
-        self._badtypes = None
-        self._db_sess = None
-
-    def resolve(self, typeobj:SemType, adm:'AdmModule') -> SemType:
-        ''' Bind references to external BaseType objects from type names.
-        This function is not reentrant.
-
-        :param typeobj: The original unbound type object (and any children).
-        :return: The :ivar:`typeobj` with all type references bound.
-        :raise TypeResolverError: If any required types are missing.
-        '''
-        if typeobj is None:
-            return None
-
-        self._badtypes = set()
-        self._db_sess = object_session(adm)
-        LOGGER.debug('Resolver started')
-        visitor = self._get_visitor(adm)
-        for sub_obj in type_walk(typeobj):
-            visitor(sub_obj)
-        LOGGER.debug('Resolver finished with %d bad', len(self._badtypes))
-        if self._badtypes:
-            raise TypeResolverError(f'Missing types to bind to: {self._badtypes}', self._badtypes)
-
-        self._badtypes = None
-        self._db_sess = None
-        return typeobj
-
-    def _get_visitor(self, adm:'AdmModule') -> Callable:
-
-        def visitor(obj:'BaseType'):
-            ''' Check cross-referenced type names. '''
-            basetypeobj = None
-            typedef = None
-            if isinstance(obj, TypeUse):
-                if obj.base is not None:
-                    # already bound, nothing to do
-                    return
-
-                LOGGER.debug('type search for %s:%s', obj.type_ns, obj.type_name)
-                if obj.type_ns is None or obj.type_ns == adm.norm_name:
-                    # Search own ADM first, then built-ins
-                    found = (
-                        self._db_sess.query(Typedef).join(AdmModule)
-                        .filter(
-                            Typedef.module == adm,
-                            Typedef.norm_name == obj.type_name
-                        )
-                    ).one_or_none()
-                    if found is not None:
-                        typedef = found
-                    elif obj.type_ns is None and obj.type_name in BUILTINS:
-                        basetypeobj = BUILTINS[obj.type_name]
-                    else:
-                        self._badtypes.add(obj.type_name)
-                else:
-                    other_adm = (
-                        self._db_sess.query(AdmModule)
-                        .filter(
-                            AdmModule.norm_name == obj.type_ns
-                        )
-                    ).one_or_none()
-                    if other_adm is None:
-                        found = None
-                    else:
-                        found = (
-                            self._db_sess.query(Typedef).join(AdmModule)
-                            .filter(
-                                Typedef.module == other_adm,
-                                Typedef.norm_name == obj.type_name
-                            )
-                        ).one_or_none()
-                    if found is not None:
-                        typedef = found
-                    else:
-                        self._badtypes.add((obj.type_ns, obj.type_name))
-
-                if basetypeobj:
-                    obj.base = basetypeobj
-                elif typedef:
-                    key = (typedef.module.norm_name, typedef.norm_name)
-                    cached = self._cache.get(key)
-                    if cached:
-                        obj.base = cached
-                    else:
-                        # recursive binding
-                        LOGGER.debug('recurse %s to %s %s', typedef.norm_name, typedef.module_id, adm.id)
-                        if typedef.module_id == adm.id:
-                            subvisitor = visitor
-                        else:
-                            subvisitor = self._get_visitor(typedef.module)
-
-                        typeobj = copy.copy(typedef.typeobj)
-                        # cache object before recursion
-                        self._cache[key] = typeobj
-
-                        LOGGER.debug('recurse binding %s for %s', typedef.norm_name, typeobj)
-                        for sub_obj in type_walk(typeobj):
-                            subvisitor(sub_obj)
-
-                        obj.base = typeobj
-
-                LOGGER.debug('result for %s:%s bound %s', obj.type_ns, obj.type_name, obj.base)
-
-        return visitor
-
-
 class TypeNameList(Base):
     ''' A list of typed, named items (e.g. parameters or columns).
 
@@ -253,6 +124,8 @@ class TypeNameItem(Base, TypeUseMixin):
 
     default_value = Column(String)
     ''' Optional default value for parameter as text ARI. '''
+    default_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for default_value. '''
 
 
 class AdmSource(Base):
@@ -329,6 +202,10 @@ class AdmModule(Base):
                            back_populates="module",
                            order_by='asc(Typedef.position)',
                            cascade="all, delete")
+    ident = relationship("Ident",
+                         back_populates="module",
+                         order_by='asc(Ident.position)',
+                         cascade="all, delete")
     const = relationship("Const",
                          back_populates="module",
                          order_by='asc(Const.position)',
@@ -451,6 +328,42 @@ class Typedef(Base, AdmObjMixin, TypeUseMixin):
     module = relationship("AdmModule", back_populates="typedef")
 
 
+class Ident(Base, AdmObjMixin):
+    ''' Identity object (named, derived object) '''
+    __tablename__ = "ident"
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    ''' ID of the file from which this came '''
+    module = relationship("AdmModule", back_populates="ident")
+    ''' Relationship to the :class:`AdmModule` '''
+
+    bases = relationship(
+        "IdentBase",
+        order_by="IdentBase.position",
+        collection_class=ordering_list('position'),
+        cascade="all, delete"
+    )
+
+
+class IdentBase(Base):
+    ''' Each Identity base reference '''
+    __tablename__ = "ident_base"
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+    ident_id = Column(Integer, ForeignKey("ident.id"))
+    ''' ID of the file from which this came '''
+    ident = relationship("Ident", back_populates="bases")
+    ''' Relationship to the :class:`AdmModule` '''
+    position = Column(Integer)
+    ''' ordinal of this item in a :class:`TypeNameList` '''
+
+    base_text = Column(String)
+    ''' The object from which the parent Ident is derived as text ARI '''
+    base_ari = Column(PickleType)
+    ''' Resolved and decoded ARI '''
+
+
 class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' Externally Defined Data (EDD) '''
     __tablename__ = "edd"
@@ -474,6 +387,8 @@ class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
 
     init_value = Column(String)
     ''' The initial and constant value as text ARI '''
+    init_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`init_value`. '''
 
 
 class Ctrl(Base, AdmObjMixin, ParamMixin):
@@ -521,4 +436,6 @@ class Var(Base, AdmObjMixin, TypeUseMixin):
     module = relationship("AdmModule", back_populates="var")
 
     init_value = Column(String)
-    ''' The initial and constant value as text ARI '''
+    ''' The initial value as text ARI '''
+    init_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`init_value`. '''

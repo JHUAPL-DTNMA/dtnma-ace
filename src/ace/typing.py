@@ -2,12 +2,11 @@
 '''
 from dataclasses import dataclass, field
 import datetime
+from functools import reduce
 import logging
 import math
-import re
-from typing import List, Optional, Set, Tuple, Iterator, Union
+from typing import List, Optional, Set, Iterator
 import numpy
-from portion import Interval
 from .ari import (
     DTN_EPOCH, StructType, Table,
     ARI, LiteralARI, ReferenceARI, is_undefined, NULL, TRUE
@@ -29,71 +28,6 @@ class Constraint:
         ''' Determine if a specific AMM value meets this constraint.
         '''
         raise NotImplementedError
-
-
-@dataclass
-class Length(Constraint):
-    ''' Limit the length of string values.
-    For textstr this is a count of characters, for bytestr this is a
-    count of bytes.
-    '''
-
-    ranges:Interval
-    ''' The Interval representing valid lengths. '''
-
-    def applicable(self) -> Set[StructType]:
-        return set([StructType.TEXTSTR, StructType.BYTESTR, StructType.CBOR])
-
-    def is_valid(self, obj:ARI) -> bool:
-        if isinstance(obj.value, (str, bytes)):
-            return len(obj.value) in self.ranges
-        else:
-            raise TypeError(f'limit cannot be applied to {obj}')
-
-
-@dataclass
-class Pattern(Constraint):
-    ''' Limit the content of text string values.
-    '''
-
-    pattern:str
-    ''' The regular expression pattern. '''
-
-    def applicable(self) -> Set[StructType]:
-        return set([StructType.TEXTSTR])
-
-    def is_valid(self, obj:ARI) -> bool:
-        if isinstance(obj.value, (str, bytes)):
-            got = re.fullmatch(self.pattern, obj.value)
-            return got is not None
-        else:
-            raise TypeError(f'limit cannot be applied to {obj}')
-
-
-@dataclass
-class Range(Constraint):
-    ''' Limit the range of numeric values.
-    '''
-
-    ranges:Interval
-    ''' The Interval representing valid ranges. '''
-
-    def applicable(self) -> Set[StructType]:
-        return set([
-            StructType.BYTE,
-            StructType.INT,
-            StructType.UINT,
-            StructType.VAST,
-            StructType.UVAST,
-            StructType.REAL32,
-            StructType.REAL64,
-        ])
-
-    def is_valid(self, obj:ARI) -> bool:
-        if isinstance(obj.value, (int, float)):
-            return obj.value in self.ranges
-        else:
-            raise TypeError(f'limit cannot be applied to {obj}')
 
 
 class BaseType:
@@ -150,7 +84,7 @@ class BuiltInType(BaseType):
         return f'{type(self).__name__}(type_id={self.type_id!r})'
 
     def type_ids(self) -> Set[StructType]:
-        return set(self.type_id)
+        return set([self.type_id])
 
 
 class NullType(BuiltInType):
@@ -462,6 +396,7 @@ LITERALS = {
 ''' Literal types, including ARI containers. '''
 OBJREFS = {
     'typedef': ObjRefType(StructType.TYPEDEF),
+    'ident': ObjRefType(StructType.IDENT),
     'const': ObjRefType(StructType.CONST),
     'edd': ObjRefType(StructType.EDD),
     'var': ObjRefType(StructType.VAR),
@@ -494,10 +429,11 @@ class SemType(BaseType):
 class TypeUse(SemType):
     ''' Use of and optional restriction on an other type. '''
 
-    type_ns:Optional[str] = None
-    ''' Module-name of the base type, or None if a built-in type. '''
-    type_name:Optional[str] = None
-    ''' Name of the :ivar:`base` type to bind to, or None. '''
+    type_text:str = None
+    ''' Original text name of the type being used. '''
+
+    type_ari:ARI = None
+    ''' Absolute ARI for the :ivar:`base` type to bind to. '''
 
     base:Optional[BaseType] = None
     ''' The bound type being used. '''
@@ -509,13 +445,10 @@ class TypeUse(SemType):
     ''' Optional value constraints on this use. '''
 
     def children(self) -> List['BaseType']:
-        if self.base:
-            return [self.base]
-        else:
-            return []
+        return [self.base] if self.base else []
 
     def type_ids(self) -> Set[StructType]:
-        return self.base.type_ids()
+        return self.base.type_ids() if self.base else set()
 
     def get(self, obj:ARI) -> Optional[ARI]:
         # extract the value before checks
@@ -564,7 +497,7 @@ class TypeUnion(SemType):
 
     def type_ids(self) -> Set[StructType]:
         # set constructor will de-duplicate
-        return set([typ.type_ids() for typ in self.types])
+        return reduce(set.union, [typ.type_ids() for typ in self.types])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         for typ in self.types:
@@ -814,7 +747,7 @@ class UniformMap(SemType):
         return list(filter(None, [self.kbase, self.vbase]))
 
     def type_ids(self) -> Set[StructType]:
-        return set([typeobj.type_ids() for typeobj in self.children()])
+        return reduce(set.union, [typeobj.type_ids() for typeobj in self.children()])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):

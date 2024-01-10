@@ -27,6 +27,7 @@ import os
 from sqlalchemy import inspect, orm, func
 from ace import models, ari, ari_text, nickname, util
 from ace.typing import TypeUse
+from ace.lookup import TypeResolver, TypeResolverError
 from .core import register, Issue
 
 LOGGER = logging.getLogger(__name__)
@@ -144,18 +145,22 @@ class valid_type_name:  # pylint: disable=invalid-name
         if isinstance(obj, models.AdmModule):
             count += self._iter_call(issuelist, obj.const, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.edd, db_sess, adm=obj)
-            count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.var, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.ctrl, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
         elif isinstance(obj, models.Const):
             count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         elif isinstance(obj, models.Edd):
             count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
+        elif isinstance(obj, models.Var):
+            count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
+        elif isinstance(obj, models.Ctrl):
+            if obj.result:
+                count += self._check_typeobj(issuelist, obj, obj.result, db_sess, adm)
         elif isinstance(obj, models.Oper):
             count += self._check_typeobj(issuelist, obj, obj.result, db_sess, adm)
             for operand in obj.operands.items:
                 count += self._check_typeobj(issuelist, obj, operand, db_sess, adm)
-        elif isinstance(obj, models.Var):
-            count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         return count
 
     def _iter_call(self, issuelist, container, *args, **kwargs):
@@ -172,8 +177,8 @@ class valid_type_name:  # pylint: disable=invalid-name
         LOGGER.debug('Checking object %s type %s', top_obj.norm_name, typeobj)
 
         try:
-            models.TypeResolver().resolve(ctr.typeobj, adm)
-        except models.TypeResolverError as err:
+            TypeResolver().resolve(ctr.typeobj, adm)
+        except TypeResolverError as err:
             issuelist.append(Issue(
                 obj=top_obj,
                 detail=(
@@ -192,12 +197,11 @@ class valid_reference_ari:  # pylint: disable=invalid-name
     def __call__(self, issuelist, obj, db_sess, top_obj=None):
         ''' Entrypoint for this functor. '''
         count = 0
-        dec = ari_text.Decoder()
         if isinstance(obj, models.AdmModule):
             count += self._iter_call(issuelist, obj.const, db_sess)
             count += self._iter_call(issuelist, obj.var, db_sess)
         elif isinstance(obj, (models.Const, models.Var)):
-            if obj.init_value is not None:
+            if obj.init_ari is not None:
 
                 def checker(val):
                     if not isinstance(val, ari.ReferenceARI):
@@ -211,8 +215,7 @@ class valid_reference_ari:  # pylint: disable=invalid-name
                             ),
                         ))
 
-                val = dec.decode(io.StringIO(obj.init_value))
-                val.visit(checker)
+                obj.init_ari.visit(checker)
             count += 1
         return count
 

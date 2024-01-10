@@ -30,7 +30,7 @@ from typing import TextIO
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
-from ace import adm_yang, models
+from ace import adm_yang, ari, ari_text, models, lookup
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
@@ -82,14 +82,19 @@ class TestAdmYang(unittest.TestCase):
         self._db_sess = Session(self._db_eng)
 
         self._adm_dec = adm_yang.Decoder(FileRepository(path=os.path.join(SELFDIR, 'adms')))
+        self._ari_dec = ari_text.Decoder()
 
     def tearDown(self):
+        self._ari_dec = None
         self._adm_dec = None
 
         self._db_sess.close()
         self._db_sess = None
         models.Base.metadata.drop_all(self._db_eng)
         self._db_eng = None
+
+    def _from_text(self, text:str) -> ari.ARI:
+        return self._ari_dec.decode(io.StringIO(text))
 
     EMPTY_MODULE = '''\
 module empty {}
@@ -152,17 +157,17 @@ module example-mod {
         buf = self._get_mod_buf('''
   amm:edd edd1 {
     amm:enum 4;
-    amm:type int;
+    amm:type "/ARITYPE/INT";
     description
       "EDD test_int";
   }
   amm:ctrl test1 {
     amm:enum 5;
     amm:parameter id {
-      amm:type amm:any;
+      amm:type "/ietf-amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type amm:expr;
+      amm:type "/ietf-amm/TYPEDEF/expr";
     }
   }
 ''')
@@ -183,28 +188,34 @@ module example-mod {
         self.assertEqual("test1", obj.name)
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
-        self.assertEqual("any", obj.parameters.items[0].typeobj.type_name)
+        self.assertEqual(
+            self._from_text('/ietf-amm/typedef/any'),
+            obj.parameters.items[0].typeobj.type_ari
+        )
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual("int", obj.typeobj.type_name)
+        self.assertEqual(
+            self._from_text('/aritype/int'),
+            obj.typeobj.type_ari
+        )
 
     def test_decode_groupings(self):
         buf = self._get_mod_buf('''
   amm:edd edd1 {
     amm:enum 4;
-    amm:type int;
+    amm:type "/ARITYPE/int";
     description
       "EDD test_int";
   }
   grouping paramgrp {
     amm:parameter id {
-      amm:type amm:any;
+      amm:type "/ietf-amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type amm:expr;
+      amm:type "/ietf-amm/TYPEDEF/expr";
     }
   }
   amm:ctrl test1 {
@@ -229,20 +240,26 @@ module example-mod {
         self.assertEqual("test1", obj.name)
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
-        self.assertEqual("any", obj.parameters.items[0].typeobj.type_name)
+        self.assertEqual(
+            self._from_text('/ietf-amm/typedef/any'),
+            obj.parameters.items[0].typeobj.type_ari
+        )
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual("int", obj.typeobj.type_name)
+        self.assertEqual(
+            self._from_text('/aritype/int'),
+            obj.typeobj.type_ari
+        )
 
     # As close to real YANG syntax as possible
     LOOPBACK_CASELIST = [
         '''\
   amm:typedef typeobj {
     amm:enum 2;
-    amm:type uint {
+    amm:type "/ARITYPE/UINT" {
       range "10..40";
     }
   }
@@ -250,8 +267,54 @@ module example-mod {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    amm:type "/ARITYPE/IDENT" {
+      amm:base "./IDENT/name1";
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
+    amm:type "/ARITYPE/UINT" {
+      amm:int-labels {
+        enum one {
+          value 1;
+        }
+        enum three {
+          value 3;
+        }
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
+    amm:type "/ARITYPE/UINT" {
+      amm:int-labels {
+        bit one {
+          position 1;
+        }
+        bit three {
+          position 3;
+        }
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
+    amm:type "/ARITYPE/CBOR" {
+      amm:cddl "uint / tstr";
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
     amm:ulist {
-      amm:type textstr {
+      amm:type "/ARITYPE/TEXTSTR" {
         length "min..255";
       }
     }
@@ -262,10 +325,10 @@ module example-mod {
     amm:enum 2;
     amm:umap {
       amm:keys {
-        amm:type textstr;
+        amm:type "/ARITYPE/TEXTSTR";
       }
       amm:values {
-        amm:type uint;
+        amm:type "/ARITYPE/UINT";
       }
     }
   }
@@ -275,7 +338,7 @@ module example-mod {
     amm:enum 2;
     amm:umap {
       amm:keys {
-        amm:type textstr;
+        amm:type "/ARITYPE/TEXTSTR";
       }
     }
   }
@@ -285,7 +348,7 @@ module example-mod {
     amm:enum 2;
     amm:umap {
       amm:values {
-        amm:type uint;
+        amm:type "/ARITYPE/UINT";
       }
     }
   }
@@ -295,16 +358,39 @@ module example-mod {
     amm:enum 2;
     amm:tblt {
       amm:column col1 {
-        amm:type textstr;
+        amm:type "/ARITYPE/TEXTSTR";
       }
     }
   }
 ''',
 
         '''\
+  amm:ident name1 {
+    amm:enum 2;
+  }
+  amm:ident name2 {
+    amm:enum 3;
+    amm:base "./IDENT/name1";
+  }
+''',
+        '''\
+  amm:ident base1 {
+    amm:enum 1;
+  }
+  amm:ident base2 {
+    amm:enum 1;
+  }
+  amm:ident derived {
+    amm:enum 3;
+    amm:base "./IDENT/base1";
+    amm:base "./IDENT/base2";
+  }
+''',
+
+        '''\
   amm:const val {
     amm:enum 2;
-    amm:type textstr;
+    amm:type "/ARITYPE/TEXTSTR";
     amm:init-value "hi";
   }
 ''',
@@ -312,7 +398,7 @@ module example-mod {
         '''\
   amm:edd val {
     amm:enum 2;
-    amm:type textstr {
+    amm:type "/ARITYPE/TEXTSTR" {
       pattern '.*hello.*';
     }
   }
@@ -321,21 +407,21 @@ module example-mod {
   amm:edd val {
     amm:enum 2;
     amm:parameter opt {
-      amm:type uint;
+      amm:type "/ARITYPE/UINT";
     }
-    amm:type textstr;
+    amm:type "/ARITYPE/TEXTSTR";
   }
 ''',
         '''\
   amm:var val {
     amm:enum 2;
-    amm:type int;
+    amm:type "/ARITYPE/INT";
   }
 ''',
         '''\
   amm:var val {
     amm:enum 2;
-    amm:type int;
+    amm:type "/ARITYPE/INT";
     amm:init-value "3";
   }
 ''',
@@ -344,10 +430,10 @@ module example-mod {
   amm:ctrl dothing {
     amm:enum 2;
     amm:parameter one {
-      amm:type int;
+      amm:type "/ARITYPE/INT";
     }
     amm:parameter two {
-      amm:type amm:expr;
+      amm:type "/ietf-amm/TYPEDEF/expr";
     }
     description
       "do a thing";
@@ -357,10 +443,10 @@ module example-mod {
   amm:ctrl dothing {
     amm:enum 2;
     amm:parameter one {
-      amm:type int;
+      amm:type "/ARITYPE/INT";
     }
     amm:result val {
-      amm:type int;
+      amm:type "/ARITYPE/INT";
     }
     description
       "do a thing";
@@ -371,15 +457,15 @@ module example-mod {
   amm:oper sum {
     amm:enum 2;
     amm:parameter count {
-      amm:type uint;
+      amm:type "/ARITYPE/UINT";
     }
     amm:operand vals {
       amm:seq {
-        amm:type amm:numeric;
+        amm:type "/ietf-amm/TYPEDEF/numeric";
       }
     }
     amm:result total {
-      amm:type amm:numeric;
+      amm:type "/ietf-amm/TYPEDEF/numeric";
     }
     description
       "sum together values";
@@ -455,3 +541,61 @@ module example-mod {
                 # source ADM objects in original are not in canonical order
                 # but loopback text outputs will be
                 self.assertEqual(text_first, text_second)
+
+    def test_ident_base_constraint(self):
+        buf = self._get_mod_buf('''
+  amm:ident ident-a {
+      description "A base ident";
+  }
+  amm:ident ident-b {
+      amm:base "./IDENT/ident-a";
+      description "A derived ident";
+  }
+  amm:ident ident-c {
+      description "Another base ident";
+  }
+  amm:ident ident-d {
+      amm:base "./IDENT/ident-a";
+      amm:base "./IDENT/ident-c";
+      description "Double derived";
+  }
+  amm:typedef type-any {
+    amm:type "/ARITYPE/ident";
+  }
+  amm:typedef type-a {
+    amm:type "/ARITYPE/ident" {
+      amm:base "./IDENT/ident-a";
+    }
+  }
+''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.name)
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(4, len(adm.ident))
+        self.assertEqual(2, len(adm.typedef))
+
+        type_any = adm.typedef[0]
+        self.assertEqual('type-any', type_any.norm_name)
+        typeobj_any = lookup.TypeResolver().resolve(type_any.typeobj, adm)
+        self.assertIsNone(typeobj_any.get(self._from_text('hi')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-b')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-c')))
+
+        type_a = adm.typedef[1]
+        self.assertEqual('type-a', type_a.norm_name)
+        typeobj_a = lookup.TypeResolver().resolve(type_a.typeobj, adm)
+        self.assertIsNone(typeobj_a.get(self._from_text('hi')))
+        self.assertIsNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-b')))
+        self.assertIsNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-c')))

@@ -36,17 +36,21 @@ import pyang.repository
 import pyang.syntax
 import pyang.translators.yang
 from ace import ari_text
-from ace.ari import ARI, ReferenceARI
+from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
 from ace.typing import (
-    Length, Pattern, Range,
     SemType, TypeUse, TypeUnion, UniformList, DiverseList,
     UniformMap, TableTemplate, TableColumn, Sequence
 )
+from ace.type_constraint import (
+    StringLength, TextPattern, NumericRange, IntegerEnums, IntegerBits,
+    CborCddl, IdentRefBase,
+)
+from ace.lookup import RelativeResolver
 from ace.models import (
     TypeNameList, TypeNameItem,
     MetadataList, MetadataItem, AdmRevision, Feature,
     AdmSource, AdmModule, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
-    Typedef, Const, Ctrl, Edd, Oper, Var
+    Typedef, Ident, IdentBase, Const, Ctrl, Edd, Oper, Var
 )
 from ace.util import normalize_ident
 
@@ -60,6 +64,7 @@ AMM_MOD = 'ietf-amm'
 # : YANG keyword for each object type in the ADM
 KEYWORDS = {
     Typedef: (AMM_MOD, 'typedef'),
+    Ident: (AMM_MOD, 'ident'),
     Const: (AMM_MOD, 'const'),
     Ctrl: (AMM_MOD, 'ctrl'),
     Edd: (AMM_MOD, 'edd'),
@@ -87,11 +92,13 @@ def search_one_exp(stmt, kywd):
 
 def search_all_exp(stmt, kywd):
     ''' Search-one within uses-expanded substatements. '''
-    # FIXME combine substatemnts with children
-    # found = stmt.search(kywd)
-
     subs = getattr(stmt, 'i_children', None)
-    return stmt.search(kywd, children=subs)
+    if subs:
+        found = stmt.search(kywd, children=subs)
+    else:
+        found = stmt.search(kywd)
+
+    return found
 
 
 def range_from_text(text:str) -> portion.Interval:
@@ -168,6 +175,7 @@ class Decoder:
         # Set to an object while processing a top-level module
         self._module = None
         self._obj_pos = 0
+        self._adm = None
 
         self._type_handlers = {
             (AMM_MOD, 'type'): self._handle_type,
@@ -202,6 +210,7 @@ class Decoder:
         'range',
         (AMM_MOD, 'int-labels'),
         (AMM_MOD, 'cddl'),
+        (AMM_MOD, 'base'),
     )
 
     def _check_ari(self, ari:ARI):
@@ -210,6 +219,14 @@ class Decoder:
             imports = [mod[0] for mod in self._module.i_prefixes.values()]
             if ari.ident.ns_id is not None and ari.ident.ns_id not in imports:
                 raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
+
+    def _handle_ari(self, text:str) -> ARI:
+        ''' Decode ARI text and resolve any relative reference.
+        '''
+        ari = self._ari_dec.decode(io.StringIO(text))
+        ari = ari.map(RelativeResolver(self._adm.norm_name))
+        ari.visit(self._check_ari)
+        return ari
 
     def _get_namespace(self, text:str) -> Tuple[str, str]:
         ''' Resolve a possibly qualified identifier into a module name and statement name.
@@ -228,7 +245,15 @@ class Decoder:
     def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
         typeobj = TypeUse()
 
-        typeobj.type_ns, typeobj.type_name = self._get_namespace(stmt.arg)
+        typeobj.type_text = stmt.arg
+
+        ari = self._handle_ari(stmt.arg)
+        if not (
+            (isinstance(ari, LiteralARI) and ari.type_id == StructType.ARITYPE)
+            or (isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.TYPEDEF)
+        ):
+            raise ValueError(f'Type reference must be either ARITYPE or LITERAL, got: {stmt.arg}')
+        typeobj.type_ari = ari
 
         # keep constraints in the same order as refinement statements
         refinements = list(filter(None, [
@@ -240,12 +265,39 @@ class Decoder:
                 typeobj.units = rfn.arg.strip()
             elif rfn.keyword == 'length':
                 ranges = range_from_text(rfn.arg)
-                typeobj.constraints.append(Length(ranges=ranges))
+                typeobj.constraints.append(StringLength(ranges=ranges))
             elif rfn.keyword == 'pattern':
-                typeobj.constraints.append(Pattern(pattern=rfn.arg))
+                typeobj.constraints.append(TextPattern(pattern=rfn.arg))
             elif rfn.keyword == 'range':
                 ranges = range_from_text(rfn.arg)
-                typeobj.constraints.append(Range(ranges=ranges))
+                typeobj.constraints.append(NumericRange(ranges=ranges))
+            elif rfn.keyword == (AMM_MOD, 'int-labels'):
+                enum_stmts = search_all_exp(rfn, 'enum')
+                bit_stmts = search_all_exp(rfn, 'bit')
+                if enum_stmts and bit_stmts:
+                    raise RuntimeError('Cannot specify both enum and bit values')
+                if enum_stmts:
+                    labels = {
+                        int(search_one_exp(stmt, 'value').arg): stmt.arg
+                        for stmt in enum_stmts
+                    }
+                    typeobj.constraints.append(IntegerEnums(values=labels))
+                if bit_stmts:
+                    labels = {
+                        int(search_one_exp(stmt, 'position').arg): stmt.arg
+                        for stmt in bit_stmts
+                    }
+                    mask = sum((1 << pos) for pos in labels.keys())
+                    typeobj.constraints.append(IntegerBits(labels, mask))
+            elif rfn.keyword == (AMM_MOD, 'cddl'):
+                typeobj.constraints.append(CborCddl(text=rfn.arg))
+            elif rfn.keyword == (AMM_MOD, 'base'):
+                text = rfn.arg
+                ari = self._handle_ari(text)
+                typeobj.constraints.append(IdentRefBase(
+                    base_text=text,
+                    base_ari=ari
+                ))
 
         return typeobj
 
@@ -401,16 +453,28 @@ class Decoder:
         if issubclass(cls, TypeUseMixin):
             obj.typeobj = self._get_typeobj(stmt)
 
-        if issubclass(cls, (Const, Var)):
+        if issubclass(cls, Ident):
+            for base_stmt in search_all_exp(stmt, (AMM_MOD, 'base')):
+                base = IdentBase()
+                base.base_text = base_stmt.arg
+                # actually check the content
+                ari = self._handle_ari(base_stmt.arg)
+                if not (
+                    isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.IDENT
+                ):
+                    raise ValueError('Ident base must be another Ident')
+                base.base_ari = ari
+
+                obj.bases.append(base)
+
+        elif issubclass(cls, (Const, Var)):
             value_stmt = search_one_exp(stmt, (AMM_MOD, 'init-value'))
             if not value_stmt:
                 LOGGER.warning('const is missing init-value substatement')
             else:
                 obj.init_value = value_stmt.arg
-
                 # actually check the content
-                ari = self._ari_dec.decode(io.StringIO(value_stmt.arg))
-                ari.visit(self._check_ari)
+                obj.init_ari = self._handle_ari(value_stmt.arg)
 
         elif issubclass(cls, Ctrl):
             result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
@@ -520,6 +584,7 @@ class Decoder:
         adm.name = module.arg
         # Normalize the intrinsic ADM name
         adm.norm_name = normalize_ident(adm.name)
+        self._adm = adm
 
         enum_stmt = module.search_one((AMM_MOD, 'enum'))
         if enum_stmt:
@@ -554,6 +619,7 @@ class Decoder:
             ))
 
         self._get_section(adm.typedef, Typedef, module)
+        self._get_section(adm.ident, Ident, module)
         self._get_section(adm.const, Const, module)
         self._get_section(adm.ctrl, Ctrl, module)
         self._get_section(adm.edd, Edd, module)
@@ -627,6 +693,7 @@ class Encoder:
                 self._add_substmt(sub_stmt, 'description', feat.description)
 
         self._put_section(adm.typedef, Typedef, module)
+        self._put_section(adm.ident, Ident, module)
         self._put_section(adm.const, Const, module)
         self._put_section(adm.edd, Edd, module)
         self._put_section(adm.var, Var, module)
@@ -705,7 +772,11 @@ class Encoder:
         if issubclass(cls, TypeUseMixin):
             self._put_typeobj(obj.typeobj, obj_stmt)
 
-        if issubclass(cls, (Const, Var)):
+        if issubclass(cls, Ident):
+            for base in obj.bases:
+                self._add_substmt(obj_stmt, (AMM_MOD, 'base'), base.base_text)
+
+        elif issubclass(cls, (Const, Var)):
             if obj.init_value:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
 
@@ -727,23 +798,32 @@ class Encoder:
 
     def _put_typeobj(self, typeobj:SemType, parent:pyang.statements.Statement) -> pyang.statements.Statement:
         if isinstance(typeobj, TypeUse):
-            if typeobj.type_ns:
-                ns, name = self._denorm_tuple((typeobj.type_ns, typeobj.type_name))
-                name = f'{ns}:{name}'
-            else:
-                name = typeobj.type_name
-            type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), name)
+            type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), typeobj.type_text)
 
             if typeobj.units:
                 self._add_substmt(type_stmt, 'units', typeobj.units)
 
             for cnst in typeobj.constraints:
-                if isinstance(cnst, Length):
+                if isinstance(cnst, StringLength):
                     self._add_substmt(type_stmt, 'length', range_to_text(cnst.ranges))
-                elif isinstance(cnst, Pattern):
+                elif isinstance(cnst, TextPattern):
                     self._add_substmt(type_stmt, 'pattern', cnst.pattern)
-                elif isinstance(cnst, Range):
+                elif isinstance(cnst, NumericRange):
                     self._add_substmt(type_stmt, 'range', range_to_text(cnst.ranges))
+                elif isinstance(cnst, IntegerEnums):
+                    lab_stmt = self._add_substmt(type_stmt, (AMM_MOD, 'int-labels'))
+                    for val, name in cnst.values.items():
+                        enum_stmt = self._add_substmt(lab_stmt, 'enum', name)
+                        self._add_substmt(enum_stmt, 'value', str(val))
+                elif isinstance(cnst, IntegerBits):
+                    lab_stmt = self._add_substmt(type_stmt, (AMM_MOD, 'int-labels'))
+                    for pos, name in cnst.positions.items():
+                        enum_stmt = self._add_substmt(lab_stmt, 'bit', name)
+                        self._add_substmt(enum_stmt, 'position', str(pos))
+                elif isinstance(cnst, CborCddl):
+                    self._add_substmt(type_stmt, (AMM_MOD, 'cddl'), cnst.text)
+                elif isinstance(cnst, IdentRefBase):
+                    self._add_substmt(type_stmt, (AMM_MOD, 'base'), cnst.base_text)
 
         elif isinstance(typeobj, UniformList):
             ulist_stmt = self._add_substmt(parent, (AMM_MOD, 'ulist'))

@@ -104,6 +104,8 @@ def can_unquote(text):
 class EncodeOptions:
     ''' Preferences for text encoding variations. '''
 
+    scheme_prefix:bool = True
+    ''' True if the scheme is present at the start. '''
     int_base:int = 10
     ''' One of 2, 10, or 16 '''
     float_form:str = 'g'
@@ -119,8 +121,8 @@ class EncodeOptions:
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def __init__(self, options:EncodeOptions=None):
-        self._options = options or EncodeOptions()
+    def __init__(self, options:EncodeOptions=None, **kwargs):
+        self._options = options or EncodeOptions(**kwargs)
 
     def encode(self, obj:ARI, buf: TextIO):
         ''' Encode an ARI into UTF8 text.
@@ -128,9 +130,9 @@ class Encoder:
         :param obj: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
-        self._encode_obj(buf, obj, root=True)
+        self._encode_obj(buf, obj, prefix=self._options.scheme_prefix)
 
-    def _encode_obj(self, buf: TextIO, obj:ARI, root:bool=False):
+    def _encode_obj(self, buf: TextIO, obj:ARI, prefix:bool=False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
             if obj.type_id is not None:
@@ -168,6 +170,8 @@ class Encoder:
                     buf.write(quote('>>'))
                 else:
                     buf.write(quote(to_diag(obj.value)))
+            elif obj.type_id is StructType.ARITYPE:
+                buf.write(obj.value.name)
             elif isinstance(obj.value, ExecutionSet):
                 params = {
                     'n': to_diag(obj.value.nonce),
@@ -210,7 +214,7 @@ class Encoder:
                 buf.write(quote(to_diag(obj.value)))
 
         elif isinstance(obj, ReferenceARI):
-            if root:
+            if prefix:
                 buf.write('ari:')
             if obj.ident.ns_id is None:
                 buf.write('.')

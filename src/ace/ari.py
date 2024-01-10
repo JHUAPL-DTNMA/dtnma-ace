@@ -121,6 +121,7 @@ class StructType(enum.IntEnum):
     OBJECT = -256
     # AMM object types
     TYPEDEF = -12
+    IDENT = -1
     CONST = -2
     EDD = -4
     VAR = -11
@@ -144,14 +145,11 @@ class ARI:
         visitor(self)
 
     def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
-        ''' Call a mapping on this ARI and each child ARI.
-
-        The base type calls the function on itself, so only composing types
-        need to override this function.
+        ''' Call a mapping on this ARI (after each child ARI if present).
 
         :param func: The callable visitor for each type object.
         '''
-        return func(self)
+        raise NotImplementedError
 
 
 @dataclass(eq=True, frozen=True)
@@ -204,9 +202,9 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         else:
-            result = super().map(func)
+            result = self
 
-        return result
+        return func(result)
 
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
@@ -250,7 +248,7 @@ def as_bool(val:ARI) -> bool:
     raise ValueError('as_bool given non-boolean value')
 
 
-@dataclass
+@dataclass(frozen=True)
 class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
@@ -310,4 +308,5 @@ class ReferenceARI(ARI):
                 for key, val in self.params.items()
             }
 
-        return ReferenceARI(self.ident, rparams)
+        result = ReferenceARI(self.ident, rparams)
+        return func(result)

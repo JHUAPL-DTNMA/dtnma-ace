@@ -99,7 +99,7 @@ MODULE_EXTENSIONS = (
     ),
 
     # : Type structure extensions
-    Ext('type', 'identifier-ref',
+    Ext('type', 'ARI',
         subs=[
             ('units', '?'),
             ('range', '?'),
@@ -107,6 +107,7 @@ MODULE_EXTENSIONS = (
             ('pattern', '?'),
             ((MODULE_NAME, 'int-labels'), '?'),
             ((MODULE_NAME, 'cddl'), '?'),
+            ((MODULE_NAME, 'base'), '?'),
             ('description', '?'),
             ('reference', '?'),
         ],
@@ -213,15 +214,18 @@ MODULE_EXTENSIONS = (
         ),
         parents=[('module', '*')]
     ),
+
     Ext('ident', 'identifier',
         subs=(
             obj_subs_pre
             +[
-              ((MODULE_NAME, 'base'), '1'),
+              ((MODULE_NAME, 'base'), '*'),
             ] + obj_subs_post
         ),
         parents=[('module', '*')]
     ),
+    Ext('base', 'ARI'),
+
     Ext('const', 'identifier',
         subs=(
             obj_subs_pre
@@ -258,8 +262,7 @@ MODULE_EXTENSIONS = (
         ),
         parents=[('module', '*')]
     ),
-    Ext('init-value', 'ARI',
-    ),
+    Ext('init-value', 'ARI'),
 
     Ext('ctrl', 'identifier',
         subs=(

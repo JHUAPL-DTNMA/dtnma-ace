@@ -12,16 +12,16 @@ module test-adm-minimal {
   }
   amm:enum "0";
   amm:edd edd1 {
-    amm:type int;
+    amm:type /ARITYPE/int;
     description
       "EDD test_int";
   }
   amm:ctrl test1 {
     amm:parameter id {
-      amm:type amm:any;
+      amm:type /ietf-amm/TYPEDEF/any;
     }
     amm:parameter def {
-      amm:type amm:expr;
+      amm:type /ietf-amm/TYPEDEF/expr;
     }
     description
       "This control resets all Agent ADM statistics reported in the Agent ADM report.";

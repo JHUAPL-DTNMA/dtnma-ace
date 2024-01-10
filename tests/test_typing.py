@@ -6,10 +6,10 @@ import portion
 from ace.typing import (
     BUILTINS, type_walk,
     NullType, BoolType, NumericType, StringType,
-    TypeUse, Range,
-    TypeUnion, UniformList, DiverseList, UniformMap,
+    TypeUse, TypeUnion, UniformList, DiverseList, UniformMap,
     TableTemplate, TableColumn, Sequence
 )
+from ace.type_constraint import (NumericRange)
 from ace.ari import (
     StructType, Table, LiteralARI, ReferenceARI, Identity,
     UNDEFINED, NULL, TRUE, FALSE
@@ -192,7 +192,7 @@ class TestTyping(unittest.TestCase):
 
     def test_typeuse_int_range_get(self):
         typ = TypeUse(base=BUILTINS['int'], constraints=[
-            Range(portion.closed(1, 10) | portion.closed(20, 25))
+            NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
         ])
 
         self.assertIsNone(typ.get(UNDEFINED))
@@ -212,7 +212,7 @@ class TestTyping(unittest.TestCase):
 
     def test_typeuse_int_range_convert(self):
         typ = TypeUse(base=BUILTINS['int'], constraints=[
-            Range(portion.closed(1, 10) | portion.closed(20, 25))
+            NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
         ])
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))

@@ -36,7 +36,7 @@ from .parsemod import new_parser
 from .encode import Encoder, EncodeOptions, quote
 
 __all__ = (
-    'Encoder', 'EncodeOptions', quote,
+    'Encoder', 'EncodeOptions', 'quote',
     'Decoder',
 )
 
