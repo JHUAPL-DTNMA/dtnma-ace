@@ -71,7 +71,8 @@ class TestAdmYangHelpers(unittest.TestCase):
                 self.assertEqual(expect, got)
 
 
-class TestAdmYang(unittest.TestCase):
+class BaseYang(unittest.TestCase):
+    ''' Common test fixture for all YANG-based test classes. '''
 
     maxDiff = None
 
@@ -95,17 +96,6 @@ class TestAdmYang(unittest.TestCase):
 
     def _from_text(self, text:str) -> ari.ARI:
         return self._ari_dec.decode(io.StringIO(text))
-
-    EMPTY_MODULE = '''\
-module empty {}
-'''
-
-    def test_decode_empty(self):
-        buf = io.StringIO(self.EMPTY_MODULE)
-        adm = self._adm_dec.decode(buf)
-        self.assertIsInstance(adm, models.AdmModule)
-
-        self.assertEqual('empty', adm.name)
 
     NOOBJECT_MODULE_HEAD = '''\
 module example-mod {
@@ -136,10 +126,29 @@ module example-mod {
         buf.seek(0)
         return buf
 
+
+class TestAdmYang(BaseYang):
+    ''' Tests of the YANG-based syntax handler separate from ADM logic. '''
+
+    EMPTY_MODULE = '''\
+module empty {}
+'''
+
+    def test_decode_empty(self):
+        buf = io.StringIO(self.EMPTY_MODULE)
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+
+        self.assertEqual('empty', adm.name)
+
     def test_decode_noobject(self):
         buf = self._get_mod_buf('')
         adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
         self.assertEqual('example-mod', adm.name)
@@ -473,7 +482,7 @@ module example-mod {
 ''',
     ]
 
-    def test_loopback_examples(self):
+    def test_loopback_caselist(self):
         enc = adm_yang.Encoder()
 
         for body in self.LOOPBACK_CASELIST:
@@ -483,10 +492,11 @@ module example-mod {
 
                 adm = self._adm_dec.decode(buf_in)
                 self.assertIsInstance(adm, models.AdmModule)
-                self.assertEqual(1, len(adm.imports))
-                self.assertEqual(1, len(adm.revisions))
                 self._db_sess.add(adm)
                 self._db_sess.commit()
+
+                self.assertEqual(1, len(adm.imports))
+                self.assertEqual(1, len(adm.revisions))
 
                 buf_out = io.StringIO()
                 enc.encode(adm, buf_out)
@@ -541,6 +551,182 @@ module example-mod {
                 # source ADM objects in original are not in canonical order
                 # but loopback text outputs will be
                 self.assertEqual(text_first, text_second)
+
+
+class TestAdmContents(BaseYang):
+
+    TYPE_CONSTRAINT = (
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      range "10..40";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/REAL64" {
+      range "10..40";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef base {
+    amm:type "/ARITYPE/INT";
+  }
+  // derived from unrestricted
+  amm:typedef typeobj {
+    amm:type "./TYPEDEF/base" {
+      range "10..40";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/TEXTSTR" {
+      range "10..40";
+    }
+  }
+''', False),
+
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/TEXTSTR" {
+      length "10..40";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/BYTESTR" {
+      length "10..40";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      length "10..40";
+    }
+  }
+''', False),
+
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/TEXTSTR" {
+      pattern "hello";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/BYTESTR" {
+      pattern "hello";
+    }
+  }
+''', False),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      pattern "hello";
+    }
+  }
+''', False),
+
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      amm:int-labels {
+        enum "first" {
+          value -3;
+        }
+        enum "second" {
+          value 10;
+        }
+      }
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      amm:int-labels {
+      }
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/TEXTSTR" {
+      amm:int-labels {
+        enum "first" {
+          value -3;
+        }
+        enum "second" {
+          value 10;
+        }
+      }
+    }
+  }
+''', False),
+
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/CBOR" {
+      amm:cddl "hi";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/INT" {
+      amm:cddl "hi";
+    }
+  }
+''', False),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/BYTESTR" {
+      amm:cddl "hi";
+    }
+  }
+''', False),
+
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/IDENT" {
+      amm:base "/ietf-amm/IDENT/somename";
+    }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:type "/ARITYPE/TEXTSTR" {
+      amm:base "/ietf-amm/IDENT/somename";
+    }
+  }
+''', False),
+    )
+
+    def test_type_constraint(self):
+        for body, valid in self.TYPE_CONSTRAINT:
+            with self.subTest(body):
+                buf_in = self._get_mod_buf(body)
+                LOGGER.info('input:\n%s', buf_in.getvalue())
+
+                adm = self._adm_dec.decode(buf_in)
+                self.assertIsInstance(adm, models.AdmModule)
+                self._db_sess.add(adm)
+                self._db_sess.commit()
+
+                typedef = adm.typedef[0]
+                action = lambda: lookup.TypeResolver().resolve(typedef.typeobj, adm)
+
+                if valid:
+                    self.assertIsNotNone(action())
+                else:
+                    with self.assertRaises(lookup.TypeResolverError):
+                        action()
 
     def test_ident_base_constraint(self):
         buf = self._get_mod_buf('''

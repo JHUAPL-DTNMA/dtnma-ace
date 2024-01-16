@@ -109,15 +109,18 @@ class TypeResolver:
             self._constraint_bind(sub_obj)
 
         # Verify type use constraint applicability
-        # for sub_obj in type_walk(typeobj):
-        #     if isinstance(sub_obj, TypeUse):
-        #         have_types = sub_obj.type_ids()
-        #         for constr in sub_obj.constraints:
-        #             need_one_type = constr.applicable()
-        #             LOGGER.warning('type constraint needs %s', need_one_type)
-        #             met_types = need_one_type & have_types
-        #             if not met_types:
-        #                 raise TypeResolverError(f'Constraint needs {need_one_type} but have only {have_types}', [])
+        for sub_obj in type_walk(typeobj):
+            if isinstance(sub_obj, TypeUse):
+
+                have_types = set()
+                for subsub_obj in type_walk(sub_obj):
+                    have_types |= subsub_obj.all_type_ids()
+
+                for constr in sub_obj.constraints:
+                    need_one_type = constr.applicable()
+                    met_types = need_one_type & have_types
+                    if not met_types:
+                        raise TypeResolverError(f'Constraint needs {need_one_type} but have only {have_types}', [])
 
         self._badtypes = None
         self._db_sess = None

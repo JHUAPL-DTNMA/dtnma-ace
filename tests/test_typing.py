@@ -9,7 +9,10 @@ from ace.typing import (
     TypeUse, TypeUnion, UniformList, DiverseList, UniformMap,
     TableTemplate, TableColumn, Sequence
 )
-from ace.type_constraint import (NumericRange)
+from ace.adm_yang import range_from_text
+from ace.type_constraint import (
+    NumericRange, StringLength, TextPattern, IntegerEnums
+)
 from ace.ari import (
     StructType, Table, LiteralARI, ReferenceARI, Identity,
     UNDEFINED, NULL, TRUE, FALSE
@@ -67,9 +70,9 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI('hi')))
         self.assertIsNone(typ.get(LiteralARI(b'')))
         self.assertIsNone(typ.get(LiteralARI(b'hi')))
-        self.assertEqual(LiteralARI(0, StructType.INT), typ.get(LiteralARI(0)))
-        self.assertEqual(LiteralARI(123, StructType.INT), typ.get(LiteralARI(123)))
-        self.assertEqual(LiteralARI(-123, StructType.INT), typ.get(LiteralARI(-123)))
+        self.assertEqual(LiteralARI(0), typ.get(LiteralARI(0)))
+        self.assertEqual(LiteralARI(123), typ.get(LiteralARI(123)))
+        self.assertEqual(LiteralARI(-123), typ.get(LiteralARI(-123)))
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UINT)))
         self.assertIsNone(typ.get(LiteralARI(0, StructType.VAST)))
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UVAST)))
@@ -191,9 +194,12 @@ class TestTyping(unittest.TestCase):
             typ.convert(ref)
 
     def test_typeuse_int_range_get(self):
-        typ = TypeUse(base=BUILTINS['int'], constraints=[
-            NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
-        ])
+        typ = TypeUse(
+            base=BUILTINS['int'],
+            constraints=[
+                NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
+            ]
+        )
 
         self.assertIsNone(typ.get(UNDEFINED))
         self.assertIsNone(typ.get(TRUE))
@@ -202,18 +208,21 @@ class TestTyping(unittest.TestCase):
         for val in range(-10, 1):
             self.assertIsNone(typ.get(LiteralARI(val)))
         for val in range(1, 11):
-            self.assertEqual(LiteralARI(val, StructType.INT), typ.convert(LiteralARI(val)))
+            self.assertEqual(LiteralARI(val), typ.get(LiteralARI(val)))
         for val in range(11, 20):
             self.assertIsNone(typ.get(LiteralARI(val)))
         for val in range(20, 26):
-            self.assertEqual(LiteralARI(val, StructType.INT), typ.convert(LiteralARI(val)))
+            self.assertEqual(LiteralARI(val), typ.get(LiteralARI(val)))
         for val in range(26, 30):
             self.assertIsNone(typ.get(LiteralARI(val)))
 
     def test_typeuse_int_range_convert(self):
-        typ = TypeUse(base=BUILTINS['int'], constraints=[
-            NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
-        ])
+        typ = TypeUse(
+            base=BUILTINS['int'],
+            constraints=[
+                NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
+            ]
+        )
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
         self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TRUE))
@@ -233,7 +242,10 @@ class TestTyping(unittest.TestCase):
                 typ.convert(LiteralARI(val))
 
     def test_union_get(self):
-        typ = TypeUnion(types=[BUILTINS['bool'], BUILTINS['null']])
+        typ = TypeUnion(types=[
+            BUILTINS['bool'],
+            BUILTINS['null']
+        ])
 
         self.assertIsNone(typ.get(UNDEFINED))
         self.assertEqual(TRUE, typ.get(TRUE))
@@ -244,7 +256,10 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(123)))
 
     def test_union_convert(self):
-        typ = TypeUnion(types=[BUILTINS['bool'], BUILTINS['null']])
+        typ = TypeUnion(types=[
+            BUILTINS['bool'],
+            BUILTINS['null']
+        ])
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
 

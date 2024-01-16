@@ -43,9 +43,17 @@ class BaseType:
         '''
         return []
 
-    def type_ids(self) -> Set[StructType]:
-        ''' Extract the set of ARI types available for this type. '''
-        raise NotImplementedError()
+    def all_type_ids(self) -> Set[StructType]:
+        ''' Extract the set of ARI types available for this type.
+        This will not cross into container type contents.
+        '''
+        return set()
+
+    def all_constraints(self) -> Set[Constraint]:
+        ''' Extract the set of all constraints on this type.
+        This will not cross into container type contents.
+        '''
+        return set()
 
     def get(self, obj:ARI) -> ARI:
         raise NotImplementedError()
@@ -83,7 +91,7 @@ class BuiltInType(BaseType):
     def __repr__(self):
         return f'{type(self).__name__}(type_id={self.type_id!r})'
 
-    def type_ids(self) -> Set[StructType]:
+    def all_type_ids(self) -> Set[StructType]:
         return set([self.type_id])
 
 
@@ -159,9 +167,11 @@ class NumericType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+            return None
         if not self._in_domain(obj.value):
             return None
-        return LiteralARI(obj.value, self.type_id)
+        return obj
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
@@ -447,8 +457,11 @@ class TypeUse(SemType):
     def children(self) -> List['BaseType']:
         return [self.base] if self.base else []
 
-    def type_ids(self) -> Set[StructType]:
-        return self.base.type_ids() if self.base else set()
+    def all_type_ids(self) -> Set[StructType]:
+        return self.base.all_type_ids() if self.base else set()
+
+    def all_constraints(self) -> Set[Constraint]:
+        return set(self.constraints)
 
     def get(self, obj:ARI) -> Optional[ARI]:
         # extract the value before checks
@@ -495,9 +508,12 @@ class TypeUnion(SemType):
     def children(self) -> List['BaseType']:
         return [typ for typ in self.types]
 
-    def type_ids(self) -> Set[StructType]:
+    def all_type_ids(self) -> Set[StructType]:
         # set constructor will de-duplicate
-        return reduce(set.union, [typ.type_ids() for typ in self.types])
+        return reduce(set.union, [typ.all_type_ids() for typ in self.types])
+
+    def all_constraints(self) -> Set[Constraint]:
+        return reduce(set.union, [typ.all_constraints() for typ in self.types])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         for typ in self.types:
@@ -545,9 +561,9 @@ class UniformList(SemType):
         else:
             return []
 
-    def type_ids(self) -> Set[StructType]:
-        # only one value type is valid
-        return self.base.type_ids()
+    def all_type_ids(self) -> Set[StructType]:
+        # The type of the container itself
+        return set([StructType.AC])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -617,8 +633,8 @@ class Sequence(SemType):
     def children(self) -> List['BaseType']:
         return [self.base]
 
-    def type_ids(self) -> Set[StructType]:
-        return self.base.type_ids()
+    def all_type_ids(self) -> Set[StructType]:
+        return self.base.all_type_ids()
 
     def get(self, obj:ARI) -> Optional[ARI]:
         raise NotImplementedError
@@ -667,8 +683,9 @@ class DiverseList(SemType):
                 return types.append(part)
         return types
 
-    def type_ids(self) -> Set[StructType]:
-        return set([typeobj.type_ids() for typeobj in self.children()])
+    def all_type_ids(self) -> Set[StructType]:
+        # The type of the container itself
+        return set([StructType.AC])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -746,8 +763,9 @@ class UniformMap(SemType):
     def children(self) -> List['BaseType']:
         return list(filter(None, [self.kbase, self.vbase]))
 
-    def type_ids(self) -> Set[StructType]:
-        return reduce(set.union, [typeobj.type_ids() for typeobj in self.children()])
+    def all_type_ids(self) -> Set[StructType]:
+        # The type of the container itself
+        return set([StructType.AM])
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -821,8 +839,8 @@ class TableTemplate(SemType):
     def children(self) -> List['BaseType']:
         return [col.base for col in self.columns]
 
-    def type_ids(self) -> Set[StructType]:
-        # only one value type is valid
+    def all_type_ids(self) -> Set[StructType]:
+        # The type of the container itself
         return set([StructType.TBL])
 
     def get(self, obj:ARI) -> Optional[ARI]:

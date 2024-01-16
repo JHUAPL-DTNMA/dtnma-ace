@@ -72,11 +72,15 @@ class ExecutionSet:
 class Report:
     ''' Internal representation of Report data. '''
     rel_time:datetime.timedelta
+    ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
+    value. '''
     source:'ARI'
+    ''' Source of the report, either a RPTT or CTRL. '''
     items:List['ARI']
+    ''' Items of the report. '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce:Union[bytes, int, None]
