@@ -85,7 +85,7 @@ class AdmSet:
         If False, the cache is kept in-memory.
     '''
 
-    def __init__(self, cache_dir:str=None):
+    def __init__(self, cache_dir:str=None, clean_cache=False):
         if cache_dir is False:
             self.cache_path = None
         else:
@@ -106,7 +106,7 @@ class AdmSet:
             self._db_sess.commit()
             db_vers = cur_vers
 
-        if db_vers != cur_vers:
+        if db_vers != cur_vers or clean_cache == True:
             LOGGER.info(
                 'Recreating cache DB version %s because of old version %s',
                 cur_vers, db_vers
