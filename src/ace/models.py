@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
 
-CURRENT_SCHEMA_VERSION = 15
+CURRENT_SCHEMA_VERSION = 16
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -328,7 +328,7 @@ class Typedef(Base, AdmObjMixin, TypeUseMixin):
     module = relationship("AdmModule", back_populates="typedef")
 
 
-class Ident(Base, AdmObjMixin):
+class Ident(Base, AdmObjMixin, ParamMixin):
     ''' Identity object (named, derived object) '''
     __tablename__ = "ident"
     id = Column(Integer, primary_key=True)

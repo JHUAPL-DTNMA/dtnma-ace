@@ -219,7 +219,9 @@ MODULE_EXTENSIONS = (
         subs=(
             obj_subs_pre
             +[
-              ((MODULE_NAME, 'base'), '*'),
+                ((MODULE_NAME, 'parameter'), '*'),
+                ((MODULE_NAME, 'base'), '*'),
+                ('uses', '*'),
             ] + obj_subs_post
         ),
         parents=[('module', '*')]

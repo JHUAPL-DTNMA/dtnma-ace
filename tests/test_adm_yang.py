@@ -785,3 +785,38 @@ class TestAdmContents(BaseYang):
         self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-a')))
         self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-b')))
         self.assertIsNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-c')))
+
+    def test_ident_params(self):
+        buf = self._get_mod_buf('''
+  amm:ident ident-a {
+    description "A base ident";
+  }
+  amm:ident ident-b {
+    amm:parameter one {
+      amm:type "/ARITYPE/INT";
+    }
+    amm:base "./IDENT/ident-a";
+    description "A derived ident";
+  }
+''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.name)
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(2, len(adm.ident))
+        self.assertEqual(0, len(adm.typedef))
+
+        obj = adm.ident[0]
+        self.assertEqual('ident-a', obj.norm_name)
+        self.assertEqual(0, len(obj.parameters.items))
+
+        obj = adm.ident[1]
+        self.assertEqual('ident-b', obj.norm_name)
+        self.assertEqual(1, len(obj.parameters.items))
