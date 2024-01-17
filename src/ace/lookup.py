@@ -2,12 +2,18 @@
 '''
 
 import copy
+from dataclasses import dataclass
 import logging
-from typing import Callable, List, Optional, Union
+from typing import Dict, List, Optional, Union
 from sqlalchemy.orm.session import Session, object_session
 from .util import normalize_ident
-from .ari import ARI, LiteralARI, ReferenceARI, Identity, StructType
-from .typing import BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, type_walk
+from .ari import (
+    ARI, LiteralARI, ReferenceARI, Identity, StructType,
+    UNDEFINED, is_undefined
+)
+from .typing import (
+    BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, Sequence, type_walk
+)
 from .models import AdmModule, AdmObjMixin, Typedef, Ident, Const
 
 LOGGER = logging.getLogger(__name__)
@@ -197,3 +203,119 @@ class TypeResolver:
                     self._badtypes.add(cnst.base_ari.ident)
                 else:
                     cnst.base_ident = ident
+
+
+@dataclass
+class FormalParameter:
+    ''' A single formal parameter obtained from a :cls:`models.ParamMixin`
+    object within an ADM context. '''
+
+    name:str
+    ''' The unique name of the parameter. '''
+    index:int
+    ''' The list index (ordinal) of the parameter. '''
+    typeobj:SemType
+    ''' The fully recursively resolved type of the parameter. '''
+    default:Optional[ARI] = None
+    ''' Default value. '''
+
+
+class ParameterError(RuntimeError):
+    ''' Exception when parameter handling fails. '''
+
+
+class ActualParameterSet:
+    ''' An actual parameter set normalized from given parameters
+    based on formal parameters.
+
+    :param gparams: The given parameters from a :cls:`ReferenceARI` value.
+    :param fparams: The formal parameters from an ADM.
+    '''
+
+    def __init__(self, gparams:Union[List[ARI], Dict[ARI, ARI]],
+                 fparams:List['FormalParameter']):
+        self._ordinal = [None for _ix in range(len(fparams))]
+        self._name = {}
+
+        # manipulate the list/dict in place
+        gparams = copy.copy(gparams)
+
+        for fparam in fparams:
+            if gparams is None:
+                # no parameters at all
+                gparam = UNDEFINED
+            elif isinstance(gparams, list):
+                if isinstance(fparam.typeobj, Sequence):
+                    # special handling of greedy formal parameter
+                    glist = gparams[fparam.index:]
+                    got = fparam.typeobj.take(glist)
+                    if glist:
+                        LOGGER.warning('seq parameter type left %d unused given parameters', len(glist))
+
+                    # indicate all are used
+                    for g_ix in range(fparam.index, fparam.index + len(got)):
+                        gparams[g_ix] = None
+
+                    gparam = LiteralARI(got, StructType.AC)
+                else:
+                    try:
+                        gparam = gparams[fparam.index]
+                        gparams[fparam.index] = None  # mark as used
+                    except IndexError:
+                        gparam = UNDEFINED
+            elif isinstance(gparams, dict):
+                # Try both numeric and text keys
+                keys = (
+                    LiteralARI(fparam.index),
+                    LiteralARI(fparam.name),
+                )
+                gparam = tuple(filter(None, [gparams.pop(key, None) for key in keys]))
+                if len(gparam) > 1:
+                    keys = [str(key.value) for key in keys]
+                    raise ParameterError(f'Duplicate given parameters for: {",".join(keys)}')
+                elif len(gparam) == 1:
+                    gparam = gparam[0]
+                else:
+                    gparam = UNDEFINED
+            else:
+                raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
+
+            self._add_val(gparam, fparam)
+
+        if isinstance(gparams, list):
+            unused = [val for val in gparams if val is not None]
+            if unused:
+                raise ParameterError(f'Too many given parameters, unused: {unused}')
+        if isinstance(gparams, dict) and gparams:
+            keys = [str(key.value) for key in gparams.keys()]
+            raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
+
+    def _add_val(self, gparam:ARI, fparam:'FormalParameter'):
+        if is_undefined(gparam):
+            if fparam.default is not None:
+                gparam = fparam.default
+            else:
+                LOGGER.warning('Parameter %s/%s has no default value, leaving undefined',
+                               fparam.name, fparam.index)
+
+        try:
+            aparam = fparam.typeobj.convert(gparam)
+        except (TypeError, ValueError):
+            raise ParameterError(f'Parameter "{fparam.name}" cannot be coerced from value {gparam}')
+        LOGGER.debug('Normalizing parameter %s from %s to %s', fparam.name, gparam, aparam)
+        self._ordinal[fparam.index] = aparam
+        self._name[fparam.name] = aparam
+
+    def __iter__(self):
+        return iter(self._ordinal)
+
+    def __len__(self):
+        return len(self._ordinal)
+
+    def __getitem__(self, idx:Union[int, str]) -> ARI:
+        if isinstance(idx, int):
+            return self._ordinal[idx]
+        elif isinstance(idx, str):
+            return self._name[idx]
+        else:
+            raise KeyError(f'Invalid index type {type(idx).__name__}')
