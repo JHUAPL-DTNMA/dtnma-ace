@@ -516,7 +516,10 @@ class Decoder:
 
         enum = 0
         for yang_stmt in search_all_exp(module, sec_kywd):
-            obj = self.from_stmt(orm_cls, yang_stmt)
+            try:
+                obj = self.from_stmt(orm_cls, yang_stmt)
+            except Exception as err:
+                raise RuntimeError(f'Failure handling definition for {yang_stmt.keyword} "{yang_stmt.arg}": {err}') from err;
 
             # FIXME: check for duplicates
             if obj.enum is None:
@@ -618,13 +621,16 @@ class Decoder:
                 description=pyang.statements.get_description(sub_stmt),
             ))
 
-        self._get_section(adm.typedef, Typedef, module)
-        self._get_section(adm.ident, Ident, module)
-        self._get_section(adm.const, Const, module)
-        self._get_section(adm.ctrl, Ctrl, module)
-        self._get_section(adm.edd, Edd, module)
-        self._get_section(adm.oper, Oper, module)
-        self._get_section(adm.var, Var, module)
+        try:
+            self._get_section(adm.typedef, Typedef, module)
+            self._get_section(adm.ident, Ident, module)
+            self._get_section(adm.const, Const, module)
+            self._get_section(adm.ctrl, Ctrl, module)
+            self._get_section(adm.edd, Edd, module)
+            self._get_section(adm.oper, Oper, module)
+            self._get_section(adm.var, Var, module)
+        except Exception as err:
+            raise RuntimeError(f'Failure processing object definitions from ADM "{adm.name}": {err}') from err
 
         self._module = None
         return adm
