@@ -25,9 +25,9 @@ import io
 import logging
 import os
 from sqlalchemy import inspect, orm, func
-from ace import models, ari, ari_text, nickname, util
+from ace import models, ari, ari_text
 from ace.typing import TypeUse
-from ace.lookup import TypeResolver, TypeResolverError
+from ace.lookup import dereference, TypeResolver, TypeResolverError
 from .core import register, Issue
 
 LOGGER = logging.getLogger(__name__)
@@ -206,7 +206,7 @@ class valid_reference_ari:  # pylint: disable=invalid-name
                 def checker(val):
                     if not isinstance(val, ari.ReferenceARI):
                         return
-                    if util.find_ident(db_sess, val.ident) is None:
+                    if dereference(val, db_sess) is None:
                         issuelist.append(Issue(
                             obj=obj,
                             detail=(

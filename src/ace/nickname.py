@@ -23,22 +23,12 @@
 '''
 import enum
 import logging
-import cbor2
+from sqlalchemy.orm.session import Session
 from ace import models
-from ace.ari import ReferenceARI, StructType
-from ace.adm_set import AdmSet
+from ace.ari import ARI, ReferenceARI, Identity
+from ace.lookup import find_adm, dereference
 
 LOGGER = logging.getLogger(__name__)
-
-# : ORM relationship attribute for each ARI reference type
-ORM_TYPE = {
-    StructType.TYPEDEF: models.Typedef,
-    StructType.CONST: models.Const,
-    StructType.CTRL: models.Ctrl,
-    StructType.EDD: models.Edd,
-    StructType.OPER: models.Oper,
-    StructType.VAR: models.Var,
-}
 
 
 @enum.unique
@@ -55,86 +45,94 @@ class Converter:
     nickname data based on an :class:`AdmSet` database.
 
     :param mode: The conversion mode.
-    :param adms: The :class:`AdmSet` to look up nicknames.
+    :param db_sess: The :class:`AdmSet` to look up nicknames.
     :param must_nickname: If true, the conversion will fail if no nickname
     is available.
     '''
 
-    def __init__(self, mode: Mode, adms: AdmSet, must_nickname: bool=False):
+    def __init__(self, mode:Mode, db_sess:Session, must_nickname:bool=False):
         self._mode = mode
-        self._adms = adms
+        self._db_sess = db_sess
         self._must = must_nickname
 
-    def __call__(self, obj):
-        LOGGER.debug('Converting object %s', obj)
-        if isinstance(obj, ReferenceARI):
-            self._convert_ari(obj)
-            if obj.params:
-                for item in obj.params:
-                    self(item)
+    def __call__(self, ari:ARI) -> ARI:
+        LOGGER.debug('Converting object %s', ari)
+        return ari.map(self._convert_ari)
 
-        elif obj.type_id is StructType.AC:
-            for item in obj.value:
-                self(item)
+    def _convert_ari(self, ari:ARI) -> ARI:
+        if isinstance(ari, ReferenceARI):
+            return self._convert_ref(ari)
+        else:
+            return ari
 
-        elif obj.type_id is StructType.AM:
-            for key, val in obj.value.items():
-                self(key)  # FIXME: replace item if key is modified
-                self(val)
+    def _convert_ref(self, ari:ReferenceARI) -> ReferenceARI:
+        obj = dereference(ari, self._db_sess)
+        if obj:
+            adm = obj.module
+        else:
+            adm = find_adm(ari.ident.ns_id, self._db_sess)
+        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s',
+                     ari.ident, adm, obj)
 
-    def _convert_ari(self, ari):
-        if self._mode == Mode.TO_NN and isinstance(ari.ident.ns_id, str):
+        if self._mode == Mode.TO_NN:
             # Prefer nicknames
-            adm_name = ari.ident.ns_id
-            obj_type = ari.ident.type_id
-            obj_name = ari.ident.obj_id
-
-            adm = self._adms.get_by_norm_name(adm_name)
-            LOGGER.debug('Got ADM %s', adm)
-            obj = self._adms.get_child(adm, ORM_TYPE[obj_type], norm_name=obj_name)
-            LOGGER.debug('ARI type %s name %s resolved to enums for ADM %s, obj %s',
-                         obj_type, obj_name,
-                         adm.enum if adm else None,
-                         obj.enum if obj else None)
-
+            ns_id = ari.ident.ns_id
             if adm is None or adm.enum is None:
                 if self._must:
                     if adm is None:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {adm_name} {err}'
+                    msg = f'The ADM named {ns_id} {err}'
                     raise RuntimeError(msg)
-                return
+            else:
+                ns_id = adm.enum
+
+            obj_id = ari.ident.obj_id
             if obj is None or obj.enum is None:
                 if self._must:
                     if obj is None:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM object named {obj_name} {err}'
+                    msg = f'The ADM object named {obj_id} {err}'
                     raise RuntimeError(msg)
-                return
+            else:
+                obj_id = obj.enum
 
             # ARI IDs from enums
-            ari.ident.ns_id = adm.enum
-            ari.ident.obj_id = obj.enum
+            new_ident = Identity(
+                ns_id=ns_id,
+                type_id=ari.ident.type_id,
+                obj_id=obj_id
+            )
 
-            # Convert parameter types from text ARI as needed
-            if isinstance(obj, models.ParamMixin) and obj.parameters is not None:
-                for ix, spec in enumerate(obj.parameters.items):
-                    if spec.type == 'TNVC':
-                        ari.params[ix] = TNVC(items=ari.params[ix].items)
+        elif self._mode == Mode.FROM_NN:
+            ns_id = ari.ident.ns_id
+            if adm is None:
+                if self._must:
+                    msg = f'The ADM named {ns_id} does not exist'
+                    raise RuntimeError(msg)
+            else:
+                ns_id = adm.norm_name
 
-        if self._mode == Mode.FROM_NN and isinstance(ari.ident.ns_id, int):
-            adm_enum = ari.ident.ns_id
-            obj_enum = ari.ident.obj_id
-
-            adm = self._adms.get_by_enum(adm_enum)
-            LOGGER.debug('Got ADM %s', adm)
-            obj = self._adms.get_child(adm, ORM_TYPE[ari.ident.type_id], enum=obj_enum)
-            LOGGER.debug('ARI nickname %s name %s resolved to type %s name %s obj %s', ari.ident.ns_id, ari.ident.obj_id, ari.ident.type_id, obj_enum, obj)
+            obj_id = ari.ident.obj_id
+            if obj is None:
+                if self._must:
+                    msg = f'The ADM object named {obj_id} does not exist'
+                    raise RuntimeError(msg)
+            else:
+                obj_id = obj.norm_name
 
             # ARI IDs from names
-            ari.ident.ns_id = adm.norm_name
-            ari.ident.obj_id = obj.norm_name
+            new_ident = Identity(
+                ns_id=ns_id,
+                type_id=ari.ident.type_id,
+                obj_id=obj_id
+            )
+
+        LOGGER.debug('got ident %s', new_ident)
+        return ReferenceARI(
+            ident=new_ident,
+            params=ari.params
+        )

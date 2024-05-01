@@ -47,26 +47,3 @@ def normalize_ident(text: str) -> str:
 
     return text.casefold()
 
-
-def find_ident(db_sess:sqlalchemy.orm.Session, ident:ari.Identity):
-    ''' Search for a specific referenced object.
-
-    :param ident: The object identity to search for.
-    :return: The found object or None.
-    '''
-    from ace import models, nickname
-
-    ns_id = normalize_ident(ident.ns_id)
-    obj_id = normalize_ident(ident.obj_id)
-
-    try:
-        cls = nickname.ORM_TYPE[ident.type_id]
-    except KeyError:
-        return None
-
-    LOGGER.debug('Searching for NS %s type %s name %s', ns_id, ident.type_id.name, obj_id)
-    query = db_sess.query(cls).join(models.AdmModule).filter(
-        models.AdmModule.norm_name == ns_id,
-        cls.norm_name == obj_id
-    )
-    return query.one_or_none()

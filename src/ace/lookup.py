@@ -14,14 +14,19 @@ from .ari import (
 from .typing import (
     BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, Sequence, type_walk
 )
-from .models import AdmModule, AdmObjMixin, Typedef, Ident, Const
+from . import models
+from .models import AdmModule, AdmObjMixin
 
 LOGGER = logging.getLogger(__name__)
 
-_OBJ_TYPES = {
-    StructType.TYPEDEF: Typedef,
-    StructType.IDENT: Ident,
-    StructType.CONST: Const,
+ORM_TYPE = {
+    StructType.TYPEDEF: models.Typedef,
+    StructType.IDENT: models.Ident,
+    StructType.CONST: models.Const,
+    StructType.EDD: models.Edd,
+    StructType.VAR: models.Var,
+    StructType.CTRL: models.Ctrl,
+    StructType.OPER: models.Oper,
 }
 ''' Map from reference type-ID to ADM model type. '''
 
@@ -43,12 +48,9 @@ class RelativeResolver:
         return ari
 
 
-def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
-    ''' Dereference a single object reference.
+def find_adm(ns_id, db_sess:Session) -> Optional[AdmModule]:
+    ''' Dereference an ADM module.
     '''
-    orm_type = _OBJ_TYPES[ref.ident.type_id]
-
-    ns_id = ref.ident.ns_id
     query_adm = db_sess.query(AdmModule)
     if isinstance(ns_id, int):
         query_adm = query_adm.filter(AdmModule.enum == ns_id)
@@ -57,6 +59,15 @@ def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
     else:
         raise TypeError('ReferenceARI ns_id is not int or str')
     found_adm = query_adm.one_or_none()
+    return found_adm
+
+
+def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
+    ''' Dereference a single object reference.
+    '''
+    orm_type = ORM_TYPE[ref.ident.type_id]
+
+    found_adm = find_adm(ref.ident.ns_id, db_sess)
     if found_adm is None:
         return None
 
@@ -151,7 +162,7 @@ class TypeResolver:
         elif isinstance(obj.type_ari, ReferenceARI):
             try:
                 typedef = dereference(obj.type_ari, self._db_sess)
-                if not isinstance(typedef, Typedef):
+                if not isinstance(typedef, models.Typedef):
                     typedef = None
             except TypeError:
                 typedef = None
@@ -194,7 +205,7 @@ class TypeResolver:
             if isinstance(cnst, IdentRefBase):
                 try:
                     ident = dereference(cnst.base_ari, self._db_sess)
-                    if not isinstance(ident, Ident):
+                    if not isinstance(ident, models.Ident):
                         ident = None
                 except TypeError:
                     ident = None

@@ -50,6 +50,11 @@ which will produce a hexadecimal output:
 0xC1188D410605061616141416161A647A2ECA1A647A2FF502041961A801
 ```
 
+An example of using the ADM parser, from the soruce tree, to normalize and compare ADMs (with meld tool) is:
+```
+ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
+```
+
 ## Contributing
 
 To contribute to this project, through issue reporting or change requests, see the [CONTRIBUTING](CONTRIBUTING.md) document.
