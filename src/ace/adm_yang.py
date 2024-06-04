@@ -608,6 +608,7 @@ class Decoder:
                     name=meta_stmt.keyword,
                     arg=meta_stmt.arg,
                 ))
+                print(kywd, meta_stmt)
 
         for sub_stmt in module.search('revision'):
             adm.revisions.append(AdmRevision(

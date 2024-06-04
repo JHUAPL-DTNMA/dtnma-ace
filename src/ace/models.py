@@ -160,7 +160,7 @@ class AdmModule(Base):
         cascade="all, delete"
     )
 
-    # Normalized ADM name (for searching)
+    # ADM name
     name = Column(String)
     # Normalized ADM name (for searching)
     norm_name = Column(String, index=True)

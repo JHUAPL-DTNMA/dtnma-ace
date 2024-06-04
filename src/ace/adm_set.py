@@ -406,12 +406,13 @@ class AdmSet:
                 else:
                     self._db_sess.add(adm)
 
-    def get_child(self, adm:models.AdmModule, cls:type, norm_name:str=None, enum:int=None):
+    def get_child(self, adm:models.AdmModule, meta_name:str=None):
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.
         '''
-        query = self._db_sess.query(cls).filter(cls.admfile == adm)
-        if norm_name is not None:
-            query = query.filter(cls.norm_name == norm_name.casefold())
-        if enum is not None:
-            query = query.filter(cls.enum == enum)
+        cls = models.MetadataItem
+        query = self._db_sess.query(cls).filter(cls.list_id == adm.source_id)
+        
+        if meta_name is not None:
+            query = query.filter(cls.name == meta_name.casefold())
+            
         return query.one_or_none()
