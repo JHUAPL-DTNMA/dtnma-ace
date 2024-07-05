@@ -7,6 +7,7 @@ from typing import List, Tuple
 import pyang
 from pyang.error import err_add
 from ace.ari_text import Decoder
+from ace import ReferenceARI
 
 logger = logging.getLogger(__name__)
 
@@ -345,9 +346,14 @@ class AriChecker:
 
 def _stmt_check_namespace(ctx, stmt):
     ''' Verify namespace is conformant to an ADM. '''
-    RE_NS_PAT = r'ari:/([a-zA-Z].*)/?'
-    RE_NS = re.compile(RE_NS_PAT)
-    if RE_NS.match(stmt.arg) is None:
+    try:
+        ns_ref = Decoder().decode(io.StringIO(stmt.arg))
+    except:
+        ns_ref = None
+
+    if (not isinstance(ns_ref, ReferenceARI)
+        or ns_ref.ident.type_id is not None
+        or ns_ref.ident.obj_id is not None):
         err_add(ctx.errors, stmt.pos, 'AMP_MODULE_NS',
                 (stmt.arg))
 
