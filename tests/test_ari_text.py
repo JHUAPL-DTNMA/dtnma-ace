@@ -156,25 +156,25 @@ class TestAriText(unittest.TestCase):
             ])
         ),
         (
-            '/EXECSET/n=null;(/adm/CTRL/name)',
+            '/EXECSET/n=null;(//adm/CTRL/name)',
             ExecutionSet(nonce=None, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/EXECSET/n=1234;(/adm/CTRL/name)',
+            '/EXECSET/n=1234;(//adm/CTRL/name)',
             ExecutionSet(nonce=1234, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/EXECSET/n=h%276869%27;(/adm/CTRL/name)',
+            '/EXECSET/n=h%276869%27;(//adm/CTRL/name)',
             ExecutionSet(nonce=b'hi', targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=/adm/CTRL/name;(null))',
+            '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//adm/CTRL/name;(null))',
             ReportSet(
                 nonce=None,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -190,7 +190,7 @@ class TestAriText(unittest.TestCase):
             )
         ),
         (
-            '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=/adm/CTRL/other;(null))',
+            '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=//adm/CTRL/other;(null))',
             ReportSet(
                 nonce=1234,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -268,16 +268,19 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari_dn, ari_up)
 
     REFERENCE_TEXTS = [
-        'ari:/namespace/VAR/hello',
-        'ari:/namespace/VAR/hello()',
-        'ari:/namespace/VAR/hello(/INT/10)',
-        'ari:/namespace/VAR/hello(/other/CONST/hi)',
-        'ari:/namespace@2020-01-01/VAR/hello',
+        'ari://namespace/',
+        'ari://!namespace/',
+        'ari://namespace/VAR/hello',
+        'ari://!namespace/VAR/hello',
+        'ari://namespace/VAR/hello()',
+        'ari://namespace/VAR/hello(/INT/10)',
+        'ari://namespace/VAR/hello(//other/CONST/hi)',
+        'ari://namespace@2020-01-01/VAR/hello',
         'ari:./VAR/hello',
-        'ari:/bp-agent/CTRL/reset_all_counts()',
-        'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
+        'ari://bp-agent/CTRL/reset_all_counts()',
+        'ari://amp-agent/CTRL/gen_rpts(/AC/(//bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
-        'ari:/amp-agent/CTRL/ADD_SBR(/APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(/APL_SC/EDD/payload_temperature,/APL_SC/CONST/payload_heat_on_temp,/amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(/APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
+        'ari://amp-agent/CTRL/ADD_SBR(//APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(//APL_SC/EDD/payload_temperature,//APL_SC/CONST/payload_heat_on_temp,//amp-agent/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(//APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
     ]
 
     def test_reference_text_loopback(self):
@@ -307,8 +310,8 @@ class TestAriText(unittest.TestCase):
         ('/AM/()', '/AM/' '/AM/3'),
         ('/TBL/c=1;', '/TBL/' '/TBL/c=1;(1,2)'),
         ('/LABEL/hi', '/LABEL/3', '/LABEL/%22hi%22'),
-        ('ari:/ns/EDD/hello', 'ari:/ns/EDD/hello(('),
-        ('ari:./EDD/hello', 'ari:/./EDD/hello'),
+        ('ari://ns/EDD/hello', 'ari://ns/EDD/hello(('),
+        ('ari:./EDD/hello', 'ari://./EDD/hello', 'ari:/./EDD/hello'),
     ]
     ''' Valid ARI followed by invalid variations '''
 
@@ -329,7 +332,7 @@ class TestAriText(unittest.TestCase):
                         LOGGER.info('Instead got ARI %s', ari)
 
     def test_complex_decode(self):
-        text = 'ari:/amp-agent/CTRL/gen_rpts(/AC/(/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
+        text = 'ari://amp-agent/CTRL/gen_rpts(/AC/(//bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
         dec = ari_text.Decoder()
         ari = dec.decode(io.StringIO(text))
         LOGGER.info('Got ARI %s', ari)

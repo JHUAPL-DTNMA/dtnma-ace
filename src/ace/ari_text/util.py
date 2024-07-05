@@ -183,7 +183,6 @@ def subsec_to_microseconds(digits):
 
 @TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z')
 def t_timepoint(found):
-    LOGGER.debug('TP %s', found.groups())
     value = datetime.datetime(
         year=part_to_int(found.group('yr')),
         month=part_to_int(found.group('mon')),
@@ -198,7 +197,6 @@ def t_timepoint(found):
 
 @TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?')
 def t_timeperiod(found):
-    LOGGER.debug('TD %s', found.groups())
     neg = found.group('sign') == '-'
     day = part_to_int(found.group('D'))
     hour = part_to_int(found.group('H'))

@@ -1,5 +1,5 @@
 module test-adm-minimal {
-  namespace "ari:/test-adm-minimal/";
+  namespace "ari://test-adm-minimal/";
   prefix test;
 
   import ietf-amm {
@@ -18,10 +18,10 @@ module test-adm-minimal {
   }
   amm:ctrl test1 {
     amm:parameter id {
-      amm:type /ietf-amm/TYPEDEF/any;
+      amm:type "//ietf-amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type /ietf-amm/TYPEDEF/expr;
+      amm:type "//ietf-amm/TYPEDEF/expr";
     }
     description
       "This control resets all Agent ADM statistics reported in the Agent ADM report.";

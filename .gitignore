@@ -1,6 +1,8 @@
 # Editor files
 *~
 *.bak
+.project
+.pydevproject
 
 # Python intermediates
 __pycache__

@@ -100,7 +100,7 @@ class BaseYang(unittest.TestCase):
     NOOBJECT_MODULE_HEAD = '''\
 module example-mod {
   yang-version 1.1;
-  namespace "ari:/example-mod/";
+  namespace "ari://example-mod/";
   prefix empty;
 
   import ietf-amm {
@@ -111,7 +111,7 @@ module example-mod {
     description
       "Initial test";
   }
-  amm:enum 255;
+  amm:enum 65536;
 '''
     NOOBJECT_MODULE_TAIL = '''\
 }
@@ -173,10 +173,10 @@ module empty {}
   amm:ctrl test1 {
     amm:enum 5;
     amm:parameter id {
-      amm:type "/ietf-amm/TYPEDEF/any";
+      amm:type "//ietf-amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type "/ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf-amm/TYPEDEF/expr";
     }
   }
 ''')
@@ -198,7 +198,7 @@ module empty {}
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
         self.assertEqual(
-            self._from_text('/ietf-amm/typedef/any'),
+            self._from_text('//ietf-amm/typedef/any'),
             obj.parameters.items[0].typeobj.type_ari
         )
 
@@ -221,10 +221,10 @@ module empty {}
   }
   grouping paramgrp {
     amm:parameter id {
-      amm:type "/ietf-amm/TYPEDEF/any";
+      amm:type "//ietf-amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type "/ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf-amm/TYPEDEF/expr";
     }
   }
   amm:ctrl test1 {
@@ -250,7 +250,7 @@ module empty {}
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
         self.assertEqual(
-            self._from_text('/ietf-amm/typedef/any'),
+            self._from_text('//ietf-amm/typedef/any'),
             obj.parameters.items[0].typeobj.type_ari
         )
 
@@ -442,7 +442,7 @@ module empty {}
       amm:type "/ARITYPE/INT";
     }
     amm:parameter two {
-      amm:type "/ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf-amm/TYPEDEF/expr";
     }
     description
       "do a thing";
@@ -470,11 +470,11 @@ module empty {}
     }
     amm:operand vals {
       amm:seq {
-        amm:type "/ietf-amm/TYPEDEF/numeric";
+        amm:type "//ietf-amm/TYPEDEF/numeric";
       }
     }
     amm:result total {
-      amm:type "/ietf-amm/TYPEDEF/numeric";
+      amm:type "//ietf-amm/TYPEDEF/numeric";
     }
     description
       "sum together values";
@@ -695,14 +695,14 @@ class TestAdmContents(BaseYang):
         ('''\
   amm:typedef typeobj {
     amm:type "/ARITYPE/IDENT" {
-      amm:base "/ietf-amm/IDENT/somename";
+      amm:base "//ietf-amm/IDENT/somename";
     }
   }
 ''', True),
         ('''\
   amm:typedef typeobj {
     amm:type "/ARITYPE/TEXTSTR" {
-      amm:base "/ietf-amm/IDENT/somename";
+      amm:base "//ietf-amm/IDENT/somename";
     }
   }
 ''', False),
@@ -772,19 +772,19 @@ class TestAdmContents(BaseYang):
         self.assertEqual('type-any', type_any.norm_name)
         typeobj_any = lookup.TypeResolver().resolve(type_any.typeobj, adm)
         self.assertIsNone(typeobj_any.get(self._from_text('hi')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-b')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('/example-mod/IDENT/ident-c')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-b')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-c')))
 
         type_a = adm.typedef[1]
         self.assertEqual('type-a', type_a.norm_name)
         typeobj_a = lookup.TypeResolver().resolve(type_a.typeobj, adm)
         self.assertIsNone(typeobj_a.get(self._from_text('hi')))
-        self.assertIsNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-b')))
-        self.assertIsNone(typeobj_a.get(self._from_text('/example-mod/IDENT/ident-c')))
+        self.assertIsNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-b')))
+        self.assertIsNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-c')))
 
     def test_ident_params(self):
         buf = self._get_mod_buf('''

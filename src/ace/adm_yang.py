@@ -668,7 +668,7 @@ class Encoder:
         self._denorm_prefixes = {}
 
         self._add_substmt(module, 'yang-version', '1.1')
-        self._add_substmt(module, 'namespace', f'ari:/{adm.name}/')
+        self._add_substmt(module, 'namespace', f'ari://{adm.name}/')
 
         for item in adm.metadata_list.items:
             self._add_substmt(module, item.name, item.arg)

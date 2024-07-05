@@ -194,7 +194,7 @@ class TestConstraintsBasic(BaseTest):
             enum=201,
         )
 
-        val = 'ari:/AC/(/adm_a/CTRL/control_a,/adm_a/CTRL/control_c,/adm_c/CTRL/control_a)'
+        val = 'ari:/AC/(//adm_a/CTRL/control_a,//adm_a/CTRL/control_c,//adm_c/CTRL/control_a)'
         adm_b.const.append(models.Const(
             name='macro',
             typeobj=typing.TypeUse(type_ari=ari.LiteralARI(ari.StructType.AC, ari.StructType.ARITYPE)),

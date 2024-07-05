@@ -261,9 +261,9 @@ class Identity:
     ''' The None value indicates a module-relative path. '''
     ns_rev:Optional[str] = None
     ''' For the text-form ARI a specific module revision date. '''
-    type_id:StructType = None
+    type_id:Optional[StructType] = None
     ''' ADM type of the referenced object '''
-    obj_id:Union[str, int] = None
+    obj_id:Union[str, int, None] = None
     ''' Name with the type removed '''
 
     def __str__(self):

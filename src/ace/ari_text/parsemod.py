@@ -177,8 +177,8 @@ def p_typedlit_single(p):
         raise RuntimeError(err) from err
 
 
-def p_ssp_objref(p):
-    'ssp : ident'
+def p_ssp_objref_noparams(p):
+    'ssp : objpath'
     p[0] = ReferenceARI(
         ident=p[1],
         params=None
@@ -186,7 +186,7 @@ def p_ssp_objref(p):
 
 
 def p_ssp_objref_params(p):
-    'ssp : ident params'
+    'ssp : objpath params'
     p[0] = ReferenceARI(
         ident=p[1],
         params=p[2]
@@ -208,15 +208,30 @@ def p_params_amlist(p):
     p[0] = p[2]
 
 
-def p_ident_with_ns(p):
-    'ident : SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+def p_objpath_only_ns(p):
+    '''objpath : SLASH SLASH VALSEG
+               | SLASH SLASH VALSEG SLASH'''
+    mod = util.MODID(p[3])
+    if not isinstance(mod, tuple):
+        mod = (mod, None)
+
+    p[0] = Identity(
+        ns_id=mod[0],
+        ns_rev=mod[1],
+        type_id=None,
+        obj_id=None,
+    )
+
+
+def p_objpath_with_ns(p):
+    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG'
     try:
-        typ = util.get_structtype(p[4])
+        typ = util.get_structtype(p[5])
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
 
-    mod = util.MODID(p[2])
+    mod = util.MODID(p[3])
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -224,12 +239,12 @@ def p_ident_with_ns(p):
         ns_id=mod[0],
         ns_rev=mod[1],
         type_id=typ,
-        obj_id=util.IDSEGMENT(p[6]),
+        obj_id=util.IDSEGMENT(p[7]),
     )
 
 
-def p_ident_relative(p):
-    'ident : DOT SLASH VALSEG SLASH VALSEG'
+def p_objpath_relative(p):
+    'objpath : DOT SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[3])
     except Exception as err:

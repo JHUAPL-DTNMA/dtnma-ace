@@ -11,7 +11,7 @@ from pyang.error import err_add
 
 logger = logging.getLogger(__name__)
 
-#: Extension module name to hook onto
+# : Extension module name to hook onto
 MODULE_NAME = 'ietf-amm'
 MODULE_PREFIX = 'amm'
 
@@ -69,7 +69,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
         self._prefix = ''
 
         for module in modules:
-            base_ari = f'ari:/{module.arg}/'
+            base_ari = f'ari://{module.arg}/'
             self._emit_line(outfile, base_ari, status=self._get_status_str(module))
             self._indent()
 
@@ -91,7 +91,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
                         obj_ari = f'{objtype_ari}{obj.arg}'
                     else:
                         obj_ari = f'./{obj.arg}'
-                
+
                     if obj.keyword in TYPED_OBJS:
                         valtype = self._get_type(ctx, obj)
                     else:
@@ -166,7 +166,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
             restrict = []
             for keywd in TYPE_RESTRICTS:
                 restrict += typestmt.search(keywd)
-            
+
             if restrict:
                 return f'{typename} ({len(restrict)} restrictions)'
             else:

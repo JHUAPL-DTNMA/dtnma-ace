@@ -219,17 +219,19 @@ class Encoder:
             if obj.ident.ns_id is None:
                 buf.write('.')
             else:
-                buf.write('/')
+                buf.write('//')
                 buf.write(str(obj.ident.ns_id))
             if obj.ident.ns_rev is not None:
                 buf.write('@')
                 buf.write(obj.ident.ns_rev)
             buf.write('/')
-            buf.write(obj.ident.type_id.name)
-            buf.write('/')
-            buf.write(str(obj.ident.obj_id))
-            if obj.params is not None:
-                self._encode_list(buf, obj.params)
+
+            if obj.ident.type_id and obj.ident.obj_id:
+                buf.write(obj.ident.type_id.name)
+                buf.write('/')
+                buf.write(str(obj.ident.obj_id))
+                if obj.params is not None:
+                    self._encode_list(buf, obj.params)
 
         # FIXME: special cases for recursion
         elif isinstance(obj, Report):
