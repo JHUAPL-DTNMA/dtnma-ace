@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "anms-ace"
+name = "dtnma-ace"
 version = "1.0.0"
 authors = [
   { name="JHU/APL", email="dtnma-support@jhuapl.edu" },
@@ -62,5 +62,5 @@ max-line-length=100
 ace_ari = "ace.tools.ace_ari:main"
 
 [project.urls]
-"Homepage" = "https://github.com/NASA-AMMOS/anms-ace"
-"Bug Tracker" = "https://github.com/NASA-AMMOS/anms-ace/issues"
+"Homepage" = "https://github.com/JHUAPL/dtnma-ace"
+"Bug Tracker" = "https://github.com/JHUAPL/dtnma-ace/issues"
