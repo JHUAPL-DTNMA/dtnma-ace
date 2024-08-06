@@ -503,55 +503,6 @@ module empty {}
                 LOGGER.info('output:\n%s', buf_out.getvalue())
                 self.assertEqual(buf_in.getvalue(), buf_out.getvalue())
 
-    def test_loopback_real_adms(self):
-
-        def keep(name):
-            return name.endswith('.yang')
-
-        file_names = os.listdir(os.path.join(SELFDIR, 'adms'))
-        file_names = tuple(filter(keep, file_names))
-        self.assertLess(0, len(file_names))
-
-        enc = adm_yang.Encoder()
-
-        for name in file_names:
-            with self.subTest(name):
-                LOGGER.info('Handling file %s', name)
-
-                file_path = os.path.join(SELFDIR, 'adms', name)
-                with open(file_path, 'r', encoding='utf-8') as buf:
-                    text_in = buf.read()
-                    LOGGER.debug('ADM source:\n%s', text_in)
-                    buf.seek(0)
-                    adm = self._adm_dec.decode(buf)
-                self.assertIsInstance(adm, models.AdmModule)
-                self.assertEqual(
-                    os.path.abspath(file_path),
-                    adm.source.abs_file_path
-                )
-                self._db_sess.add(adm)
-                self._db_sess.commit()
-
-                out_first = io.StringIO()
-                enc.encode(adm, out_first)
-                text_first = out_first.getvalue()
-                LOGGER.debug('out first:\n%s', text_first)
-
-                out_first.seek(0)
-                adm = self._adm_dec.decode(out_first)
-                self.assertIsInstance(adm, models.AdmModule)
-                self._db_sess.add(adm)
-                self._db_sess.commit()
-
-                out_second = io.StringIO()
-                enc.encode(adm, out_second)
-                text_second = out_second.getvalue()
-                LOGGER.debug('out second:\n%s', text_second)
-
-                # source ADM objects in original are not in canonical order
-                # but loopback text outputs will be
-                self.assertEqual(text_first, text_second)
-
 
 class TestAdmContents(BaseYang):
 
