@@ -398,12 +398,12 @@ MODULE_EXTENSIONS = (
     Ext('const', 'identifier',
         subs=(
             OBJ_SUBS_PRE
+            +type_use('const')
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
                 ((MODULE_NAME, 'init-value'), '1'),
                 ('uses', '*'),
             ]
-            +type_use('const')
         ),
     ),
     Ext('init-value', 'ARI'),

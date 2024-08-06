@@ -385,12 +385,18 @@ module empty {}
         '''\
   amm:ident base1 {
     amm:enum 1;
+    description
+      "one base";
   }
   amm:ident base2 {
     amm:enum 1;
+    description
+      "other base";
   }
   amm:ident derived {
     amm:enum 3;
+    description
+      "some value";
     amm:base "./IDENT/base1";
     amm:base "./IDENT/base2";
   }
@@ -399,14 +405,18 @@ module empty {}
         '''\
   amm:const val {
     amm:enum 2;
-    amm:type "/ARITYPE/TEXTSTR";
+    description
+      "some value";
     amm:init-value "hi";
+    amm:type "/ARITYPE/TEXTSTR";
   }
 ''',
 
         '''\
   amm:edd val {
     amm:enum 2;
+    description
+      "some value";
     amm:type "/ARITYPE/TEXTSTR" {
       pattern '.*hello.*';
     }
@@ -415,6 +425,8 @@ module empty {}
         '''\
   amm:edd val {
     amm:enum 2;
+    description
+      "some value";
     amm:parameter opt {
       amm:type "/ARITYPE/UINT";
     }
@@ -424,47 +436,53 @@ module empty {}
         '''\
   amm:var val {
     amm:enum 2;
+    description
+      "some value";
     amm:type "/ARITYPE/INT";
   }
 ''',
         '''\
   amm:var val {
     amm:enum 2;
-    amm:type "/ARITYPE/INT";
+    description
+      "some value";
     amm:init-value "3";
+    amm:type "/ARITYPE/INT";
   }
 ''',
 
         '''\
   amm:ctrl dothing {
     amm:enum 2;
+    description
+      "do a thing";
     amm:parameter one {
       amm:type "/ARITYPE/INT";
     }
     amm:parameter two {
       amm:type "//ietf-amm/TYPEDEF/expr";
     }
-    description
-      "do a thing";
   }
 ''',
         '''\
   amm:ctrl dothing {
     amm:enum 2;
+    description
+      "do a thing";
     amm:parameter one {
       amm:type "/ARITYPE/INT";
     }
     amm:result val {
       amm:type "/ARITYPE/INT";
     }
-    description
-      "do a thing";
   }
 ''',
 
         '''\
   amm:oper sum {
     amm:enum 2;
+    description
+      "sum together values";
     amm:parameter count {
       amm:type "/ARITYPE/UINT";
     }
@@ -476,8 +494,6 @@ module empty {}
     amm:result total {
       amm:type "//ietf-amm/TYPEDEF/numeric";
     }
-    description
-      "sum together values";
   }
 ''',
     ]
