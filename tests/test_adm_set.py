@@ -28,7 +28,7 @@ import shutil
 import unittest
 from ace.adm_set import AdmSet
 from ace.models import AdmModule
-from util import TmpDir
+from .util import TmpDir
 
 # : Directory containing this file
 SELFDIR = os.path.dirname(__file__)

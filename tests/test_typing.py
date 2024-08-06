@@ -17,7 +17,7 @@ from ace.ari import (
     StructType, Table, LiteralARI, ReferenceARI, Identity,
     UNDEFINED, NULL, TRUE, FALSE
 )
-from util import TypeSummary
+from .util import TypeSummary
 
 LOGGER = logging.getLogger(__name__)
 

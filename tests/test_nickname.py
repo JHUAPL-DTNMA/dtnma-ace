@@ -26,7 +26,7 @@ import logging
 import os
 import unittest
 from ace import ari, ari_text, nickname
-from test_adm_yang import BaseYang
+from .test_adm_yang import BaseYang
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
