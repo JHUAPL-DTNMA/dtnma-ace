@@ -10,6 +10,7 @@ __pycache__
 requirements.txt
 build
 dist
+.venv*/
 
 # Test outputs
 testresults.xml
