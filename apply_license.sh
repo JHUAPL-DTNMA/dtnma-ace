@@ -1,3 +1,4 @@
+#!/bin/bash
 ##
 ## Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
@@ -21,27 +22,30 @@
 ## subcontract 1658085.
 ##
 
-# Read the Docs configuration file
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-version: 2
+# Apply copyright and license markings to source files.
+#
+# Requires installation of:
+#  pip3 install licenseheaders
+# Run as:
+#  ./apply_license.sh {--dry} {-vv}
+#
+set -e
 
-# Set the OS, Python version and other tools you might need
-build:
-  os: ubuntu-22.04
-  tools:
-    python: "3.10"
-  jobs:
-    pre_build:
-      - ./build_docs.sh
+SELFDIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 
-# Use the pyproject.toml requirements
-python:
-  install:
-    - method: pip
-      path: .
-      extra_requirements:
-        - docs
+LICENSEOPTS="${LICENSEOPTS} --tmpl ${SELFDIR}/apply_license.tmpl"
+LICENSEOPTS="${LICENSEOPTS} --years 2020-$(date +%Y)"
+# Excludes only apply to directory (--dir) mode and not file mode
+#LICENSEOPTS="${LICENSEOPTS} --exclude *.yml *.yaml *.min. "
 
-# Build documentation in the "docs/" directory with Sphinx
-sphinx:
-  configuration: docs/conf.py
+
+# Specific paths
+if [ "$#" -gt 0 ]
+then
+    echo "Applying markings to selected $@ ..."
+    licenseheaders ${LICENSEOPTS} --dir $@
+    exit 0
+fi
+
+echo "Applying markings to source..."
+licenseheaders ${LICENSEOPTS} --dir ${SELFDIR}
