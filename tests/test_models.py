@@ -25,7 +25,7 @@
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace.models import Base, AdmFile
+from ace import models
 
 
 class TestModels(unittest.TestCase):
@@ -33,20 +33,29 @@ class TestModels(unittest.TestCase):
 
     def setUp(self):
         self._db_eng = create_engine("sqlite:///:memory:")
-        Base.metadata.create_all(self._db_eng)
+        models.Base.metadata.create_all(self._db_eng)
         self._db_sess = Session(self._db_eng)
 
     def tearDown(self):
         self._db_sess.close()
         self._db_sess = None
-        Base.metadata.drop_all(self._db_eng)
+        models.Base.metadata.drop_all(self._db_eng)
         self._db_eng = None
 
     def test_simple(self):
-        self._db_sess.add(AdmFile(abs_file_path='hi'))
+        src = models.AdmSource(
+            abs_file_path='hi',
+        )
+        mod = models.AdmModule(
+            source=src,
+            norm_name='hi',
+            enum=10,
+            metadata_list=models.MetadataList(),
+        )
+        self._db_sess.add_all([src, mod])
         self._db_sess.commit()
 
-        objs = self._db_sess.query(AdmFile)
+        objs = self._db_sess.query(models.AdmModule)
         self.assertEqual(1, objs.count())
         adm = objs.first()
-        self.assertEqual('hi', adm.abs_file_path)
+        self.assertEqual('hi', adm.source.abs_file_path)

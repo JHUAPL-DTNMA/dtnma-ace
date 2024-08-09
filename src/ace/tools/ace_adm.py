@@ -20,26 +20,22 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' A package for converting ADMs from JSON and checking them, and
-converting ARIs between text URI and CBOR.
+''' This tool wraps the pyang package CLI with local plugins.
 '''
+import subprocess
+import os
+import sys
 
-from ace.adm_set import AdmSet
-from ace.constraints import Checker
-from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
-import ace.ari_text as ari_text
-import ace.ari_cbor as ari_cbor
-import ace.nickname as nickname
+SELFDIR = os.path.dirname(__file__)
+''' Directory containing this file '''
 
-# make linters happy
-__all__ = [
-    'AdmSet',
-    'ARI',
-    'Checker',
-    'LiteralARI',
-    'ReferenceARI',
-    'StructType',
-    'ari_text',
-    'ari_cbor',
-    'nickname',
-]
+
+def main():
+    env = os.environ
+    env['PYANG_PLUGINPATH'] = os.path.abspath(os.path.join(SELFDIR, '..', 'pyang'))
+    env['YANG_MODPATH'] = os.environ.get('ADM_PATH', '')
+    return subprocess.call(['pyang'] + sys.argv[1:], env=env)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

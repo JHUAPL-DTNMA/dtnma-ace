@@ -23,11 +23,15 @@
 ''' Parser configuration for ARI text decoding.
 '''
 import logging
+import numpy
 from ply import yacc
-from ace.ari import AC, EXPR, Identity, ReferenceARI, LiteralARI, StructType
-from ace.util import is_printable
+from ace.ari import (
+    Identity, ReferenceARI, LiteralARI, StructType,
+    Table, ExecutionSet, ReportSet, Report
+)
+from ace.typing import BUILTINS_BY_ENUM
+from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
-
 
 # make linters happy
 __all__ = [
@@ -35,200 +39,273 @@ __all__ = [
     'new_parser',
 ]
 
-
 LOGGER = logging.getLogger(__name__)
-
 
 # pylint: disable=invalid-name disable=missing-function-docstring
 
-def p_ari_explicit(p):
+
+def p_ari_scheme(p):
     'ari : ARI_PREFIX ssp'
     p[0] = p[2]
 
 
-def p_ssp_literal(p):
-    'ssp : literal'
+def p_ari_noscheme(p):
+    'ari : ssp'
     p[0] = p[1]
 
-
-def p_ari_literal(p):
-    'ari : literal'
-    p[0] = p[1]
+# The following are untyped literals with primitive values
 
 
-def p_literal_without_type(p):
-    'literal : litvalue'
-    p[0] = p[1]
-
-
-def p_literal_with_type(p):
-    'literal : TYPEDOT litvalue'
-    p[0] = LiteralARI(
-        type_enum=p[1],
-        value=p[2].value
-    )
+def p_ssp_primitive(p):
+    'ssp : VALSEG'
     try:
-        p[0].check_type()
+        value = util.PRIMITIVE(p[1])
+    except Exception as err:
+        LOGGER.error('Primitive value invalid: %s', err)
+        raise RuntimeError(err) from err
+    p[0] = LiteralARI(
+        value=value,
+    )
+
+
+def p_ssp_typedlit(p):
+    'ssp : typedlit'
+    p[0] = p[1]
+
+
+def p_typedlit_ac(p):
+    'typedlit : SLASH AC acbracket'
+    p[0] = LiteralARI(type_id=StructType.AC, value=p[3])
+
+
+def p_typedlit_am(p):
+    '''typedlit : SLASH AM ambracket'''
+    p[0] = LiteralARI(type_id=StructType.AM, value=p[3])
+
+
+def p_typedlit_tbl_empty(p):
+    '''typedlit : SLASH TBL structlist'''
+    ncol = int(p[3].get('c', 0))
+    table = Table((0, ncol))
+    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
+
+
+def p_typedlit_tbl_rows(p):
+    '''typedlit : SLASH TBL structlist rowlist'''
+    ncol = int(p[3].get('c', 0))
+    nrow = len(p[4])
+    table = Table((nrow, ncol))
+    for row_ix, row in enumerate(p[4]):
+        if len(row) != ncol:
+            raise RuntimeError('Table column count is mismatched')
+        table[row_ix,:] = row
+    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
+
+
+def p_rowlist_join(p):
+    'rowlist : rowlist acbracket'
+    p[0] = p[1] + [p[2]]
+
+
+def p_rowlist_end(p):
+    'rowlist : acbracket'
+    p[0] = [p[1]]
+
+
+def p_typedlit_execset(p):
+    'typedlit : SLASH EXECSET structlist acbracket'
+    nonce = util.NONCE(p[3].get('n', 'null'))
+    value = ExecutionSet(
+        nonce=nonce,
+        targets=p[4],
+    )
+    p[0] = LiteralARI(type_id=StructType.EXECSET, value=value)
+
+
+def p_typedlit_rptset(p):
+    'typedlit : SLASH RPTSET structlist reportlist'
+    nonce = util.NONCE(p[3].get('n', 'null'))
+    rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+    ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
+    value = ReportSet(
+        nonce=nonce,
+        ref_time=ref_time.value,
+        reports=p[4],
+    )
+    p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)
+
+
+def p_reportlist_join(p):
+    'reportlist : reportlist SC report'
+    p[0] = p[1] + [p[3]]
+
+
+def p_reportlist_end(p):
+    'reportlist : report'
+    p[0] = [p[1]]
+
+
+def p_report(p):
+    'report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN'
+    rawtime = util.TYPEDLIT[StructType.TD](p[4])
+    rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
+    source = p[8]
+    p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
+
+
+def p_typedlit_single(p):
+    'typedlit : SLASH VALSEG SLASH VALSEG'
+    try:
+        typ = util.get_structtype(p[2])
+    except Exception as err:
+        LOGGER.error('Literal value type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    # Literal value handled based on type-specific parsing
+    try:
+        value = util.TYPEDLIT[typ](p[4])
+    except Exception as err:
+        LOGGER.error('Literal value failure: %s', err)
+        raise RuntimeError(err) from err
+
+    try:
+        p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(
+            type_id=typ,
+            value=value
+        ))
     except Exception as err:
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
 
 
-def p_litvalue_bool(p):
-    'litvalue : BOOL'
-    p[0] = LiteralARI(
-        type_enum=StructType.BOOL,
-        value=p[1],
-    )
-
-
-def p_litvalue_int(p):
-    'litvalue : INT'
-    p[0] = LiteralARI(
-        type_enum=StructType.VAST,
-        value=p[1],
-    )
-
-
-def p_litvalue_float(p):
-    'litvalue : FLOAT'
-    p[0] = LiteralARI(
-        type_enum=StructType.REAL64,
-        value=p[1],
-    )
-
-
-def p_litvalue_tstr(p):
-    'litvalue : TSTR'
-    p[0] = LiteralARI(
-        type_enum=StructType.STR,
-        value=p[1],
-    )
-
-
-def p_litvalue_bstr(p):
-    'litvalue : BSTR'
-    p[0] = LiteralARI(
-        type_enum=StructType.BSTR,
-        value=p[1],
-    )
-
-
-def p_ssp_without_params(p):
-    'ssp : ident'
-    p[0] = ReferenceARI(
-        ident=p[1]
-    )
-
-
-def p_ssp_empty_params(p):
-    'ssp : ident LPAREN RPAREN'
+def p_ssp_objref_noparams(p):
+    'ssp : objpath'
     p[0] = ReferenceARI(
         ident=p[1],
-        params=[],
+        params=None
     )
 
 
-def p_ssp_with_params(p):
-    'ssp : ident LPAREN paramlist RPAREN'
+def p_ssp_objref_params(p):
+    'ssp : objpath params'
     p[0] = ReferenceARI(
         ident=p[1],
-        params=p[3],
+        params=p[2]
     )
 
 
-def p_paramlist_join(p):
-    'paramlist : paramlist COMMA paramitem'
-    obj = p[1]
-    obj.append(p[3])
-    p[0] = obj
+def p_params_empty(p):
+    'params : LPAREN RPAREN'
+    p[0] = []
 
 
-def p_paramlist_end(p):
-    'paramlist : paramitem'
-    p[0] = [p[1]]
-
-
-def p_paramitem_ari(p):
-    'paramitem : ari'
-    p[0] = p[1]
-
-
-def p_paramitem_acempty(p):
-    'paramitem : LSQRB RSQRB'
-    p[0] = AC()
-
-
-def p_paramitem_expr(p):
-    'paramitem : TYPENAME LSQRB aclist RSQRB'
-    p[0] = EXPR(type_enum=p[1], items=p[3].items)
-
-
-def p_paramitem_aclist(p):
-    'paramitem : LSQRB aclist RSQRB'
+def p_params_aclist(p):
+    'params : LPAREN aclist RPAREN'
     p[0] = p[2]
+
+
+def p_params_amlist(p):
+    'params : LPAREN amlist RPAREN'
+    p[0] = p[2]
+
+
+def p_objpath_only_ns(p):
+    '''objpath : SLASH SLASH VALSEG
+               | SLASH SLASH VALSEG SLASH'''
+    mod = util.MODID(p[3])
+    if not isinstance(mod, tuple):
+        mod = (mod, None)
+
+    p[0] = Identity(
+        ns_id=mod[0],
+        ns_rev=mod[1],
+        type_id=None,
+        obj_id=None,
+    )
+
+
+def p_objpath_with_ns(p):
+    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+    try:
+        typ = util.get_structtype(p[5])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    mod = util.MODID(p[3])
+    if not isinstance(mod, tuple):
+        mod = (mod, None)
+
+    p[0] = Identity(
+        ns_id=mod[0],
+        ns_rev=mod[1],
+        type_id=typ,
+        obj_id=util.IDSEGMENT(p[7]),
+    )
+
+
+def p_objpath_relative(p):
+    'objpath : DOT SLASH VALSEG SLASH VALSEG'
+    try:
+        typ = util.get_structtype(p[3])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+
+    p[0] = Identity(ns_id=None, type_id=typ, obj_id=util.IDSEGMENT(p[5]))
+
+
+def p_acbracket(p):
+    '''acbracket : LPAREN RPAREN
+                 | LPAREN aclist RPAREN'''
+    p[0] = p[2] if len(p) == 4 else []
 
 
 def p_aclist_join(p):
     'aclist : aclist COMMA ari'
-    obj = p[1]
-    obj.items.append(p[3])
-    p[0] = obj
+    p[0] = p[1] + [p[3]]
 
 
 def p_aclist_end(p):
     'aclist : ari'
-    p[0] = AC(items=[p[1]])
+    p[0] = [p[1]]
 
 
-def p_ident_with_ns(p):
-    'ident : SLASH nsid SLASH TYPEDOT objid'
-    p[0] = Identity(
-        namespace=p[2],
-        type_enum=p[4],
-        name=p[5],
-    )
+def p_ambracket(p):
+    '''ambracket : LPAREN RPAREN
+                 | LPAREN amlist RPAREN'''
+    p[0] = p[2] if len(p) == 4 else {}
 
 
-#FIXME: this is not a valid path but it is used by js-amp.me
-def p_ident_empty_ns(p):
-    'ident : SLASH SLASH TYPEDOT objid'
-    p[0] = Identity(
-        type_enum=p[3],
-        name=p[4],
-    )
+def p_amlist_join(p):
+    'amlist : amlist COMMA ampair'
+    p[0] = p[1] | p[3]  # merge dicts
 
 
-def p_ident_without_ns(p):
-    'ident : SLASH TYPEDOT objid'
-    p[0] = Identity(
-        type_enum=p[2],
-        name=p[3],
-    )
-
-
-def p_nsid_int(p):
-    'nsid : INT'
+def p_amlist_end(p):
+    'amlist : ampair'
     p[0] = p[1]
 
 
-def p_nsid_name(p):
-    'nsid : NAME'
+def p_ampair(p):
+    'ampair : ari EQ ari'
+    p[0] = {p[1]: p[3]}
+
+
+def p_structlist_join(p):
+    'structlist : structlist structpair'
+    p[0] = p[1] | p[2]  # merge dicts
+
+
+def p_structlist_end(p):
+    'structlist : structpair'
     p[0] = p[1]
 
 
-def p_objid_bstr(p):
-    'objid : BSTR'
-    name = p[1]
-    # Preserve text names
-    if is_printable(name):
-        name = name.decode('utf-8')
-    p[0] = name
-
-
-def p_objid_name(p):
-    'objid : NAME'
-    p[0] = p[1]
+def p_structpair(p):
+    'structpair : VALSEG EQ VALSEG SC'
+    key = util.STRUCTKEY(p[1])
+    p[0] = {key: p[3]}
 
 
 def p_error(p):

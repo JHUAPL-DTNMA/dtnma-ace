@@ -51,7 +51,7 @@ def register(obj):
 
     All constraint functions must take arguments of:
       - issuelist: a list of aggregated :class:`Issue` objects
-      - obj: The object being checked, starting at the :class:`AdmFile`
+      - obj: The object being checked, starting at the :class:`AdmModule`
       - db_sess: The database session being run under.
     '''
     if isinstance(obj, type):
@@ -74,7 +74,7 @@ class Checker:
     def __init__(self, db_sess):
         self._db_sess = db_sess
 
-    def check(self, src: models.AdmFile = None):
+    def check(self, src: models.AdmModule = None):
         ''' Check a specific ADM for issues.
 
         :param src: The ADM to check or None.
@@ -83,7 +83,7 @@ class Checker:
         if src is not None:
             adm_list = (src,)
         else:
-            adm_list = self._db_sess.query(models.AdmFile).all()
+            adm_list = self._db_sess.query(models.AdmModule).all()
 
         check_count = 0
         allissues = []
@@ -120,7 +120,7 @@ class Checker:
             if issue.adm_name is None:
                 if adm is not None:
                     issue.adm_name = adm.norm_name
-                elif isinstance(issue.obj, models.AdmFile):
+                elif isinstance(issue.obj, models.AdmModule):
                     issue.adm_name = issue.obj.norm_name
             if issue.check_name is None:
                 issue.check_name = cst_name

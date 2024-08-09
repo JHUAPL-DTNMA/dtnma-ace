@@ -22,15 +22,15 @@
 #
 ''' Verify behavior of the ace.ari_cbor module tree.
 '''
+import datetime
 import base64
 import io
 import logging
 import unittest
 import cbor2
-from ace.ari import ReferenceARI, LiteralARI
+from ace.ari import ReferenceARI, LiteralARI, StructType
 from ace.cborutil import to_diag
 from ace import ari_cbor
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,23 +39,28 @@ class TestAriCbor(unittest.TestCase):
 
     LITERAL_DATAS = [
         # BOOL
-        (base64.b16decode('03F5'), True),
-        (base64.b16decode('03F4'), False),
+        (base64.b16decode('F5'), True),
+        (base64.b16decode('F4'), False),
         # INT
-        (base64.b16decode('5300'), 0),
-        (base64.b16decode('530A'), 10),
-        (base64.b16decode('5329'), -10),
+        (base64.b16decode('00'), 0),
+        (base64.b16decode('0A'), 10),
+        (base64.b16decode('29'), -10),
         # FLOAT
-        (base64.b16decode('83') + cbor2.dumps(0.01), 0.01),
-        (base64.b16decode('83') + cbor2.dumps(1e2), 1e2),
-        (base64.b16decode('83') + cbor2.dumps(1e-2), 1e-2),
-        (base64.b16decode('83') + cbor2.dumps(-1e2), -1e2),
-        (base64.b16decode('83') + cbor2.dumps(1.25e2), 1.25e2),
-        (base64.b16decode('83') + cbor2.dumps(1e25), 1e25),
-        # TSTR
-        (base64.b16decode('23') + cbor2.dumps("hi"), 'hi'),
-        # BSTR
-        (base64.b16decode('03') + cbor2.dumps(b'hi'), b'hi'),
+        (cbor2.dumps(0.01), 0.01),
+        (cbor2.dumps(1e2), 1e2),
+        (cbor2.dumps(1e-2), 1e-2),
+        (cbor2.dumps(-1e2), -1e2),
+        (cbor2.dumps(1.25e2), 1.25e2),
+        (cbor2.dumps(1e25), 1e25),
+        # TEXTSTR
+        (cbor2.dumps("hi"), 'hi'),
+        # BYTESTR
+        (cbor2.dumps(b'hi'), b'hi'),
+        # Times
+        (cbor2.dumps([StructType.TP, 101]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=101))),
+        (cbor2.dumps([StructType.TP, [1, 3]]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=1000))),
+        (cbor2.dumps([StructType.TD, 18]), datetime.timedelta(seconds=18)),
+        (cbor2.dumps([StructType.TD, -18]), -datetime.timedelta(seconds=18)),
     ]
 
     def test_literal_cbor_loopback(self):
@@ -83,16 +88,15 @@ class TestAriCbor(unittest.TestCase):
             )
 
     REFERENCE_DATAS = [
-        'c1188d410c05031614141a633df8cb0301',
-        # from ari:/IANA:AMP.AGENT/CTRL.ADD_TBR(ari:/IANA:APL_SC/TBR.TLM_CYCLE, 0, 10, 0, [ari:/IANA:APL_SC/MAC.TLM_CYCLE], "telemetry cycle")
-        'c115410a05062420201625122b49544c4d5f4359434c454449414e41000a008184194e0f41006f74656c656d65747279206379636c65',
+        # from 'ari:/bp-agent/CTRL/reset_all_counts()',
+        cbor2.dumps([0, StructType.CTRL.value, 10]),
+
     ]
 
     def test_reference_cbor_loopback(self):
         dec = ari_cbor.Decoder()
         enc = ari_cbor.Encoder()
-        for data16 in self.REFERENCE_DATAS:
-            data = base64.b16decode(data16, casefold=True)
+        for data in self.REFERENCE_DATAS:
             LOGGER.warning('Testing data: %s', to_diag(data))
 
             ari = dec.decode(io.BytesIO(data))
@@ -110,14 +114,13 @@ class TestAriCbor(unittest.TestCase):
             )
 
     INVALID_DATAS = [
-        '00',
-        '01',
+        b'',
+        cbor2.dumps([]),
     ]
 
     def test_invalid_enc_failure(self):
         dec = ari_cbor.Decoder()
-        for data16 in self.INVALID_DATAS:
-            data = base64.b16decode(data16, casefold=True)
+        for data in self.INVALID_DATAS:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -128,6 +131,6 @@ class TestAriCbor(unittest.TestCase):
 #        ari = dec.decode(text)
 #        LOGGER.warning('Got ARI %s', ari)
 #        self.assertIsInstance(ari, (ReferenceARI, LiteralARI))
-#        self.assertEqual(ari.ident.namespace, 'IANA:Amp.Agent')
-#        self.assertEqual(ari.ident.name, 'Ctrl.gen_rpts')
+#        self.assertEqual(ari.ident.ns_id, 'IANA:Amp.Agent')
+#        self.assertEqual(ari.ident.obj_id, 'Ctrl.gen_rpts')
 #        self.assertIsInstance(ari.params[0], AC)
