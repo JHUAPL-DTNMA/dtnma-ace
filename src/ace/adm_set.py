@@ -156,7 +156,7 @@ class AdmSet:
         return query.count()
 
     def __iter__(self):
-        ''' Retreive the set of all known ADMs.
+        ''' Retrieve the set of all known ADMs.
         :return: List of ADMs.
         :rtype: list of :class:`models.AdmModule`
         '''
@@ -183,7 +183,7 @@ class AdmSet:
         return query.count()
 
     def __getitem__(self, name) -> models.AdmModule:
-        ''' Retreive a specific ADM by its normalized name.
+        ''' Retrieve a specific ADM by its normalized name.
 
         :param str name: The name to filter on exactly.
         :return: The ADM
@@ -191,7 +191,7 @@ class AdmSet:
         return self.get_by_norm_name(name)
 
     def get_by_norm_name(self, name:str) -> models.AdmModule:
-        ''' Retreive a specific ADM by its normalized name.
+        ''' Retrieve a specific ADM by its normalized name.
 
         :param name: The value to filter on exactly.
         :return: The ADM
@@ -208,7 +208,7 @@ class AdmSet:
         return adm
 
     def get_by_enum(self, enum:int) -> models.AdmModule:
-        ''' Retreive a specific ADM by its integer enum.
+        ''' Retrieve a specific ADM by its integer enum.
 
         :param enum: The value to filter on exactly.
         :return: The ADM
