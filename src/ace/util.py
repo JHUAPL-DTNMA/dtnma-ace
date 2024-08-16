@@ -46,5 +46,5 @@ def normalize_ident(text: str) -> str:
     :return: Normalized text.
     '''
 
-    return text.replace('-','_').casefold()
+    return text.casefold()
 
