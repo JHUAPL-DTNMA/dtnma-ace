@@ -122,11 +122,10 @@ class AdmSet:
         self.pending_adms = {}
 
     def _db_open(self):
-        print(self.cache_path)
-        # if self.cache_path:
-        #     db_uri = f'sqlite:///{self.cache_path}'
-        # else:
-        db_uri = 'sqlite:///:memory:'
+        if self.cache_path:
+            db_uri = f'sqlite:///{self.cache_path}'
+        else:
+            db_uri = 'sqlite:///:memory:'
 
         LOGGER.debug('Opening cache at %s', db_uri)
         self._db_eng = create_engine(db_uri)
