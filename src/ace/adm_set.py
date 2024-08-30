@@ -122,6 +122,7 @@ class AdmSet:
         self.pending_adms = {}
 
     def _db_open(self):
+        print(self.cache_path)
         # if self.cache_path:
         #     db_uri = f'sqlite:///{self.cache_path}'
         # else:
