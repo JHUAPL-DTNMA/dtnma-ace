@@ -36,9 +36,21 @@ To install development and test dependencies for this project, run from the root
 pip3 install -r <(python3 -m piptools compile --extra test pyproject.toml 2>&1)
 ```
 
+If this command fails, you may have to install the `pip-tools` package first and then run two separate commands like so:
+```
+pip3 install pip-tools
+python3 -m piptools compile --extra test pyproject.toml
+pip3 install -r requirements.txt
+```
+
 To install the project itself from source run:
 ```
 pip3 install .
+```
+
+If you are still encountering installation errors, you may need to update the submodules:
+```
+git submodule update --init --recursive
 ```
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
