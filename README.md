@@ -31,6 +31,8 @@ It also includes an `ace_ari` command line interface (CLI) for translating betwe
 
 ## Development
 
+It is advised to operate within a Python virtual environment, ideally Python 3.11, to help prevent dependency errors later on. You can run the following command to create your venv: `python3.11 -m venv .venv` and activate it with `source .venv/bin/activate`. To later deactivate your venv, run `deactivate`.
+
 To install development and test dependencies for this project, run from the root directory (possibly under sudo if installing to the system path):
 ```sh
 pip3 install -r <(python3 -m piptools compile --extra test pyproject.toml 2>&1)
