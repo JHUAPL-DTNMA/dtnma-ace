@@ -31,14 +31,33 @@ It also includes an `ace_ari` command line interface (CLI) for translating betwe
 
 ## Development
 
+It is advised to operate within a Python virtual environment, ideally Python 3.11, to help prevent dependency errors later on. You can run the following commands to create and activate your venv: 
+```
+python3.11 -m venv .venv
+source .venv/bin/activate
+```
+If you wish to deactivate your venv, simply run `deactivate`.
+
 To install development and test dependencies for this project, run from the root directory (possibly under sudo if installing to the system path):
 ```sh
 pip3 install -r <(python3 -m piptools compile --extra test pyproject.toml 2>&1)
 ```
 
+If this command fails, you may have to install the `pip-tools` package first and then run two separate commands like so:
+```
+pip3 install pip-tools
+python3 -m piptools compile --extra test pyproject.toml
+pip3 install -r requirements.txt
+```
+
 To install the project itself from source run:
 ```
 pip3 install .
+```
+
+If you are still encountering installation errors, you may need to update the submodules:
+```
+git submodule update --init --recursive
 ```
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
