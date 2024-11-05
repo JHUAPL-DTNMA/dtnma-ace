@@ -343,3 +343,115 @@ class TestAriText(unittest.TestCase):
         self.assertEqual(ari.ident.obj_id, 'gen_rpts')
         self.assertIsInstance(ari.params[0], LiteralARI)
         self.assertEqual(ari.params[0].type_id, StructType.AC)
+
+    def test_ari_text_encode_lit_prim_int(self):
+        TEST_CASE = [
+            (0, 10, "ari:0"),
+            (0, 2, "ari:0b0"),
+            (0, 16, "ari:0x0"),
+            (1234, 10, "ari:1234"),
+            (1234, 2, "ari:0b10011010010"),
+            (1234, 16, "ari:0x4D2"),
+            (-1234, 10, "ari:-1234"),
+            (-1234, 2, "ari:-0b10011010010"),
+            (-1234, 16, "ari:-0x4D2"),
+        ]
+
+        #encoder test
+        for row in TEST_CASE:
+            value, base, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder(int_base = base)
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+
+    def test_ari_text_encode_lit_prim_uint(self):
+        TEST_CASE = [
+            (0, 10, "ari:0"),
+            (0, 2, "ari:0b0"),
+            (0, 16, "ari:0x0"),
+            (1234, 10, "ari:1234"),
+            (1234, 2, "ari:0b10011010010"),
+            (1234, 16, "ari:0x4D2"),
+            (0xFFFFFFFFFFFFFFFF, 16, "ari:0xFFFFFFFFFFFFFFFF")
+        ]
+
+        for row in TEST_CASE:
+            value, base, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder(int_base = base)
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+    def test_ari_text_encode_lit_prim_float64(self):
+        TEST_CASE = [
+            (1.1, 'f', "ari:1.100000"),
+            (1.1, 'g', "ari:1.1"),
+            (1.1e2, 'g', "ari:110"),
+            (1.1e2, 'a', "ari:0x1.b8p+6"),
+            (1.1e+10, 'g', "ari:1.1e+10"),
+            (10, 'e', "ari:1.000000e+01"),
+            (10, 'a', "ari:0x1.4p+3"),
+            (NAN, ' ', "ari:NaN"), #TODO: update NAN and INFINITY values
+            (INFINITY, ' ', "ari:+Infinity"),
+            (-INFINITY, ' ', "ari:-Infinity"),
+        ]
+
+        for row in TEST_CASE:
+            value, base, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder(int_base = base)
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+    def test_ari_text_encode_lit_prim_tstr(self):
+        TEST_CASE = [
+            ("test", False, True, "ari:test"),
+            ("test", False, False, "ari:%22test%22"),
+            ("test", True, True, "ari:test"),
+            ("\\'\'", True, True, "ari:%22%5C''%22"),
+            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22':!@%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
+            ("_-~The quick brown fox", True, True, "ari:%22_-~The%20quick%20brown%20fox%22"),
+            ("hi\u1234", False, False, "ari:%22hi%5Cu1234%22"),
+            ("hi\U0001D11E", False, False, "ari:%22hi%5CuD834%5CuDD1E%22"),
+        ]
+
+        for row in TEST_CASE:
+            value, bool1, bool2, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder() #TODO: update to incorporate bool1, bool2
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+     #TODO: add rest of encode tests
+
+     
+'''
+# this is a test of a decoder, it's constructing the decoder and calling a decoder
+# on the input value so this what the decoder python tests need to do
+
+#this is the decode test and every decode test will have this same form
+# they don't have extra parameters needed for extra former
+dec = ari_text.Decoder()
+        for row in self.INVALID_TEXTS:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+'''
