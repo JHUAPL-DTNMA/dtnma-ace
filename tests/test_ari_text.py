@@ -436,6 +436,77 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
+    def test_ari_text_encode_lit_prim_bstr(self):
+        TEST_CASE = [
+            ("", 0, ARI_TEXT_BSTR_RAW, "ari:''"),
+            ("test", 4, ARI_TEXT_BSTR_RAW, "ari:'test'"),
+            ("hi\u1234", 5, ARI_TEXT_BSTR_RAW, "ari:'hi%5Cu1234'"),
+            ("hi\U0001D11E", 6, ARI_TEXT_BSTR_RAW, "ari:'hi%5CuD834%5CuDD1E'"),
+            ("\x68\x00\x69", 3, ARI_TEXT_BSTR_RAW, "ari:h'680069'"),
+            ("", 0, ARI_TEXT_BSTR_BASE16, "ari:h''"),
+            ("", 0, ARI_TEXT_BSTR_BASE64URL, "ari:b64''"),
+            ("f", 1, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zg=='"),
+            ("foobar", 6, ARI_TEXT_BSTR_BASE16, "ari:h'666F6F626172'"),
+            ("foobar", 6, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zm9vYmFy'"),
+        ]
+
+            #TODO: add function code
+
+    # NOTE: do I need to add short unit tests with no TEST_CASEs, like 
+    # test_ari_text_encode_lit_typed_ac_empty()?
+
+    def test_ari_text_encode_objref_text(self):
+        TEST_CASE = [
+            ("adm", ARI_TYPE_CONST, "hi", "ari://adm/CONST/hi"),
+            ("18", ARI_TYPE_IDENT, "34", "ari://18/IDENT/34"),
+        ]
+
+        #TODO: add function code
+
+    def test_ari_text_encode_nsref_text(self):
+        TEST_CASE = [
+            ("adm", "ari://adm/"),
+            ("example-adm-a@2024-06-25", "ari://example-adm-a@2024-06-25/"),
+            ("example-adm-a", "ari://example-adm-a/"),
+            ("!example-odm-b", "ari://!example-odm-b/"),
+            ("65536", "ari://65536/")
+            ("-20", "ari://-20/"),
+        ]
+        for row in TEST_CASE:
+            value, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder()
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+    def test_ari_text_encode_nsref_int(self):
+        TEST_CASE = [
+            (18, "ari://18/"),
+            (65536, "ari://65536/"),
+            (-20, "ari://-20/"),
+        ]
+
+        for row in TEST_CASE:
+            value, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder()
+                ari = LiteralARI(value)
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
+    def test_ari_text_encode_ariref(self):
+        TEST_CASE = [
+            (ARI_TYPE_CONST, "hi", "./CONST/hi"),
+            (ARI_TYPE_IDENT, "34", "./IDENT/34"),
+        ]
+
+        #TODO: add function code
+
      #TODO: add rest of encode tests
 
      
