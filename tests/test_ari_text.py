@@ -898,4 +898,407 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
-     #TODO: add rest of decode tests
+    def test_ari_text_decode_lit_typed_ac(self):
+        TEST_CASE = [
+            ("ari:/AC/()", 0, ARI_TYPE_NULL, ARI_PRIM_NULL), #TODO: update values
+            ("ari:/AC/(23)", 1, ARI_TYPE_NULL, ARI_PRIM_INT64),
+            ("ari:/AC/(/INT/23)", 1, ARI_TYPE_INT, ARI_PRIM_INT64),
+            ("ari:/AC/(\"hi%2C%20there%21\")", 1, ARI_TYPE_NULL, ARI_PRIM_TSTR),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, value, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_am(self):
+        TEST_CASE = [
+            ("ari:/AM/()", 0),
+            ("ari:/AM/(undefined=1,undefined=/INT/2,1=a)", 2),
+            ("ari:/AM/(a=/AM/(),b=/AM/(),c=/AM/())", 3),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_tbl(self):
+        TEST_CASE = [
+            ("ari:/TBL/c=0;()()()", 0, 0),
+            ("ari:/TBL/c=2;(1,2)", 2, 2),
+            ("ari:/TBL/c=003;(1,2,3)(4,5,6)", 3, 6),
+            ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(\"%20\")", 1, 3),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, value, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_execset(self):
+        TEST_CASE = [
+            ("ari:/EXECSET/n=null;()", ARI_PRIM_NULL, 0), #TODO: update values
+            ("ari:/EXECSET/N=null;()", ARI_PRIM_NULL, 0),
+            ("ari:/EXECSET/N=0xabcd;()", ARI_PRIM_INT64, 0),
+            ("ari:/EXECSET/N=/UINT/0B0101;()", ARI_PRIM_INT64, 0),
+            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)", ARI_PRIM_INT64, 1),
+            ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)", ARI_PRIM_BSTR, 2),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, value, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_rptset(self):
+        TEST_CASE = [
+            ("ari:/RPTSET/n=null;r=725943845;", ARI_PRIM_NULL, 0),
+            ("ari:/RPTSET/n=1234;r=725943845;(t=0;s=//test/CTRL/hi;())", ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=725943845;(t=0.0;s=//test/CTRL/hi;())", ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//test/CTRL/hi;())", ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//test/CTRL/hi;())", ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//test/CTRL/hi;())", ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//test/CTRL/hi;())(t=/TD/1;s=//test/CTRL/eh;())",
+                    ARI_PRIM_BSTR, 2),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, value, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_objref(self):
+        TEST_CASE = [
+            ("ari://test/const/hi", ARI_TYPE_CONST),
+            ("ari://test/ctrl/hi", ARI_TYPE_CTRL),
+            ("ari://test/IDENT/hi", ARI_TYPE_IDENT),
+            ("ari://test/TYPEDEF/hi", ARI_TYPE_TYPEDEF),
+            ("ari://test/CONST/hi", ARI_TYPE_CONST),
+            ("ari://test/VAR/hi", ARI_TYPE_VAR),
+            ("ari://test/EDD/hi", ARI_TYPE_EDD),
+            ("ari://test/CTRL/hi", ARI_TYPE_CTRL),
+            ("ari://test/OPER/hi", ARI_TYPE_OPER),
+            ("ari://test/SBR/hi", ARI_TYPE_SBR),
+            ("ari://test/TBR/hi", ARI_TYPE_TBR),
+            ("ari://test/ident/hi", ARI_TYPE_IDENT),
+            ("ari://test/typedef/hi", ARI_TYPE_TYPEDEF),
+            ("ari://test/const/hi", ARI_TYPE_CONST),
+            ("ari://test/var/hi", ARI_TYPE_VAR),
+            ("ari://test/edd/hi", ARI_TYPE_EDD),
+            ("ari://test/ctrl/hi", ARI_TYPE_CTRL),
+            ("ari://test/CtRl/hi", ARI_TYPE_CTRL),
+            ("ari://test/oper/hi", ARI_TYPE_OPER),
+            ("ari://test/sbr/hi", ARI_TYPE_SBR),
+            ("ari://test/tbr/hi", ARI_TYPE_TBR),
+            ("ari://adm/const/hi", ARI_TYPE_CONST),
+            ("ari://adm/CONST/hi", ARI_TYPE_CONST),
+            ("ari://adm/-2/hi", ARI_TYPE_CONST),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_objref_invalid(self):
+        TEST_CASE = [
+            ("ari://test/LITERAL/hi"),
+            ("ari://test/NULL/hi"),
+            ("ari://test/BOOL/hi"),
+            ("ari://test/BYTE/hi"),
+            ("ari://test/INT/hi"),
+            ("ari://test/UINT/hi"),
+            ("ari://test/VAST/hi"),
+            ("ari://test/UVAST/hi"),
+            ("ari://test/REAL32/hi"),
+            ("ari://test/REAL64/hi"),
+            ("ari://test/TEXTSTR/hi"),
+            ("ari://test/BYTESTR/hi"),
+            ("ari://test/TP/hi"),
+            ("ari://test/TD/hi"),
+            ("ari://test/LABEL/hi"),
+            ("ari://test/CBOR/hi"),
+            ("ari://test/ARITYPE/hi"),
+            ("ari://test/AC/hi"),
+            ("ari://test/AM/hi"),
+            ("ari://test/TBL/hi"),
+            ("ari://test/EXECSET/hi"),
+            ("ari://test/RPTSET/hi"),
+            ("ari://test/OBJECT/hi"),
+            ("ari://test/literal/hi"),
+            ("ari://test/null/hi"),
+            ("ari://test/bool/hi"),
+            ("ari://test/byte/hi"),
+            ("ari://test/int/hi"),
+            ("ari://test/uint/hi"),
+            ("ari://test/vast/hi"),
+            ("ari://test/uvast/hi"),
+            ("ari://test/real32/hi"),
+            ("ari://test/real64/hi"),
+            ("ari://test/textstr/hi"),
+            ("ari://test/bytestr/hi"),
+            ("ari://test/tp/hi"),
+            ("ari://test/td/hi"),
+            ("ari://test/label/hi"),
+            ("ari://test/cbor/hi"),
+            ("ari://test/aritype/hi"),
+            ("ari://test/ac/hi"),
+            ("ari://test/am/hi"),
+            ("ari://test/tbl/hi"),
+            ("ari://test/execset/hi"),
+            ("ari://test/rptset/hi"),
+            ("ari://test/object/hi"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value)
+
+    def test_ari_text_decode_nsref(self):
+        TEST_CASE = [
+            ("ari://adm"),
+            ("ari://adm/"),
+            ("ari://18"),
+            ("ari://18/"),
+            ("ari://65536/"),
+            ("ari://-20/"),
+            ("ari://example-adm-a@2024-06-25/"),
+            ("ari://example-adm-a/"),
+            ("ari://!example-odm-b/"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value)
+
+    def test_ari_text_decode_ariref(self):
+        TEST_CASE = [
+            ("ari:./CTRL/do_thing", ARI_TYPE_CTRL), #TODO: update values
+            ("ari:./CTRL/otherobj(%22a%20param%22,/UINT/10)", ARI_TYPE_CTRL),
+            ("ari:./-2/30", ARI_TYPE_CONST),
+            ("./CTRL/do_thing", ARI_TYPE_CTRL),
+            ("./CTRL/otherobj(%22a%20param%22,/UINT/10)", ARI_TYPE_CTRL),
+            ("./-2/30", ARI_TYPE_CONST),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_loopback(self):
+        TEST_CASE = [
+            ("ari:undefined"),
+            ("ari:null"),
+            ("ari:true"),
+            ("ari:false"),
+            ("ari:1234"),
+            ("ari:hi"),
+            ("ari:%22hi%20there%22"),
+            ("ari:h'6869'"),
+            ("ari:/NULL/null"),
+            ("ari:/BOOL/false"),
+            ("ari:/BOOL/true"),
+            ("ari:/INT/10"),
+            ("ari:/INT/-10"),
+            ("ari:/REAL32/10"),
+            ("ari:/REAL32/10.1"),
+            ("ari:/REAL32/0.1"),
+            ("ari:/REAL32/NaN"),
+            ("ari:/REAL64/+Infinity"),
+            ("ari:/REAL64/-Infinity"),
+            ("ari:/BYTESTR/h'6869'"),
+            ("ari:/TEXTSTR/hi"),
+            ("ari:/TEXTSTR/%22hi%20there%22"),
+            ("ari:/LABEL/hi"),
+            ("ari:/TP/20230102T030405Z"),
+            ("ari:/AC/()"),
+            ("ari:/AC/(a)"),
+            ("ari:/AC/(a,b,c)"),
+            ("ari:/AC/(null,/INT/23)"),
+            ("ari:/AC/(null,/AC/(undefined,/INT/23,/AC/()))"),
+            ("ari:/AM/()"),
+            ("ari:/AM/(1=true)"),
+            ("ari:/AM/(3=true,10=hi,oh=4)"),
+            ("ari:/TBL/c=3;(1,2,3)"),
+            ("ari:/TBL/c=3;(1,2,3)(4,5,6)"),
+            ("ari:/TBL/c=0;"),
+            ("ari:/TBL/c=1;"),
+            ("ari:/EXECSET/n=null;()"),
+            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)"),
+            ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)"),
+            ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari://test/CONST/that"),
+            ("ari://test@1234/CONST/that"),
+            ("ari://!test/CONST/that"),
+            ("ari://test/CTRL/that(34)"),
+            ("ari://2/CTRL/4(hi)"),
+            ("./CTRL/do_thing"),
+            ("ari:/CBOR/h'0A'"),
+            ("ari:/CBOR/h'A164746573748203F94480'"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value)
+
+    def test_ari_text_reencode(self):
+        TEST_CASE = [
+            ("ari:/null/null", "ari:/NULL/null"),
+            ("ari:/bool/false", "ari:/BOOL/false"),
+            ("ari:/int/10", "ari:/INT/10"),
+            ("ari:/uint/10", "ari:/UINT/10"),
+            ("ari:/vast/10", "ari:/VAST/10"),
+            ("ari:/uvast/10", "ari:/UVAST/10"),
+            ("ari:/real32/10", "ari:/REAL32/10"),
+            ("ari:/real64/+Infinity", "ari:/REAL64/+Infinity"),
+            ("ari:/bytestr/h'6869'", "ari:/BYTESTR/h'6869'"),
+            ("ari:/textstr/hi", "ari:/TEXTSTR/hi"),
+            ("ari:/label/hi", "ari:/LABEL/hi"),
+            ("ari:/tp/20230102T030405Z", "ari:/TP/20230102T030405Z"),
+            ("ari:/ac/()", "ari:/AC/()"),
+            ("ari:/am/()", "ari:/AM/()"),
+            ("ari:/tbl/c=3;(1,2,3)", "ari:/TBL/c=3;(1,2,3)"),
+            ("ari:/execset/n=null;()", "ari:/EXECSET/n=null;()"),
+            ("ari:/rptset/n=1234;r=1000;(t=0;s=//test/ctrl/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/TP/1000;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/TP/1000;(t=0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/TP/1000;(t=100.5;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT1M40.5S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=1000;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=1000.0;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/UVAST/1000;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/UVAST/0b1000;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T000008Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=/TP/1000.987654321;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640.987654321Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/rptset/n=1234;r=1000.9876543210987654321;(t=/TD/0;s=//test/CTRL/hi;(null,3,h'6869'))",
+                    "ari:/RPTSET/n=1234;r=/TP/20000101T001640.987654321Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari://test", "ari://test/"),
+            ("ari:./ctrl/hi", "./CTRL/hi"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_failure(self):
+        TEST_CASE = [
+            ("-0x8FFFFFFFFFFFFFFF"),
+            ("-0x1FFFFFFFFFFFFFFFF"),
+            ("ari:/OTHERNAME/0"),
+            ("ari:/UNDEFINED/undefined"),
+            ("ari:/NULL/fae"),
+            ("ari:/NULL/undefined"),
+            ("ari:/NULL/10"),
+            ("ari:/BOOL/fae"),
+            ("ari:/BOOL/3"),
+            ("ari:/TEXTSTR/1"),
+            ("ari:/BYTESTR/1"),
+            ("ari:/AC/"),
+            ("ari:/AC/(a,"),
+            ("ari:/AC/(,,,)"),
+            ("ari:/AM/"),
+            ("ari:/TBL/"),
+            ("ari:/TBL/c=hi;"),
+            ("ari:/TBL/c=5;(1,2)"),
+            ("ari:/TBL/(1,2,3)"),
+            ("ari:/TBL/c=aaa;c=2;(1,2)"),
+            ("ari:/TBL/c=2;c=2;(1,2)"),
+            ("ari:/EXECSET/()"),
+            ("ari:/EXECSET/g=null;()"),
+            ("ari:/EXECSET/n=undefined;()"),
+            ("ari:/EXECSET/n=1;"),
+            ("ari:/EXECSET/n=1;n=2;()"),
+            ("ari://./object/hi"),
+            ("./object/hi"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value)
+
+    def test_ari_text_decode_invalid(self):
+        TEST_CASE = [
+            ("ari:/BYTE/-1"),
+            ("ari:/BYTE/256"),
+            ("ari:/INT/-2147483649"),
+            ("ari:/INT/2147483648"),
+            ("ari:/UINT/-1"),
+            ("ari:/UINT/4294967296"),
+            ("ari:/VAST/0x8000000000000000"),
+            ("ari:/UVAST/-1"),
+            ("ari:/REAL32/-3.40282347E+38"),
+            ("ari:/REAL32/3.40282347E+38"),
+            ("ari:/AM/(/INT/10=true)"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in self.TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value)
