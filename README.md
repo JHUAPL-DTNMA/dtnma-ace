@@ -55,6 +55,12 @@ To install the project itself from source run:
 pip3 install .
 ```
 
+If you are a developer seeking to do unit testing, you can run the following two commands to install the dependencies for unit tests and then run said unit tests to see if any are failing:
+```
+pip3 install -e '.[test]'
+python3 -m pytest -v --cov=ace tests
+```
+
 If you are still encountering installation errors, you may need to update the submodules:
 ```
 git submodule update --init --recursive
