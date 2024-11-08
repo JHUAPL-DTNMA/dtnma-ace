@@ -206,6 +206,28 @@ class LiteralARI(ARI):
             rvalue = numpy.vectorize(lfunc)(self.value)
             result = LiteralARI(rvalue, self.type_id)
 
+        elif isinstance(self.value, ExecutionSet):
+            rtargets = list(map(lfunc, self.value.targets))
+            rvalue = ExecutionSet(
+                nonce=self.value.nonce,
+                targets=rtargets
+            )
+            result = LiteralARI(rvalue, self.type_id)
+
+        elif isinstance(self.value, ReportSet):
+            rpt_func = lambda ireport: Report(
+                rel_time=ireport.rel_time,
+                source=lfunc(ireport.source),
+                items=list(map(lfunc, ireport.items))
+            )
+            rreports = list(map(rpt_func, self.value.reports))
+            rvalue = ReportSet(
+                nonce=self.value.nonce,
+                ref_time=self.value.ref_time,
+                reports=rreports,
+            )
+            result = LiteralARI(rvalue, self.type_id)
+
         else:
             result = self
 
