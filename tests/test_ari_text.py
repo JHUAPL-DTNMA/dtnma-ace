@@ -399,9 +399,9 @@ class TestAriText(unittest.TestCase):
             (1.1e+10, 'g', "ari:1.1e+10"),
             (10, 'e', "ari:1.000000e+01"),
             (10, 'a', "ari:0x1.4p+3"),
-            (NAN, ' ', "ari:NaN"), #TODO: update NAN and INFINITY values
-            (INFINITY, ' ', "ari:+Infinity"),
-            (-INFINITY, ' ', "ari:-Infinity"),
+            (float('nan'), ' ', "ari:NaN"), 
+            (float('infinity'), ' ', "ari:+Infinity"),
+            (float('-infinity'), ' ', "ari:-Infinity"),
         ]
 
         for row in TEST_CASE:
