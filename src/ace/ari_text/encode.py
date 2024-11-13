@@ -194,7 +194,7 @@ class Encoder:
                     if self._options.int_base == 2:
                         fmt = '0b{0:b}'
                     elif self._options.int_base == 16:
-                        fmt = '0x{0:x}'
+                        fmt = '0x{0:X}'
                     else:
                         fmt = '{0:d}'
                     buf.write(fmt.format(obj.value))
