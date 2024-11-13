@@ -354,8 +354,8 @@ class TestAriText(unittest.TestCase):
             (1234, 2, "ari:0b10011010010"),
             (1234, 16, "ari:0x4D2"),
             (-1234, 10, "ari:-1234"),
-            # FIXME: (-1234, 2, "ari:-0b10011010010"),
-            # FIXME: (-1234, 16, "ari:-0x4D2"),
+            (-1234, 2, "ari:-0b10011010010"),
+            (-1234, 16, "ari:-0x4D2"),
         ]
 
         #encoder test
