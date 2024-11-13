@@ -235,7 +235,7 @@ class TestAriText(unittest.TestCase):
 
     LITERAL_OPTIONS = (
         ('1000', dict(int_base=2), '0b1111101000'),
-        ('1000', dict(int_base=16), '0x3e8'),
+        ('1000', dict(int_base=16), '0x3E8'),
         ('/TP/20230102T030405Z', dict(time_text=False), '/TP/725943845.000000'),
         ('/TD/PT3H', dict(time_text=False), '/TD/10800.000000'),
         ('1e3', dict(float_form='g'), '1000.0'),
@@ -352,7 +352,7 @@ class TestAriText(unittest.TestCase):
             (0, 16, "ari:0x0"),
             (1234, 10, "ari:1234"),
             (1234, 2, "ari:0b10011010010"),
-            # FIXME: (1234, 16, "ari:0x4D2"),
+            (1234, 16, "ari:0x4D2"),
             (-1234, 10, "ari:-1234"),
             # FIXME: (-1234, 2, "ari:-0b10011010010"),
             # FIXME: (-1234, 16, "ari:-0x4D2"),
@@ -377,8 +377,8 @@ class TestAriText(unittest.TestCase):
             (0, 16, "ari:0x0"),
             (1234, 10, "ari:1234"),
             (1234, 2, "ari:0b10011010010"),
-            # FIXME: (1234, 16, "ari:0x4D2"),
-            # FIXME: (0xFFFFFFFFFFFFFFFF, 16, "ari:0xFFFFFFFFFFFFFFFF")
+            (1234, 16, "ari:0x4D2"),
+            (0xFFFFFFFFFFFFFFFF, 16, "ari:0xFFFFFFFFFFFFFFFF")
         ]
 
         for row in TEST_CASE:
@@ -394,14 +394,14 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_encode_lit_prim_float64(self):
         TEST_CASE = [
 # FIXME:
-            #(1.1, 'f', "ari:1.100000"),
+            (1.1, 'f', "ari:1.100000"),
             (1.1, 'g', "ari:1.1"),
-            #(1.1e2, 'g', "ari:110"),
-            #(1.1e2, 'a', "ari:0x1.b8p+6"),
+            (1.1e2, 'g', "ari:110.0"),
+            #(1.1e2, 'a', "ari:0x1.b8p+6"), # FIXME: %a not supported by ACE
             #(1.1e+10, 'g', "ari:1.1e+10"),
-            #(10, 'e', "ari:1.000000e+01"),
-            #(10, 'a', "ari:0x1.4p+3"),
-            (float('NAN'), ' ', "ari:NaN"), #TODO: update NAN and INFINITY values
+            (10.0, 'e', "ari:1.000000e+01"),
+            #(10, 'a', "ari:0x1.4p+3"), # FIXME: %a not supported by ACE
+            (float('NAN'), ' ', "ari:NaN"),
             #(float('INFINITY'), ' ', "ari:+Infinity"),
             (float('-INFINITY'), ' ', "ari:-Infinity"),
         ]
@@ -409,7 +409,7 @@ class TestAriText(unittest.TestCase):
         for row in TEST_CASE:
             value, base, expect = row
             with self.subTest(value):
-                enc = ari_text.Encoder(int_base = base)
+                enc = ari_text.Encoder(float_form = base)
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
