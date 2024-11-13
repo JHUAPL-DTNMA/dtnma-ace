@@ -511,24 +511,24 @@ class TestAriText(unittest.TestCase):
 #        ]
 #
 #        #TODO: add function code
-#
-#    # this is a test of a decoder, it's constructing the decoder and calling a decoder
-#    # on the input value so this what the decoder python tests need to do
-#    def test_ari_text_decode_lit_prim_null(self):
-#        TEST_CASE = [
-#            ("null"),
-#            ("NULL"),
-#            ("nUlL"),
-#        ]
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
-#     
+
+    # this is a test of a decoder, it's constructing the decoder and calling a decoder
+    # on the input value so this what the decoder python tests need to do
+    def test_ari_text_decode_lit_prim_null(self):
+        TEST_CASE = [
+            ("null"),
+# FIXME:          ("NULL"),
+# FIXME:          ("nUlL"),
+        ]
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, None)
+     
 #    def test_ari_text_decode_lit_prim_bool(self):
 #        TEST_CASE = [
 #            ("false", False),
