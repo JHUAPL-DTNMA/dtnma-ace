@@ -419,7 +419,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_encode_lit_prim_tstr(self):
         TEST_CASE = [
             ("test", False, True, "ari:test"),
-            # FIXME: ("test", False, False, "ari:%22test%22"),
+            ("test", False, False, "ari:%22test%22"),
             ("test", True, True, "ari:test"),
             # FIXME: ("\\'\'", True, True, "ari:%22%5C''%22"),
             # FIXME: ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22':!@%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
@@ -429,9 +429,9 @@ class TestAriText(unittest.TestCase):
         ]
 
         for row in TEST_CASE:
-            value, bool1, bool2, expect = row
+            value, copy, identity, expect = row
             with self.subTest(value):
-                enc = ari_text.Encoder() #TODO: update to incorporate bool1, bool2
+                enc = ari_text.Encoder(text_identity=identity)
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
