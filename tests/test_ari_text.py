@@ -438,33 +438,33 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
-    def test_ari_text_encode_lit_prim_bstr(self):
-        TEST_CASE = [
-            ("", 0, ARI_TEXT_BSTR_RAW, "ari:''"),
-            ("test", 4, ARI_TEXT_BSTR_RAW, "ari:'test'"),
-            ("hi\u1234", 5, ARI_TEXT_BSTR_RAW, "ari:'hi%5Cu1234'"),
-            ("hi\U0001D11E", 6, ARI_TEXT_BSTR_RAW, "ari:'hi%5CuD834%5CuDD1E'"),
-            ("\x68\x00\x69", 3, ARI_TEXT_BSTR_RAW, "ari:h'680069'"),
-            ("", 0, ARI_TEXT_BSTR_BASE16, "ari:h''"),
-            ("", 0, ARI_TEXT_BSTR_BASE64URL, "ari:b64''"),
-            ("f", 1, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zg=='"),
-            ("foobar", 6, ARI_TEXT_BSTR_BASE16, "ari:h'666F6F626172'"),
-            ("foobar", 6, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zm9vYmFy'"),
-        ]
-
-            #TODO: add function code
-
-    # TODO: do I need to add short unit tests with no TEST_CASEs, like 
-    # test_ari_text_encode_lit_typed_ac_empty()?
-
-    def test_ari_text_encode_objref_text(self):
-        TEST_CASE = [
-            ("adm", ARI_TYPE_CONST, "hi", "ari://adm/CONST/hi"),
-            ("18", ARI_TYPE_IDENT, "34", "ari://18/IDENT/34"),
-        ]
-
-        #TODO: add function code
-
+#    def test_ari_text_encode_lit_prim_bstr(self):
+#        TEST_CASE = [
+#            ("", 0, ARI_TEXT_BSTR_RAW, "ari:''"),
+#            ("test", 4, ARI_TEXT_BSTR_RAW, "ari:'test'"),
+#            ("hi\u1234", 5, ARI_TEXT_BSTR_RAW, "ari:'hi%5Cu1234'"),
+#            ("hi\U0001D11E", 6, ARI_TEXT_BSTR_RAW, "ari:'hi%5CuD834%5CuDD1E'"),
+#            ("\x68\x00\x69", 3, ARI_TEXT_BSTR_RAW, "ari:h'680069'"),
+#            ("", 0, ARI_TEXT_BSTR_BASE16, "ari:h''"),
+#            ("", 0, ARI_TEXT_BSTR_BASE64URL, "ari:b64''"),
+#            ("f", 1, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zg=='"),
+#            ("foobar", 6, ARI_TEXT_BSTR_BASE16, "ari:h'666F6F626172'"),
+#            ("foobar", 6, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zm9vYmFy'"),
+#        ]
+#
+#            #TODO: add function code
+#
+#    # TODO: do I need to add short unit tests with no TEST_CASEs, like 
+#    # test_ari_text_encode_lit_typed_ac_empty()?
+#
+#    def test_ari_text_encode_objref_text(self):
+#        TEST_CASE = [
+#            ("adm", ARI_TYPE_CONST, "hi", "ari://adm/CONST/hi"),
+#            ("18", ARI_TYPE_IDENT, "34", "ari://18/IDENT/34"),
+#        ]
+#
+#        #TODO: add function code
+#
 #    def test_ari_text_encode_nsref_text(self):
 #        TEST_CASE = [
 #            ("adm", "ari://adm/"),
@@ -989,44 +989,44 @@ class TestAriText(unittest.TestCase):
 #                LOGGER.info('Got ARI %s', ari)
 #                self.assertIsInstance(ari, ARI)
 #                self.assertEqual(ari.value, expect)
-#
-#    def test_ari_text_decode_objref(self):
-#        TEST_CASE = [
-#            ("ari://test/const/hi", ARI_TYPE_CONST),
-#            ("ari://test/ctrl/hi", ARI_TYPE_CTRL),
-#            ("ari://test/IDENT/hi", ARI_TYPE_IDENT),
-#            ("ari://test/TYPEDEF/hi", ARI_TYPE_TYPEDEF),
-#            ("ari://test/CONST/hi", ARI_TYPE_CONST),
-#            ("ari://test/VAR/hi", ARI_TYPE_VAR),
-#            ("ari://test/EDD/hi", ARI_TYPE_EDD),
-#            ("ari://test/CTRL/hi", ARI_TYPE_CTRL),
-#            ("ari://test/OPER/hi", ARI_TYPE_OPER),
-#            ("ari://test/SBR/hi", ARI_TYPE_SBR),
-#            ("ari://test/TBR/hi", ARI_TYPE_TBR),
-#            ("ari://test/ident/hi", ARI_TYPE_IDENT),
-#            ("ari://test/typedef/hi", ARI_TYPE_TYPEDEF),
-#            ("ari://test/const/hi", ARI_TYPE_CONST),
-#            ("ari://test/var/hi", ARI_TYPE_VAR),
-#            ("ari://test/edd/hi", ARI_TYPE_EDD),
-#            ("ari://test/ctrl/hi", ARI_TYPE_CTRL),
-#            ("ari://test/CtRl/hi", ARI_TYPE_CTRL),
-#            ("ari://test/oper/hi", ARI_TYPE_OPER),
-#            ("ari://test/sbr/hi", ARI_TYPE_SBR),
-#            ("ari://test/tbr/hi", ARI_TYPE_TBR),
-#            ("ari://adm/const/hi", ARI_TYPE_CONST),
-#            ("ari://adm/CONST/hi", ARI_TYPE_CONST),
-#            ("ari://adm/-2/hi", ARI_TYPE_CONST),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, expect = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
+
+    def test_ari_text_decode_objref(self):
+        TEST_CASE = [
+            ("ari://test/const/hi", StructType.CONST),
+            ("ari://test/ctrl/hi", StructType.CTRL),
+            #("ari://test/IDENT/hi", ARI_TYPE_IDENT),
+            #("ari://test/TYPEDEF/hi", ARI_TYPE_TYPEDEF),
+            #("ari://test/CONST/hi", ARI_TYPE_CONST),
+            #("ari://test/VAR/hi", ARI_TYPE_VAR),
+            #("ari://test/EDD/hi", ARI_TYPE_EDD),
+            #("ari://test/CTRL/hi", ARI_TYPE_CTRL),
+            #("ari://test/OPER/hi", ARI_TYPE_OPER),
+            #("ari://test/SBR/hi", ARI_TYPE_SBR),
+            #("ari://test/TBR/hi", ARI_TYPE_TBR),
+            #("ari://test/ident/hi", ARI_TYPE_IDENT),
+            #("ari://test/typedef/hi", ARI_TYPE_TYPEDEF),
+            #("ari://test/const/hi", ARI_TYPE_CONST),
+            #("ari://test/var/hi", ARI_TYPE_VAR),
+            #("ari://test/edd/hi", ARI_TYPE_EDD),
+            #("ari://test/ctrl/hi", ARI_TYPE_CTRL),
+            #("ari://test/CtRl/hi", ARI_TYPE_CTRL),
+            #("ari://test/oper/hi", ARI_TYPE_OPER),
+            #("ari://test/sbr/hi", ARI_TYPE_SBR),
+            #("ari://test/tbr/hi", ARI_TYPE_TBR),
+            #("ari://adm/const/hi", ARI_TYPE_CONST),
+            #("ari://adm/CONST/hi", ARI_TYPE_CONST),
+            #("ari://adm/-2/hi", ARI_TYPE_CONST),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.ident.type_id, expect)
+
 #    def test_ari_text_decode_objref_invalid(self):
 #        TEST_CASE = [
 #            ("ari://test/LITERAL/hi"),
