@@ -465,25 +465,28 @@ class TestAriText(unittest.TestCase):
 #
 #        #TODO: add function code
 #
-#    def test_ari_text_encode_nsref_text(self):
-#        TEST_CASE = [
-#            ("adm", "ari://adm/"),
-#            ("example-adm-a@2024-06-25", "ari://example-adm-a@2024-06-25/"),
-#            ("example-adm-a", "ari://example-adm-a/"),
-#            ("!example-odm-b", "ari://!example-odm-b/"),
-#            ("65536", "ari://65536/"),
-#            ("-20", "ari://-20/"),
-#        ]
-#        for row in TEST_CASE:
-#            value, expect = row
-#            with self.subTest(value):
-#                enc = ari_text.Encoder()
-#                ari = LiteralARI(value)
-#                loop = io.StringIO()
-#                enc.encode(ari, loop)
-#                LOGGER.info('Got text_dn: %s', loop.getvalue())
-#                self.assertEqual(expect, loop.getvalue())
-#
+    def test_ari_text_encode_nsref_text(self):
+        TEST_CASE = [
+            ("adm", "ari://adm/"),
+            ("example-adm-a@2024-06-25", "ari://example-adm-a@2024-06-25/"),
+            ("example-adm-a", "ari://example-adm-a/"),
+            ("!example-odm-b", "ari://!example-odm-b/"),
+            ("65536", "ari://65536/"),
+            ("-20", "ari://-20/"),
+        ]
+        for row in TEST_CASE:
+            value, expect = row
+            with self.subTest(value):
+                enc = ari_text.Encoder()
+                ari = ReferenceARI(
+                    ident=Identity(value, None, None),
+                    params=None
+                )
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
 #    def test_ari_text_encode_nsref_int(self):
 #        TEST_CASE = [
 #            (18, "ari://18/"),
