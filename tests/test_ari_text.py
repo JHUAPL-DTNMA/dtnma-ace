@@ -402,7 +402,7 @@ class TestAriText(unittest.TestCase):
             (10.0, 'e', "ari:1.000000e+01"),
             #(10, 'a', "ari:0x1.4p+3"), # FIXME: %a not supported by ACE
             (float('NAN'), ' ', "ari:NaN"),
-            #(float('INFINITY'), ' ', "ari:+Infinity"),
+            (float('INFINITY'), ' ', "ari:Infinity"),
             (float('-INFINITY'), ' ', "ari:-Infinity"),
         ]
 
