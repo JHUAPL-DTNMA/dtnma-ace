@@ -134,6 +134,9 @@ class Encoder:
         self._encode_obj(buf, obj, prefix=self._options.scheme_prefix)
 
     def _encode_obj(self, buf: TextIO, obj:ARI, prefix:bool=False):
+        if prefix:
+            buf.write('ari:')
+
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
             if obj.type_id is not None:
@@ -215,8 +218,6 @@ class Encoder:
                 buf.write(quote(to_diag(obj.value)))
 
         elif isinstance(obj, ReferenceARI):
-            if prefix:
-                buf.write('ari:')
             if obj.ident.ns_id is None:
                 buf.write('.')
             else:
