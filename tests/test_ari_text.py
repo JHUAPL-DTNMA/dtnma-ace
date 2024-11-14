@@ -903,23 +903,26 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
-#    def test_ari_text_decode_lit_typed_ac(self):
-#        TEST_CASE = [
-#            ("ari:/AC/()", 0, ARI_TYPE_NULL, ARI_PRIM_NULL), #TODO: update values
-#            ("ari:/AC/(23)", 1, ARI_TYPE_NULL, ARI_PRIM_INT64),
-#            ("ari:/AC/(/INT/23)", 1, ARI_TYPE_INT, ARI_PRIM_INT64),
-#            ("ari:/AC/(\"hi%2C%20there%21\")", 1, ARI_TYPE_NULL, ARI_PRIM_TSTR),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, value, expect = row
-#            with self.subTest(text): #TODO: update loop
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
+    def test_ari_text_decode_lit_typed_ac(self):
+        TEST_CASE = [
+            ("ari:/AC/()", 0, StructType.NULL),
+            ("ari:/AC/(23)", 1, None),
+            ("ari:/AC/(/INT/23)", 1, StructType.INT),
+            # FIXME: ("ari:/AC/(\"hi%2C%20there%21\")", 1, StructType.TEXTSTR),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, length, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(len(ari.value), length)
+                for i in range(length):
+                    self.assertEqual(ari.value[i].type_id, expect)
+                #self.assertEqual(ari.value, expect)
+
 #    def test_ari_text_decode_lit_typed_am(self):
 #        TEST_CASE = [
 #            ("ari:/AM/()", 0),
