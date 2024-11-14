@@ -786,63 +786,62 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
-#    def test_ari_text_decode_lit_prim_bstr(self):
-#        TEST_CASE = [
-#            # FIXME: ("''", None, 0),
-#            ("'hi'", "hi", 2),
-#            ("'hi%20there'", "hi there", 8),
-#            ("'h%5C'i'", "h'i", 3),
-#            ("h'6869'", "hi", 2),
-#            ("ari:h'5C0069'", "\\\0i", 3),
-#            ("ari:h'666F6F626172'", "foobar", 6),
-#            ("ari:b64'Zm9vYmFy'", "foobar", 6),
-#            ("ari:b64'Zg%3d%3d'", "f", 1),
-#            ("ari:h'%20666%20F6F626172'", "foobar", 6),
-#            ("ari:b64'Zm9v%20YmFy'", "foobar", 6),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in TEST_CASE:
-#            text, expect, value = row #TODO: incorporate value into loop
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
-#    def test_ari_text_decode_lit_typed_cbor(self):
-#        TEST_CASE = [
-#            ("ari:/CBOR/h''", ""),
-#            ("ari:/CBOR/h'A164746573748203F94480'", "A164746573748203F94480"),
-#            ("ari:/CBOR/h'0064746573748203F94480'", "0064746573748203F94480"),
-#            ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", "A164746573748203F94480")
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, expect = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#        #TODO: include if-else statement?
-#
-#    def test_ari_text_decode_lit_typed_null(self):
-#        TEST_CASE = [
-#            ("ari:/NULL/null"),
-#            ("ari:/0/null"),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
-#
+    def test_ari_text_decode_lit_prim_bstr(self):
+        TEST_CASE = [
+            ("''", b'', 0),
+            ("'hi'", b"hi", 2),
+            ("'hi%20there'", b"hi there", 8),
+            ("'h%5C'i'", b"h'i", 3),
+            ("h'6869'", b"hi", 2),
+            ("ari:h'5C0069'", b"\\\0i", 3),
+            ("ari:h'666F6F626172'", b"foobar", 6),
+            ("ari:b64'Zm9vYmFy'", b"foobar", 6),
+            ("ari:b64'Zg%3d%3d'", b"f", 1),
+            # FIXME: ("ari:h'%20666%20F6F626172'", b"foobar", 6),
+            ("ari:b64'Zm9v%20YmFy'", b"foobar", 6),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect, value = row #TODO: incorporate value into loop
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_cbor(self):
+        TEST_CASE = [
+            ("ari:/CBOR/h''", b""),
+            ("ari:/CBOR/h'A164746573748203F94480'", b'\xa1dtest\x82\x03\xf9D\x80'),
+            ("ari:/CBOR/h'0064746573748203F94480'", b'\x00dtest\x82\x03\xf9D\x80'),
+            # FIXME: ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", b"A164746573748203F94480")
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_null(self):
+        TEST_CASE = [
+            ("ari:/NULL/null"),
+            ("ari:/0/null"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, None)
+
 #    def test_ari_text_decode_lit_typed_bool(self):
 #        TEST_CASE = [
 #            ("ari:/BOOL/false", False),
