@@ -842,66 +842,67 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, None)
 
-#    def test_ari_text_decode_lit_typed_bool(self):
-#        TEST_CASE = [
-#            ("ari:/BOOL/false", False),
-#            ("ari:/BOOL/true", True),
-#            ("ari:/1/true", True),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, expect = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
-#    def test_ari_text_decode_lit_typed_tp(self):
-#        TEST_CASE = [
-#            ("ari:/TP/2000-01-01T00:00:20Z", 20, 0),
-#            TEST_CASE("ari:/TP/20000101T000020Z", 20, 0),
-#            TEST_CASE("ari:/TP/20000101T000020.5Z", 20, 500e6),
-#            TEST_CASE("ari:/TP/20.5", 20, 500e6),
-#            TEST_CASE("ari:/TP/20.500", 20, 500e6),
-#            TEST_CASE("ari:/TP/20.000001", 20, 1e3),
-#            TEST_CASE("ari:/TP/20.000000001", 20, 1),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, value, expect = row
-#            with self.subTest(text): #TODO: update loop
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
-#    def test_ari_text_decode_lit_typed_td(self):
-#        TEST_CASE = [
-#            ("ari:/TD/PT1M", 60, 0),
-#            ("ari:/TD/PT20S", 20, 0),
-#            ("ari:/TD/PT20.5S", 20, 500e6),
-#            ("ari:/TD/20.5", 20, 500e6),
-#            ("ari:/TD/20.500", 20, 500e6),
-#            ("ari:/TD/20.000001", 20, 1e3),
-#            ("ari:/TD/20.000000001", 20, 1),
-#            ("ari:/TD/+PT1M", 60, 0),
-#            ("ari:/TD/-PT1M", -60, 0),
-#            ("ari:/TD/-P1DT", -(24 * 60 * 60), 0),
-#            ("ari:/TD/PT", 0, 0),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, value, expect = row
-#            with self.subTest(text): #TODO: update loop
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
+    def test_ari_text_decode_lit_typed_bool(self):
+        TEST_CASE = [
+            ("ari:/BOOL/false", False),
+            ("ari:/BOOL/true", True),
+            ("ari:/1/true", True),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_tp(self):
+        TEST_CASE = [
+            ("ari:/TP/2000-01-01T00:00:20Z", datetime.datetime(2000, 1, 1, 0, 0, 20)),
+            ("ari:/TP/20000101T000020Z", datetime.datetime(2000, 1, 1, 0, 0, 20)),
+# FIXME: datetime does not support nanoseconds
+            #("ari:/TP/20000101T000020.5Z", 20, 500e6),
+            #("ari:/TP/20.5", 20, 500e6),
+            #("ari:/TP/20.500", 20, 500e6),
+            #("ari:/TP/20.000001", 20, 1e3),
+            #("ari:/TP/20.000000001", 20, 1),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text): #TODO: update loop
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
+    def test_ari_text_decode_lit_typed_td(self):
+        TEST_CASE = [
+            ("ari:/TD/PT1M", datetime.timedelta(seconds=60)),
+            ("ari:/TD/PT20S", datetime.timedelta(seconds=20)),
+            ("ari:/TD/PT20.5S", datetime.timedelta(seconds=20, microseconds=500000)),
+            ("ari:/TD/20.5",  datetime.timedelta(seconds=20, microseconds=500000)),
+            ("ari:/TD/20.500", datetime.timedelta(seconds=20, microseconds=500000)),
+            ("ari:/TD/20.000001", datetime.timedelta(seconds=20, microseconds=1)),
+            ("ari:/TD/20.000000001", datetime.timedelta(seconds=20, microseconds=0)), # FIXME: nanonseconds not supported, truncates to 0
+            ("ari:/TD/+PT1M", datetime.timedelta(seconds=60, microseconds=0)),
+            ("ari:/TD/-PT1M", datetime.timedelta(seconds=-60, microseconds=0)),
+            ("ari:/TD/-P1DT", datetime.timedelta(seconds=-(24 * 60 * 60))),
+            ("ari:/TD/PT", datetime.timedelta(seconds=0)),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertEqual(ari.value, expect)
+
 #    def test_ari_text_decode_lit_typed_ac(self):
 #        TEST_CASE = [
 #            ("ari:/AC/()", 0, ARI_TYPE_NULL, ARI_PRIM_NULL), #TODO: update values
