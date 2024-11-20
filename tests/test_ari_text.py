@@ -1142,68 +1142,71 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari.ident.ns_id, None)
                 self.assertEqual(ari.ident.type_id, expect)
 
-#    def test_ari_text_loopback(self):
-#        TEST_CASE = [
-#            ("ari:undefined"),
-#            ("ari:null"),
-#            ("ari:true"),
-#            ("ari:false"),
-#            ("ari:1234"),
-#            ("ari:hi"),
-#            ("ari:%22hi%20there%22"),
-#            ("ari:h'6869'"),
-#            ("ari:/NULL/null"),
-#            ("ari:/BOOL/false"),
-#            ("ari:/BOOL/true"),
-#            ("ari:/INT/10"),
-#            ("ari:/INT/-10"),
-#            ("ari:/REAL32/10"),
-#            ("ari:/REAL32/10.1"),
-#            ("ari:/REAL32/0.1"),
-#            ("ari:/REAL32/NaN"),
-#            ("ari:/REAL64/+Infinity"),
-#            ("ari:/REAL64/-Infinity"),
-#            ("ari:/BYTESTR/h'6869'"),
-#            ("ari:/TEXTSTR/hi"),
-#            ("ari:/TEXTSTR/%22hi%20there%22"),
-#            ("ari:/LABEL/hi"),
-#            ("ari:/TP/20230102T030405Z"),
-#            ("ari:/AC/()"),
-#            ("ari:/AC/(a)"),
-#            ("ari:/AC/(a,b,c)"),
-#            ("ari:/AC/(null,/INT/23)"),
-#            ("ari:/AC/(null,/AC/(undefined,/INT/23,/AC/()))"),
-#            ("ari:/AM/()"),
-#            ("ari:/AM/(1=true)"),
-#            ("ari:/AM/(3=true,10=hi,oh=4)"),
-#            ("ari:/TBL/c=3;(1,2,3)"),
-#            ("ari:/TBL/c=3;(1,2,3)(4,5,6)"),
-#            ("ari:/TBL/c=0;"),
-#            ("ari:/TBL/c=1;"),
-#            ("ari:/EXECSET/n=null;()"),
-#            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)"),
-#            ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)"),
-#            ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
-#            ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
-#            ("ari://test/CONST/that"),
-#            ("ari://test@1234/CONST/that"),
-#            ("ari://!test/CONST/that"),
-#            ("ari://test/CTRL/that(34)"),
-#            ("ari://2/CTRL/4(hi)"),
-#            ("./CTRL/do_thing"),
-#            ("ari:/CBOR/h'0A'"),
-#            ("ari:/CBOR/h'A164746573748203F94480'"),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
-#
+    def test_ari_text_loopback(self):
+        TEST_CASE = [
+            ("ari:undefined"),
+            ("ari:null"),
+            ("ari:true"),
+            ("ari:false"),
+            ("ari:1234"),
+            ("ari:hi"),
+            ("ari:%22hi%20there%22"),
+            # FIXME: ("ari:h'6869'"),
+            ("ari:/NULL/null"),
+            ("ari:/BOOL/false"),
+            ("ari:/BOOL/true"),
+            ("ari:/INT/10"),
+            ("ari:/INT/-10"),
+            # FIXME: ("ari:/REAL32/10"),
+            ("ari:/REAL32/10.1"),
+            ("ari:/REAL32/0.1"),
+            ("ari:/REAL32/NaN"),
+            ("ari:/REAL64/Infinity"),
+            ("ari:/REAL64/-Infinity"),
+            # FIXME: ("ari:/BYTESTR/h'6869'"),
+            ("ari:/TEXTSTR/hi"),
+            ("ari:/TEXTSTR/%22hi%20there%22"),
+            ("ari:/LABEL/hi"),
+            ("ari:/TP/20230102T030405Z"),
+            ("ari:/AC/()"),
+            ("ari:/AC/(a)"),
+            ("ari:/AC/(a,b,c)"),
+            ("ari:/AC/(null,/INT/23)"),
+            ("ari:/AC/(null,/AC/(undefined,/INT/23,/AC/()))"),
+            ("ari:/AM/()"),
+            ("ari:/AM/(1=true)"),
+            ("ari:/AM/(3=true,10=hi,oh=4)"),
+            ("ari:/TBL/c=3;(1,2,3)"),
+            ("ari:/TBL/c=3;(1,2,3)(4,5,6)"),
+            ("ari:/TBL/c=0;"),
+            ("ari:/TBL/c=1;"),
+            ("ari:/EXECSET/n=null;()"),
+            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)"),
+            # FIXME: ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)"),
+            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari://test/CONST/that"),
+            # FIXME: ("ari://test@1234/CONST/that"),
+            ("ari://!test/CONST/that"),
+            ("ari://test/CTRL/that(34)"),
+            ("ari://2/CTRL/4(hi)"),
+            # FIXME: ("./CTRL/do_thing"),
+            # FIXME: ("ari:/CBOR/h'0A'"),
+            # FIXME: ("ari:/CBOR/h'A164746573748203F94480'"),
+        ]
+
+        dec = ari_text.Decoder()
+        enc = ari_text.Encoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text: %s', loop.getvalue())
+                self.assertLess(0, loop.tell())
+                self.assertEqual(loop.getvalue(), text)
+
 #    def test_ari_text_reencode(self):
 #        TEST_CASE = [
 #            ("ari:/null/null", "ari:/NULL/null"),
