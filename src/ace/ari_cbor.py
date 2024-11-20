@@ -153,7 +153,9 @@ class Decoder:
         if isinstance(item, int):
             return datetime.timedelta(seconds=item)
         elif isinstance(item, list):
-            mant, exp = item
+            exp, mant = map(int, item)
+            if exp < -9 or exp > 9:
+                raise ValueError(f'Decimal fraction exponent outside valid range [-9,9]')
             total_usec = mant * 10 ** (exp + 6)
             return datetime.timedelta(microseconds=total_usec)
         else:
@@ -244,7 +246,7 @@ class Encoder:
 
         if exp:
             # use decimal fraction
-            item = [mant, exp]
+            item = [exp, mant]
         else:
             item = mant
         return item
