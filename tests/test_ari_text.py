@@ -1255,67 +1255,64 @@ class TestAriText(unittest.TestCase):
 #                self.assertIsInstance(ari, ARI)
 #                self.assertEqual(ari.value, expect)
 #
-#    def test_ari_text_decode_failure(self):
-#        TEST_CASE = [
-#            ("-0x8FFFFFFFFFFFFFFF"),
-#            ("-0x1FFFFFFFFFFFFFFFF"),
-#            ("ari:/OTHERNAME/0"),
-#            ("ari:/UNDEFINED/undefined"),
-#            ("ari:/NULL/fae"),
-#            ("ari:/NULL/undefined"),
-#            ("ari:/NULL/10"),
-#            ("ari:/BOOL/fae"),
-#            ("ari:/BOOL/3"),
-#            ("ari:/TEXTSTR/1"),
-#            ("ari:/BYTESTR/1"),
-#            ("ari:/AC/"),
-#            ("ari:/AC/(a,"),
-#            ("ari:/AC/(,,,)"),
-#            ("ari:/AM/"),
-#            ("ari:/TBL/"),
-#            ("ari:/TBL/c=hi;"),
-#            ("ari:/TBL/c=5;(1,2)"),
-#            ("ari:/TBL/(1,2,3)"),
-#            ("ari:/TBL/c=aaa;c=2;(1,2)"),
-#            ("ari:/TBL/c=2;c=2;(1,2)"),
-#            ("ari:/EXECSET/()"),
-#            ("ari:/EXECSET/g=null;()"),
-#            ("ari:/EXECSET/n=undefined;()"),
-#            ("ari:/EXECSET/n=1;"),
-#            ("ari:/EXECSET/n=1;n=2;()"),
-#            ("ari://./object/hi"),
-#            ("./object/hi"),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
-#
-#    def test_ari_text_decode_invalid(self):
-#        TEST_CASE = [
-#            ("ari:/BYTE/-1"),
-#            ("ari:/BYTE/256"),
-#            ("ari:/INT/-2147483649"),
-#            ("ari:/INT/2147483648"),
-#            ("ari:/UINT/-1"),
-#            ("ari:/UINT/4294967296"),
-#            ("ari:/VAST/0x8000000000000000"),
-#            ("ari:/UVAST/-1"),
-#            ("ari:/REAL32/-3.40282347E+38"),
-#            ("ari:/REAL32/3.40282347E+38"),
-#            ("ari:/AM/(/INT/10=true)"),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
+    def test_ari_text_decode_failure(self):
+        TEST_CASE = [
+            # FIXME: ("-0x8FFFFFFFFFFFFFFF"),
+            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"),
+            ("ari:/OTHERNAME/0"),
+            ("ari:/UNDEFINED/undefined"),
+            ("ari:/NULL/fae"),
+            ("ari:/NULL/undefined"),
+            ("ari:/NULL/10"),
+            ("ari:/BOOL/fae"),
+            ("ari:/BOOL/3"),
+            ("ari:/TEXTSTR/1"),
+            ("ari:/BYTESTR/1"),
+            ("ari:/AC/"),
+            ("ari:/AC/(a,"),
+            ("ari:/AC/(,,,)"),
+            ("ari:/AM/"),
+            ("ari:/TBL/"),
+            ("ari:/TBL/c=hi;"),
+            ("ari:/TBL/c=5;(1,2)"),
+            ("ari:/TBL/(1,2,3)"),
+            # FIXME: ("ari:/TBL/c=aaa;c=2;(1,2)"),
+            # FIXME: ("ari:/TBL/c=2;c=2;(1,2)"),
+            ("ari:/EXECSET/()"),
+            # FIXME: ("ari:/EXECSET/g=null;()"),
+            ("ari:/EXECSET/n=undefined;()"),
+            ("ari:/EXECSET/n=1;"),
+            # FIXME: ("ari:/EXECSET/n=1;n=2;()"),
+            ("ari://./object/hi"),
+            # FIXME: ("./object/hi"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                with self.assertRaises(ari_text.ParseError):
+                    ari = dec.decode(io.StringIO(text))
+                    LOGGER.info('Got ARI %s', ari)
+
+    def test_ari_text_decode_invalid(self):
+        TEST_CASE = [
+            ("ari:/BYTE/-1"),
+            ("ari:/BYTE/256"),
+            ("ari:/INT/-2147483649"),
+            ("ari:/INT/2147483648"),
+            ("ari:/UINT/-1"),
+            ("ari:/UINT/4294967296"),
+            ("ari:/VAST/0x8000000000000000"),
+            ("ari:/UVAST/-1"),
+            # FIXME: ("ari:/REAL32/-3.40282347E+38"),
+            # FIXME: ("ari:/REAL32/3.40282347E+38"),
+            # FIXME: ("ari:/AM/(/INT/10=true)"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                self.assertRaises(ari_text.ParseError, lambda: dec.decode(io.StringIO(text)))
+
