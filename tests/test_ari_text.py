@@ -1095,48 +1095,53 @@ class TestAriText(unittest.TestCase):
 #                LOGGER.info('Got ARI %s', ari)
 #                self.assertIsInstance(ari, ARI)
 #                self.assertEqual(ari.value)
-#
-#    def test_ari_text_decode_nsref(self):
-#        TEST_CASE = [
-#            ("ari://adm"),
-#            ("ari://adm/"),
-#            ("ari://18"),
-#            ("ari://18/"),
-#            ("ari://65536/"),
-#            ("ari://-20/"),
-#            ("ari://example-adm-a@2024-06-25/"),
-#            ("ari://example-adm-a/"),
-#            ("ari://!example-odm-b/"),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value)
-#
-#    def test_ari_text_decode_ariref(self):
-#        TEST_CASE = [
-#            ("ari:./CTRL/do_thing", ARI_TYPE_CTRL), #TODO: update values
-#            ("ari:./CTRL/otherobj(%22a%20param%22,/UINT/10)", ARI_TYPE_CTRL),
-#            ("ari:./-2/30", ARI_TYPE_CONST),
-#            ("./CTRL/do_thing", ARI_TYPE_CTRL),
-#            ("./CTRL/otherobj(%22a%20param%22,/UINT/10)", ARI_TYPE_CTRL),
-#            ("./-2/30", ARI_TYPE_CONST),
-#        ]
-#
-#        dec = ari_text.Decoder()
-#        for row in self.TEST_CASE:
-#            text, expect = row
-#            with self.subTest(text):
-#                ari = dec.decode(io.StringIO(text))
-#                LOGGER.info('Got ARI %s', ari)
-#                self.assertIsInstance(ari, ARI)
-#                self.assertEqual(ari.value, expect)
-#
+
+    def test_ari_text_decode_nsref(self):
+        TEST_CASE = [
+            ("ari://adm"),
+            ("ari://adm/"),
+            ("ari://18"),
+            # FIXME: ("ari://18/"),
+            ("ari://65536/"),
+            ("ari://-20/"),
+            ("ari://example-adm-a@2024-06-25/"),
+            ("ari://example-adm-a/"),
+            ("ari://!example-odm-b/"),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertIsInstance(ari, ReferenceARI)
+                self.assertNotEqual(ari.ident.ns_id, None)
+                self.assertEqual(ari.ident.type_id, None)
+                self.assertEqual(ari.ident.obj_id, None)
+
+    def test_ari_text_decode_ariref(self):
+        TEST_CASE = [
+            ("ari:./CTRL/do_thing", StructType.CTRL), #TODO: update values
+            ("ari:./CTRL/otherobj(%22a%20param%22,/UINT/10)", StructType.CTRL),
+            ("ari:./-2/30", StructType.CONST),
+            ("./CTRL/do_thing", StructType.CTRL),
+            ("./CTRL/otherobj(%22a%20param%22,/UINT/10)", StructType.CTRL),
+            ("./-2/30", StructType.CONST),
+        ]
+
+        dec = ari_text.Decoder()
+        for row in TEST_CASE:
+            text, expect = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, ARI)
+                self.assertIsInstance(ari, ReferenceARI)
+                self.assertEqual(ari.ident.ns_id, None)
+                self.assertEqual(ari.ident.type_id, expect)
+
 #    def test_ari_text_loopback(self):
 #        TEST_CASE = [
 #            ("ari:undefined"),
