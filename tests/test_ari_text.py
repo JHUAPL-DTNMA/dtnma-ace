@@ -440,24 +440,18 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_encode_lit_prim_bstr(self):
         TEST_CASE = [
-#FIXME:
-            #(b"", 0, "ari:''"),
-            #("test", 4, ARI_TEXT_BSTR_RAW, "ari:'test'"),
-            #("hi\u1234", 5, ARI_TEXT_BSTR_RAW, "ari:'hi%5Cu1234'"),
-            #("hi\U0001D11E", 6, ARI_TEXT_BSTR_RAW, "ari:'hi%5CuD834%5CuDD1E'"),
-            #(b"\x68\x00\x69", 3, "ari:h'680069'"), #ARI_TEXT_BSTR_RAW, 
-            #("", 0, ARI_TEXT_BSTR_BASE16, "ari:h''"),
-            #("", 0, ARI_TEXT_BSTR_BASE64URL, "ari:b64''"),
-            #("f", 1, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zg=='"),
-            #("foobar", 6, ARI_TEXT_BSTR_BASE16, "ari:h'666F6F626172'"),
-            #("foobar", 6, ARI_TEXT_BSTR_BASE64URL, "ari:b64'Zm9vYmFy'"),
+            (b"", 0, "ari:h%27%27"),
+            (b"test", 4, "ari:h%2774657374%27"),
+            (b"hi\u1234", 5, "ari:h%2768695c7531323334%27"),
+            (b"hi\U0001D11E", 6, "ari:h%2768695c553030303144313145%27"),
+            (b"\x68\x00\x69", 3, "ari:h%27680069%27"),
+            (b"foobar", 6, "ari:h%27666f6f626172%27"),
         ]
 
-# FIXME: check size, maybe swap in identity
         for row in TEST_CASE:
             value, size, expect = row
             with self.subTest(value):
-                enc = ari_text.Encoder() #text_identity=identity)
+                enc = ari_text.Encoder()
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
