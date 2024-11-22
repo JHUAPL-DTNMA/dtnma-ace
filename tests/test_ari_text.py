@@ -542,8 +542,8 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_prim_null(self):
         TEST_CASE = [
             ("null"),
-# FIXME:          ("NULL"),
-# FIXME:          ("nUlL"),
+            ("NULL"),
+            ("nUlL"),
         ]
         dec = ari_text.Decoder()
         for row in TEST_CASE:
@@ -558,7 +558,7 @@ class TestAriText(unittest.TestCase):
         TEST_CASE = [
             ("false", False),
             ("true", True),
-# FIXME:            ("TRUE", True),
+            ("TRUE", True),
         ]
         dec = ari_text.Decoder()
         for row in TEST_CASE:

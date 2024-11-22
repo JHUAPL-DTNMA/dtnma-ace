@@ -68,19 +68,19 @@ class TypeSeq:
         raise ValueError(f'No possible literal type matched text: {text}')
 
 
-@TypeMatch.apply(r'undefined')
+@TypeMatch.apply(r'(?i)undefined')
 def t_undefined(_found):
     return UNDEFINED.value
 
 
-@TypeMatch.apply(r'null')
+@TypeMatch.apply(r'(?i)null')
 def t_null(_found):
     return None
 
 
-@TypeMatch.apply(r'true|false')
+@TypeMatch.apply(r'(?i)true|false')
 def t_bool(found):
-    return (found[0] == 'true')
+    return (found[0].lower() == 'true')
 
 
 @TypeMatch.apply(r'([+-])?(\d*)\.(\d*)')
