@@ -702,7 +702,7 @@ class TestAriText(unittest.TestCase):
             ("1.1e2", 1.1e2),
             ("1.1e+10", 1.1e+10),
             # FIXME: ("0x1.4p+3", 10),
-            ("NaN", float('NaN')), #TODO: update these values
+            ("NaN", float('NaN')),
             ("nan", float('NaN')),
             ("infinity", float('Infinity')),
             ("+Infinity", float('Infinity')),
@@ -806,7 +806,7 @@ class TestAriText(unittest.TestCase):
 
         dec = ari_text.Decoder()
         for row in TEST_CASE:
-            text, expect, value = row #TODO: incorporate value into loop
+            text, expect, value = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
@@ -830,7 +830,7 @@ class TestAriText(unittest.TestCase):
 
         dec = ari_text.Decoder()
         for row in TEST_CASE:
-            text, expect, value = row #TODO: incorporate value into loop
+            text, expect, value = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
@@ -900,7 +900,7 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text, expect = row
-            with self.subTest(text): #TODO: update loop
+            with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
