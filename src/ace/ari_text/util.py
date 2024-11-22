@@ -89,7 +89,7 @@ def t_decfrac(found):
 
 
 # float either contains a decimal point or exponent or both
-@TypeMatch.apply(r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN')
+@TypeMatch.apply(r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|(?i)Infinity)|(?i)NaN')
 def t_float(found):
     return float(found[0])
 

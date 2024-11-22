@@ -702,11 +702,11 @@ class TestAriText(unittest.TestCase):
             ("1.1e2", 1.1e2),
             ("1.1e+10", 1.1e+10),
             # FIXME: ("0x1.4p+3", 10),
-            # FIXME: ("NaN", NAN), #TODO: update these values
-            # FIXME: ("nan", NAN),
-            # FIXME: ("infinity", INFINITY),
-            # FIXME: ("+Infinity", INFINITY),
-            # FIXME: ("-Infinity", -INFINITY),
+            ("NaN", float('NaN')), #TODO: update these values
+            ("nan", float('NaN')),
+            ("infinity", float('Infinity')),
+            ("+Infinity", float('Infinity')),
+            ("-Infinity", -float('Infinity')),
         ]
         dec = ari_text.Decoder()
         for row in TEST_CASE:
@@ -715,8 +715,10 @@ class TestAriText(unittest.TestCase):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
-                self.assertEqual(ari.value, expect)
-
+                if math.isnan(expect):
+                  self.assertEqual(math.isnan(ari.value), True)
+                else: 
+                  self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_float32(self):
         TEST_CASE = [
