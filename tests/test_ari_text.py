@@ -1339,6 +1339,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/UINT/-1"),
             ("ari:/UINT/4294967296"),
             ("ari:/VAST/0x8000000000000000"),
+            ("ari:/VAST/-0x8FFFFFFFFFFFFFFF"),
+            ("ari:/VAST/-0x1FFFFFFFFFFFFFFFF"),
             ("ari:/UVAST/-1"),
             # FIXME: ("ari:/REAL32/-3.40282347E+38"),
             # FIXME: ("ari:/REAL32/3.40282347E+38"),
