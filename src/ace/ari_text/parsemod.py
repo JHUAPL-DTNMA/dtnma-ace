@@ -86,6 +86,8 @@ def p_typedlit_am(p):
 def p_typedlit_tbl_empty(p):
     '''typedlit : SLASH TBL structlist'''
     ncol = int(p[3].get('c', 0))
+    if ncol == 0:
+        ncol = int(p[3].get('C', 0))
     table = Table((0, ncol))
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
@@ -93,6 +95,8 @@ def p_typedlit_tbl_empty(p):
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
     ncol = int(p[3].get('c', 0))
+    if ncol == 0:
+        ncol = int(p[3].get('C', 0))
     nrow = len(p[4])
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
@@ -115,6 +119,8 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
     nonce = util.NONCE(p[3].get('n', 'null'))
+    if nonce == 'null':
+        nonce = util.NONCE(p[3].get('N', 'null'))
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
@@ -125,6 +131,8 @@ def p_typedlit_execset(p):
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
     nonce = util.NONCE(p[3].get('n', 'null'))
+    if nonce == 'null':
+        nonce = util.NONCE(p[3].get('N', 'null'))
     rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(

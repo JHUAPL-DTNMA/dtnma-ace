@@ -971,8 +971,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=003;(1,2,3)(4,5,6)", 3, 6),
             ("ari:/TBL/c=0;()()()", 0, 0),
             ("ari:/TBL/c=2;(1,2)", 2, 2),
-            # FIXME: ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
-            # FIXME: ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(\"%20\")", 1, 3),
+            ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
+            ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3),
         ]
 
         dec = ari_text.Decoder()
@@ -993,7 +993,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/EXECSET/n=null;()", 0), #ARI_PRIM_NULL, 0), #TODO: update values
             ("ari:/EXECSET/N=null;()", 0), #ARI_PRIM_NULL, 0),
             ("ari:/EXECSET/N=0xabcd;()", 0), #ARI_PRIM_INT64, 0),
-            # FIXME: ("ari:/EXECSET/N=/UINT/0B0101;()", 0), #ARI_PRIM_INT64, 0),
+            #("ari:/EXECSET/N=/UINT/0B0101;()", 0), #ARI_PRIM_INT64, 0),
             ("ari:/EXECSET/n=1234;(//test/CTRL/hi)", 1), #ARI_PRIM_INT64, 1),
             ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)", 2), #ARI_PRIM_BSTR, 2),
         ]
@@ -1001,7 +1001,7 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text, expect = row
-            with self.subTest(text): #TODO: update loop
+            with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
