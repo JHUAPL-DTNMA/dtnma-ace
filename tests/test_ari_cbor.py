@@ -151,7 +151,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -193,7 +193,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -204,7 +204,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -218,7 +218,7 @@ class TestAriCbor(unittest.TestCase):
         ]
         
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -237,7 +237,7 @@ class TestAriCbor(unittest.TestCase):
         ]
         
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -249,7 +249,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -264,7 +264,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -276,7 +276,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -288,7 +288,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -300,7 +300,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -317,7 +317,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -328,31 +328,31 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
 
     def test_ari_cbor_decode_failure(self):
         TEST_CASE = [
-            ("8402202020"),
-            ("A0"),
-            ("821182A0820417"),
-            ("8364746573740A6474686174"),
-            ("821386030102030405"),
-            ("821380"),
-            ("8213816474657374"),
-            ("8213816474657374"), #note the duplicate test cases are on purpose
-            ("82148120"),
-            ("82158264746573741A2B450625"),
-            ("821582FB3FF33333333333331A2B450625"),
-            ("8215831904D26474657374850083647465737422626869F603426869"),
-            ("8215831904D28209F93C00850083647465737422626869F603426869"),
+            (b"8402202020"),
+            (b"A0"),
+            (b"821182A0820417"),
+            (b"8364746573740A6474686174"),
+            (b"821386030102030405"),
+            (b"821380"),
+            (b"8213816474657374"),
+            (b"8213816474657374"), #note the duplicate test cases are on purpose
+            (b"82148120"),
+            (b"82158264746573741A2B450625"),
+            (b"821582FB3FF33333333333331A2B450625"),
+            (b"8215831904D26474657374850083647465737422626869F603426869"),
+            (b"8215831904D28209F93C00850083647465737422626869F603426869"),
 
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -361,7 +361,7 @@ class TestAriCbor(unittest.TestCase):
         TEST_CASE = [("0001")]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -384,7 +384,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
@@ -452,7 +452,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         dec = ari_cbor.Decoder()
-        for data in self.TEST_CASE:
+        for data in TEST_CASE:
             LOGGER.warning('Testing data: %s', to_diag(data))
             with self.assertRaises(ari_cbor.ParseError):
                 dec.decode(io.BytesIO(data))
