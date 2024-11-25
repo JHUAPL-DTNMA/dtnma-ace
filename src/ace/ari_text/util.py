@@ -119,7 +119,7 @@ def t_floatraw(found):
 
 
 # int is decimal, binary, or hexadecimal
-@TypeMatch.apply(r'[+-]?(0b[01]+|0x[0-9a-fA-F]+|\d+)')
+@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
     return int(found[0], 0)
 
