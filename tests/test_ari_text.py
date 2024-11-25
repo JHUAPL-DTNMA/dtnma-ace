@@ -941,14 +941,13 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text, length, expect = row
-            with self.subTest(text): #TODO: update loop
+            with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(len(ari.value), length)
                 for i in range(length):
                     self.assertEqual(ari.value[i].type_id, expect)
-                #self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_am(self):
         TEST_CASE = [
@@ -990,12 +989,12 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_execset(self):
         TEST_CASE = [
-            ("ari:/EXECSET/n=null;()", 0), #ARI_PRIM_NULL, 0), #TODO: update values
-            ("ari:/EXECSET/N=null;()", 0), #ARI_PRIM_NULL, 0),
-            ("ari:/EXECSET/N=0xabcd;()", 0), #ARI_PRIM_INT64, 0),
-            #("ari:/EXECSET/N=/UINT/0B0101;()", 0), #ARI_PRIM_INT64, 0),
-            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)", 1), #ARI_PRIM_INT64, 1),
-            ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)", 2), #ARI_PRIM_BSTR, 2),
+            ("ari:/EXECSET/n=null;()", 0),
+            ("ari:/EXECSET/N=null;()", 0),
+            ("ari:/EXECSET/N=0xabcd;()", 0),
+            # FIXME: ("ari:/EXECSET/N=/UINT/0B0101;()", 0),
+            ("ari:/EXECSET/n=1234;(//test/CTRL/hi)", 1),
+            ("ari:/EXECSET/n=h'6869';(//test/CTRL/hi,//test/CTRL/eh)", 2), 
         ]
 
         dec = ari_text.Decoder()
