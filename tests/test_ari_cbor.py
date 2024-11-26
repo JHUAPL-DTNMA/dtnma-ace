@@ -28,7 +28,7 @@ import io
 import logging
 import unittest
 import cbor2
-from ace.ari import ReferenceARI, LiteralARI, StructType
+from ace.ari import ReferenceARI, LiteralARI, StructType, Identity
 from ace.cborutil import to_diag
 from ace import ari_cbor
 
@@ -138,23 +138,36 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_encode_objref_path_text(self):
         TEST_CASE = [
-            ("example-adm-a@2024-06-25", False, 0, None,
-          "8378186578616D706C652D61646D2D6140323032342D30362D3235F6F6"),
-            ("example-adm-a", False, 0, None, "836D6578616D706C652D61646D2D61F6F6"),
-            ("!example-odm-b",False, 0, None, "836E216578616D706C652D6F646D2D62F6F6"),
-            ("adm", False, 0, None, "836361646DF6F6"),
-            (None, True, ARI_TYPE_CONST, "hi", "83F621626869"),
-            ("adm", True, ARI_TYPE_CONST, "hi", "836361646D21626869"),
-            ("test", True, ARI_TYPE_CONST, "that", "836474657374216474686174"),
-            ("test@1234", True, ARI_TYPE_CONST, "that", "8369746573744031323334216474686174"),
-            ("!test", True, ARI_TYPE_CONST, "that", "83652174657374216474686174"),
+            ("example-adm-a@2024-06-25", False, None, None,
+          b"8378186578616D706C652D61646D2D6140323032342D30362D3235F6F6"),
+            ("example-adm-a", False, None, None, b"836D6578616D706C652D61646D2D61F6F6"),
+            ("!example-odm-b",False, None, None, b"836E216578616D706C652D6F646D2D62F6F6"),
+            ("adm", False, None, None, b"836361646DF6F6"),
+            (None, True, StructType.CONST, "hi", b"83F621626869"),
+            ("adm", True, StructType.CONST, "hi", b"836361646D21626869"),
+            ("test", True, StructType.CONST, "that", b"836474657374216474686174"),
+            ("test@1234", True, StructType.CONST, "that", b"8369746573744031323334216474686174"),
+            ("!test", True, StructType.CONST, "that", b"83652174657374216474686174"),
         ]
 
         dec = ari_cbor.Decoder()
-        for data in TEST_CASE:
-            LOGGER.warning('Testing data: %s', to_diag(data))
-            with self.assertRaises(ari_cbor.ParseError):
-                dec.decode(io.BytesIO(data))
+        enc = ari_cbor.Encoder()
+        for row in TEST_CASE:
+            ns_id, has_type, type_id, obj, expect = row
+            with self.subTest(expect):
+                ari = ReferenceARI(
+                    ident=Identity(ns_id, None, type_id, obj),
+                    params=None
+                )
+                loop = io.BytesIO()
+                enc.encode(ari, loop)
+                #LOGGER.info('Got text_dn: %s', loop.getvalue())
+                #self.assertEqual(expect, loop.getvalue())
+                LOGGER.warning('Got data: %s', to_diag(loop.getvalue()))
+                self.assertEqual(
+                    base64.b16encode(loop.getvalue()),
+                    expect #base64.b16encode(expect)
+                )
 
     def test_ari_cbor_encode_objref_path_int(self):
         TEST_CASE = [
