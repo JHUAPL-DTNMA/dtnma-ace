@@ -227,7 +227,7 @@ class Encoder:
                 buf.write(obj.ident.ns_rev)
             buf.write('/')
 
-            if obj.ident.type_id and obj.ident.obj_id:
+            if obj.ident.type_id is not None and obj.ident.obj_id is not None:
                 buf.write(obj.ident.type_id.name)
                 buf.write('/')
                 buf.write(str(obj.ident.obj_id))
