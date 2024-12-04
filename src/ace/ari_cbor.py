@@ -70,9 +70,10 @@ class Decoder:
         if isinstance(item, list):
             if len(item) >= 3:
                 # Object reference
+                type_id = StructType(item[1]) if item[1] is not None else None
                 ident = Identity(
                     ns_id=item[0],
-                    type_id=StructType(item[1]),
+                    type_id=type_id,
                     obj_id=item[2],
                 )
 
@@ -180,9 +181,10 @@ class Encoder:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
         if isinstance(obj, ReferenceARI):
+            type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
                 obj.ident.ns_id,
-                int(obj.ident.type_id),
+                type_id,
                 obj.ident.obj_id,
             ]
 
