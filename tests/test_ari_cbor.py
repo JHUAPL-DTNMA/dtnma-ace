@@ -88,9 +88,14 @@ class TestAriCbor(unittest.TestCase):
             )
 
     REFERENCE_DATAS = [
+        # from `ari://0/`
+        cbor2.dumps([0, None, None]),
+        # from `ari://65536/`
+        cbor2.dumps([65536, None, None]),
+        # from `ari://0/CTRL/0`
+        cbor2.dumps([0, StructType.CTRL.value, 0]),
         # from 'ari:/bp-agent/CTRL/reset_all_counts()',
         cbor2.dumps([0, StructType.CTRL.value, 10]),
-
     ]
 
     def test_reference_cbor_loopback(self):

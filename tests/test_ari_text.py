@@ -269,6 +269,8 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari_dn, ari_up)
 
     REFERENCE_TEXTS = [
+        'ari://0/',
+        'ari://65536/',
         'ari://namespace/',
         'ari://!namespace/',
         'ari://namespace/VAR/hello',
@@ -277,6 +279,7 @@ class TestAriText(unittest.TestCase):
         'ari://namespace/VAR/hello(/INT/10)',
         'ari://namespace/VAR/hello(//other/CONST/hi)',
         'ari://namespace@2020-01-01/VAR/hello',
+        'ari://0/CTRL/0',
         'ari:./VAR/hello',
         'ari://bp-agent/CTRL/reset_all_counts()',
         'ari://amp-agent/CTRL/gen_rpts(/AC/(//bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
