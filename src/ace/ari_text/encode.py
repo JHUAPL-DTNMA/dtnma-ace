@@ -136,6 +136,8 @@ class Encoder:
     def _encode_obj(self, buf: TextIO, obj:ARI, prefix:bool=False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
+            if prefix:
+                buf.write('ari:')
             if obj.type_id is not None:
                 buf.write('/')
                 buf.write(obj.type_id.name)
