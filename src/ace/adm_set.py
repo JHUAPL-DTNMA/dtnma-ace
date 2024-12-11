@@ -26,7 +26,7 @@ a cache database.
 import logging
 import os
 import traceback
-from typing import BinaryIO, List, Optional, Set
+from typing import BinaryIO, List, Set, Union
 from pyang.repository import Repository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -252,17 +252,15 @@ class AdmSet:
             item.is_file() and item.name.endswith('.yang')
         )
 
-    def load_from_dirs(self, dir_paths:List[str]) -> int:
-        ''' Scan a directory for JSON files and attempt to read them as
+    def load_from_dirs(self, dir_paths:Union[str, List[str]]) -> int:
+        ''' Scan directories for YANG files and attempt to read them as
         ADM definitions.
 
-        :param dir_paths: The directory paths to scan.
+        :param dir_paths: One or more directory paths to scan.
         :return: The number of ADMs read from that directory.
         '''
         LOGGER.debug('Loading from directories %s', dir_paths)
-        # workaround misuse
         if isinstance(dir_paths, str):
-            LOGGER.warning('load_from_dirs() given a single directory instead of a list')
             dir_paths = [dir]
 
         file_entries = []
