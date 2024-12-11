@@ -33,7 +33,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
 
-CURRENT_SCHEMA_VERSION = 16
+CURRENT_SCHEMA_VERSION = 17
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -426,7 +426,7 @@ class Oper(Base, AdmObjMixin, ParamMixin):
     result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
 
 
-class Var(Base, AdmObjMixin, TypeUseMixin):
+class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' Variable value (VAR)'''
     __tablename__ = "var"
     # Unique ID of the row

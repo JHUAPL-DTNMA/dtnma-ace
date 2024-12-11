@@ -25,6 +25,7 @@ a cache database.
 '''
 import logging
 import os
+import traceback
 from typing import BinaryIO, List, Optional, Set
 from pyang.repository import Repository
 from sqlalchemy import create_engine
@@ -259,6 +260,10 @@ class AdmSet:
         :return: The number of ADMs read from that directory.
         '''
         LOGGER.debug('Loading from directories %s', dir_paths)
+        # workaround misuse
+        if isinstance(dir_paths, str):
+            LOGGER.warning('load_from_dirs() given a single directory instead of a list')
+            dir_paths = [dir]
 
         file_entries = []
         for dir_path in reversed(dir_paths):
@@ -362,6 +367,7 @@ class AdmSet:
                 'Failed to open or read the file %s: %s',
                 file_path, err
             )
+            LOGGER.debug('%s', traceback.format_exc())
             raise
 
         self._post_load(adm_new, del_dupe)
