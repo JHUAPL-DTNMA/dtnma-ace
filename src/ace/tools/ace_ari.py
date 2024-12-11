@@ -24,7 +24,7 @@
 
 It uses environment variables to control where ADMs are searched for and
 command options to control the ARI conversion.
-For ``text`` or ``cborhex`` forms of input or output, each line is handled 
+For ``text`` or ``cborhex`` forms of input or output, each line is handled
 as a separate ARI and converted independently until the input stream is ended.
 For ``cbor`` form of input or output, the stream is treated as a CBOR sequence
 and each item is handled as a separate ARI.
@@ -150,12 +150,12 @@ def run(args: argparse.Namespace):
 
     # Text mode prefers non-nickname
     nn_mode = nickname.Mode.FROM_NN if args.outform == 'text' else nickname.Mode.TO_NN
-    nn_func = nickname.Converter(nn_mode, adms, args.must_nickname)
+    nn_func = nickname.Converter(nn_mode, adms.db_session(), args.must_nickname)
 
     # Handle ARIs iteratively
     for ari in decode(args):
         LOGGER.info('Decoded ARI as %s', ari)
-        nn_func(ari)
+        ari = nn_func(ari)
         LOGGER.info('Encoding ARI as %s', ari)
         encode(args, ari)
 

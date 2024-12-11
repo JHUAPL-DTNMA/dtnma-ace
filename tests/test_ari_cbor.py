@@ -59,7 +59,7 @@ class TestAriCbor(unittest.TestCase):
         (cbor2.dumps(b'hi'), b'hi'),
         # Times
         (cbor2.dumps([StructType.TP, 101]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=101))),
-        (cbor2.dumps([StructType.TP, [1, 3]]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=1000))),
+        (cbor2.dumps([StructType.TP, [3, 1]]), (ari_cbor.DTN_EPOCH + datetime.timedelta(seconds=1000))),
         (cbor2.dumps([StructType.TD, 18]), datetime.timedelta(seconds=18)),
         (cbor2.dumps([StructType.TD, -18]), -datetime.timedelta(seconds=18)),
     ]
@@ -89,9 +89,14 @@ class TestAriCbor(unittest.TestCase):
             )
 
     REFERENCE_DATAS = [
+        # from `ari://0/`
+        cbor2.dumps([0, None, None]),
+        # from `ari://65536/`
+        cbor2.dumps([65536, None, None]),
+        # from `ari://0/CTRL/0`
+        cbor2.dumps([0, StructType.CTRL.value, 0]),
         # from 'ari:/bp-agent/CTRL/reset_all_counts()',
         cbor2.dumps([0, StructType.CTRL.value, 10]),
-
     ]
 
     def test_reference_cbor_loopback(self):

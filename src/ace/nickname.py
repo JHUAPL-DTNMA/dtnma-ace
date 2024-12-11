@@ -62,9 +62,9 @@ class Converter:
 
     def _convert_ari(self, ari:ARI) -> ARI:
         if isinstance(ari, ReferenceARI):
-            return self._convert_ref(ari)
-        else:
-            return ari
+            ari = self._convert_ref(ari)
+
+        return ari
 
     def _convert_ref(self, ari:ReferenceARI) -> ReferenceARI:
         obj = dereference(ari, self._db_sess)

@@ -70,9 +70,10 @@ class Decoder:
         if isinstance(item, list):
             if len(item) >= 3:
                 # Object reference
+                type_id = StructType(item[1]) if item[1] is not None else None
                 ident = Identity(
                     ns_id=item[0],
-                    type_id=StructType(item[1]),
+                    type_id=type_id,
                     obj_id=item[2],
                 )
 
@@ -153,7 +154,9 @@ class Decoder:
         if isinstance(item, int):
             return datetime.timedelta(seconds=item)
         elif isinstance(item, list):
-            mant, exp = item
+            exp, mant = map(int, item)
+            if exp < -9 or exp > 9:
+                raise ValueError(f'Decimal fraction exponent outside valid range [-9,9]')
             total_usec = mant * 10 ** (exp + 6)
             return datetime.timedelta(microseconds=total_usec)
         else:
@@ -178,9 +181,10 @@ class Encoder:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
         if isinstance(obj, ReferenceARI):
+            type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
                 obj.ident.ns_id,
-                int(obj.ident.type_id),
+                type_id,
                 obj.ident.obj_id,
             ]
 
@@ -244,7 +248,7 @@ class Encoder:
 
         if exp:
             # use decimal fraction
-            item = [mant, exp]
+            item = [exp, mant]
         else:
             item = mant
         return item

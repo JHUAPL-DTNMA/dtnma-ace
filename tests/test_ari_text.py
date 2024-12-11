@@ -50,132 +50,132 @@ class TestAriText(unittest.TestCase):
 
     LITERAL_TEXTS = [
         # Specials
-        ('undefined', UNDEFINED.value),
-        ('null', None),
-        ('/NULL/null', None),
+        ('ari:undefined', UNDEFINED.value),
+        ('ari:null', None),
+        ('ari:/NULL/null', None),
         # BOOL
-        ('true', True),
-        ('false', False),
-        ('/BOOL/true', True),
-        ('/1/true', True, '/BOOL/true'),
-        ('ari:true', True, 'true'),
+        ('ari:true', True),
+        ('ari:false', False),
+        ('ari:/BOOL/true', True),
+        ('ari:/1/true', True, 'ari:/BOOL/true'),
+        ('true', True, 'ari:true'),
         # INT
-        ('0', 0),
-        ('10', 10),
-        ('-100', -100),
-        ('0x10', 16, '16'),
-        ('0b100', 4, '4'),
-        ('/INT/10', 10),
-        ('/VAST/0', 0),
-        ('/VAST/10', 10),
-        ('/VAST/0xa', 0xa, '/VAST/10'),
-        ('/VAST/0b10', 0b10, '/VAST/2'),
-        ('/VAST/-10', -10),
-        ('/VAST/-0xa', -0xa, '/VAST/-10'),
-        ('ari:/INT/10', 10, '/INT/10'),
+        ('ari:0', 0),
+        ('ari:10', 10),
+        ('ari:-100', -100),
+        ('ari:0x10', 16, 'ari:16'),
+        ('ari:0b100', 4, 'ari:4'),
+        ('ari:/INT/10', 10),
+        ('ari:/VAST/0', 0),
+        ('ari:/VAST/10', 10),
+        ('ari:/VAST/0xa', 0xa, 'ari:/VAST/10'),
+        ('ari:/VAST/0b10', 0b10, 'ari:/VAST/2'),
+        ('ari:/VAST/-10', -10),
+        ('ari:/VAST/-0xa', -0xa, 'ari:/VAST/-10'),
+        ('/INT/10', 10, 'ari:/INT/10'),
         # FLOAT
-        ('0.0', 0.0),
-        ('1e3', 1000.0, '1000.0'),
-        ('0fx63d0', 1000.0, '1000.0'),
-        ('+0fx63d0', 1000.0, '1000.0'),
-        ('-0fx63d0', -1000.0, '-1000.0'),
-        ('0fx447a0000', 1000.0, '1000.0'),
-        ('0fx408f400000000000', 1000.0, '1000.0'),
-        ('/REAL32/0.0', 0.0),
-        ('/REAL64/NaN', float('NaN')),
-        ('/REAL64/Infinity', float('Infinity')),
-        ('/REAL64/-Infinity', -float('Infinity')),
-        ('/REAL64/0.0', 0.0),
-        ('/REAL64/0.01', 0.01),
-        ('/REAL64/1e2', 1e2, '/REAL64/100.0'),
-        ('/REAL64/1e-2', 1e-2, '/REAL64/0.01'),
-        ('/REAL64/+1e2', 1e2, '/REAL64/100.0'),
-        ('/REAL64/-1e2', -1e2, '/REAL64/-100.0'),
-        ('/REAL64/1.25e2', 1.25e2, '/REAL64/125.0'),
-        ('/REAL64/1e25', 1e25, '/REAL64/1e+25'),
-        ('/REAL64/NaN', float('NaN')),
-        ('/REAL64/Infinity', float('Infinity')),
-        ('/REAL64/-Infinity', -float('Infinity')),
+        ('ari:0.0', 0.0),
+        ('ari:1e3', 1000.0, 'ari:1000.0'),
+        ('ari:0fx63d0', 1000.0, 'ari:1000.0'),
+        ('ari:+0fx63d0', 1000.0, 'ari:1000.0'),
+        ('ari:-0fx63d0', -1000.0, 'ari:-1000.0'),
+        ('ari:0fx447a0000', 1000.0, 'ari:1000.0'),
+        ('ari:0fx408f400000000000', 1000.0, 'ari:1000.0'),
+        ('ari:/REAL32/0.0', 0.0),
+        ('ari:/REAL64/NaN', float('NaN')),
+        ('ari:/REAL64/Infinity', float('Infinity')),
+        ('ari:/REAL64/-Infinity', -float('Infinity')),
+        ('ari:/REAL64/0.0', 0.0),
+        ('ari:/REAL64/0.01', 0.01),
+        ('ari:/REAL64/1e2', 1e2, 'ari:/REAL64/100.0'),
+        ('ari:/REAL64/1e-2', 1e-2, 'ari:/REAL64/0.01'),
+        ('ari:/REAL64/+1e2', 1e2, 'ari:/REAL64/100.0'),
+        ('ari:/REAL64/-1e2', -1e2, 'ari:/REAL64/-100.0'),
+        ('ari:/REAL64/1.25e2', 1.25e2, 'ari:/REAL64/125.0'),
+        ('ari:/REAL64/1e25', 1e25, 'ari:/REAL64/1e+25'),
+        ('ari:/REAL64/NaN', float('NaN')),
+        ('ari:/REAL64/Infinity', float('Infinity')),
+        ('ari:/REAL64/-Infinity', -float('Infinity')),
         # TEXTSTR
-        ('hi', 'hi'),
-        ('%22hi%20there%22', 'hi there'),
-        ('%22hi%5C%22oh%22', 'hi"oh'),
-        ('/TEXTSTR/hi', 'hi'),
-        ('/TEXTSTR/%22hi%20there%22', 'hi there'),
+        ('ari:hi', 'hi'),
+        ('ari:%22hi%20there%22', 'hi there'),
+        ('ari:%22hi%5C%22oh%22', 'hi"oh'),
+        ('ari:/TEXTSTR/hi', 'hi'),
+        ('ari:/TEXTSTR/%22hi%20there%22', 'hi there'),
         # BYTESTR
-        ('%27hi%27', b'hi', 'h%276869%27'),
-        ('%27hi%5C%22oh%27', b'hi"oh', 'h%276869226f68%27'),
-        ('%27hi%5C%27oh%27', b'hi\'oh', 'h%276869276f68%27'),
-        ('/BYTESTR/%27hi%27', b'hi', '/BYTESTR/h%276869%27'),
+        ('ari:%27hi%27', b'hi', 'ari:h%276869%27'),
+        ('ari:%27hi%5C%22oh%27', b'hi"oh', 'ari:h%276869226f68%27'),
+        ('ari:%27hi%5C%27oh%27', b'hi\'oh', 'ari:h%276869276f68%27'),
+        ('ari:/BYTESTR/%27hi%27', b'hi', 'ari:/BYTESTR/h%276869%27'),
         # RFC 4648 test vectors
-        ('h%27666F6F626172%27', b'foobar', 'h%27666f6f626172%27'),
-        ('b32%27MZXW6YTBOI%27', b'foobar', 'h%27666f6f626172%27'),
-        # not working ('h32%27CPNMUOJ1%27', b'foobar', 'h%27666f6f626172%27'),
-        ('b64%27Zm9vYmFy%27', b'foobar', 'h%27666f6f626172%27'),
+        ('ari:h%27666F6F626172%27', b'foobar', 'ari:h%27666f6f626172%27'),
+        ('ari:b32%27MZXW6YTBOI%27', b'foobar', 'ari:h%27666f6f626172%27'),
+        # not working ('ari:h32%27CPNMUOJ1%27', b'foobar', 'ari:h%27666f6f626172%27'),
+        ('ari:b64%27Zm9vYmFy%27', b'foobar', 'ari:h%27666f6f626172%27'),
         # Times
-        ('/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
-        ('/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),  # with formatting
-        ('/TP/20230102T030405.250000Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 250000)),
-        ('/TP/725943845.0', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), '/TP/20230102T030405Z'),
-        ('/TD/PT3H', datetime.timedelta(hours=3)),
-        ('/TD/PT10.001S', datetime.timedelta(seconds=10.001)),
-        ('/TD/PT10.25S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
-        ('/TD/PT10.250000S', datetime.timedelta(seconds=10.25), '/TD/PT10.25S'),
-        ('/TD/P1DT10.25S', datetime.timedelta(days=1, seconds=10.25), '/TD/P1DT10.25S'),
-        ('/TD/+PT3H', datetime.timedelta(hours=3), '/TD/PT3H'),
-        ('/TD/-PT3H', -datetime.timedelta(hours=3)),
-        ('/TD/100', datetime.timedelta(seconds=100), '/TD/PT1M40S'),
-        ('/TD/1.5', datetime.timedelta(seconds=1.5), '/TD/PT1.5S'),
+        ('ari:/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
+        ('ari:/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), 'ari:/TP/20230102T030405Z'),  # with formatting
+        ('ari:/TP/20230102T030405.250000Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 250000)),
+        ('ari:/TP/725943845.0', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), 'ari:/TP/20230102T030405Z'),
+        ('ari:/TD/PT3H', datetime.timedelta(hours=3)),
+        ('ari:/TD/PT10.001S', datetime.timedelta(seconds=10.001)),
+        ('ari:/TD/PT10.25S', datetime.timedelta(seconds=10.25), 'ari:/TD/PT10.25S'),
+        ('ari:/TD/PT10.250000S', datetime.timedelta(seconds=10.25), 'ari:/TD/PT10.25S'),
+        ('ari:/TD/P1DT10.25S', datetime.timedelta(days=1, seconds=10.25), 'ari:/TD/P1DT10.25S'),
+        ('ari:/TD/+PT3H', datetime.timedelta(hours=3), 'ari:/TD/PT3H'),
+        ('ari:/TD/-PT3H', -datetime.timedelta(hours=3)),
+        ('ari:/TD/100', datetime.timedelta(seconds=100), 'ari:/TD/PT1M40S'),
+        ('ari:/TD/1.5', datetime.timedelta(seconds=1.5), 'ari:/TD/PT1.5S'),
         # Extras
-        ('/LABEL/test', 'test'),
-        ('/LABEL/null', 'null'),
-        ('/LABEL/undefined', 'undefined'),
-        ('/CBOR/h%27a164746573748203f94480%27', base64.b16decode('A164746573748203F94480')),
+        ('ari:/LABEL/test', 'test'),
+        ('ari:/LABEL/null', 'null'),
+        ('ari:/LABEL/undefined', 'undefined'),
+        ('ari:/CBOR/h%27a164746573748203f94480%27', base64.b16decode('A164746573748203F94480')),
         # Containers
-        ('/AC/()', []),
-        ('/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
+        ('ari:/AC/()', []),
+        ('ari:/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
         (
-            '/AC/(1,/UVAST/2)',
+            'ari:/AC/(1,/UVAST/2)',
             [LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST)]
         ),
-        ('/AM/()', {}),
-        ('/AM/(1=1,2=3)', {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
+        ('ari:/AM/()', {}),
+        ('ari:/AM/(1=1,2=3)', {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
         (
-            '/AM/(1=/UVAST/1,2=3)',
+            'ari:/AM/(1=/UVAST/1,2=3)',
             {LiteralARI(1): LiteralARI(1, type_id=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
         ),
-        ('/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
+        ('ari:/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
         (
-            '/TBL/c=3;',
+            'ari:/TBL/c=3;',
             numpy.ndarray((0, 3))
         ),
         (
-            '/TBL/c=3;(1,2,3)(a,b,c)',
+            'ari:/TBL/c=3;(1,2,3)(a,b,c)',
             numpy.array([
                 [LiteralARI(1), LiteralARI(2), LiteralARI(3)],
                 [LiteralARI('a'), LiteralARI('b'), LiteralARI('c')],
             ])
         ),
         (
-            '/EXECSET/n=null;(//adm/CTRL/name)',
+            'ari:/EXECSET/n=null;(//adm/CTRL/name)',
             ExecutionSet(nonce=None, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/EXECSET/n=1234;(//adm/CTRL/name)',
+            'ari:/EXECSET/n=1234;(//adm/CTRL/name)',
             ExecutionSet(nonce=1234, targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/EXECSET/n=h%276869%27;(//adm/CTRL/name)',
+            'ari:/EXECSET/n=h%276869%27;(//adm/CTRL/name)',
             ExecutionSet(nonce=b'hi', targets=[
                 ReferenceARI(Identity(ns_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            '/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//adm/CTRL/name;(null))',
+            'ari:/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//adm/CTRL/name;(null))',
             ReportSet(
                 nonce=None,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -191,7 +191,7 @@ class TestAriText(unittest.TestCase):
             )
         ),
         (
-            '/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=//adm/CTRL/other;(null))',
+            'ari:/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=//adm/CTRL/other;(null))',
             ReportSet(
                 nonce=1234,
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -210,7 +210,7 @@ class TestAriText(unittest.TestCase):
 
     def test_literal_text_loopback(self):
         dec = ari_text.Decoder()
-        enc = ari_text.Encoder(scheme_prefix=False)
+        enc = ari_text.Encoder()
         for row in self.LITERAL_TEXTS:
             with self.subTest(f'{row}'):
                 if len(row) == 2:
@@ -234,16 +234,16 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(loop.getvalue(), exp_loop)
 
     LITERAL_OPTIONS = (
-        ('1000', dict(int_base=2), '0b1111101000'),
-        ('1000', dict(int_base=16), '0x3E8'),
-        ('/TP/20230102T030405Z', dict(time_text=False), '/TP/725943845.000000'),
-        ('/TD/PT3H', dict(time_text=False), '/TD/10800.000000'),
-        ('1e3', dict(float_form='g'), '1000.0'),
-        ('1e3', dict(float_form='f'), '1000.000000'),
-        ('1e3', dict(float_form='e'), '1.000000e+03'),
-        ('1e3', dict(float_form='x'), '0fx63d0'),
-        ('hi', dict(text_identity=False), '%22hi%22'),
-        ('/CBOR/h%27a164746573748203f94480%27', dict(cbor_diag=True), '/CBOR/' + ari_text.quote('<<{"test":[3,4.5]}>>')),
+        ('1000', dict(int_base=2), 'ari:0b1111101000'),
+        ('1000', dict(int_base=16), 'ari:0x3E8'),
+        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845.000000'),
+        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800.000000'),
+        ('1e3', dict(float_form='g'), 'ari:1000.0'),
+        ('1e3', dict(float_form='f'), 'ari:1000.000000'),
+        ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
+        ('1e3', dict(float_form='x'), 'ari:0fx63d0'),
+        ('hi', dict(text_identity=False), 'ari:%22hi%22'),
+        ('/CBOR/h%27a164746573748203f94480%27', dict(cbor_diag=True), 'ari:/CBOR/' + ari_text.quote('<<{"test":[3,4.5]}>>')),
     )
 
     def test_literal_text_options(self):
@@ -251,7 +251,6 @@ class TestAriText(unittest.TestCase):
         for row in self.LITERAL_OPTIONS:
             with self.subTest(f'{row}'):
                 text_dn, opts, exp_loop = row
-                opts['scheme_prefix'] = False
                 enc = ari_text.Encoder(ari_text.EncodeOptions(**opts))
 
                 ari_dn = dec.decode(io.StringIO(text_dn))
@@ -270,6 +269,8 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari_dn, ari_up)
 
     REFERENCE_TEXTS = [
+        'ari://0/',
+        'ari://65536/',
         'ari://namespace/',
         'ari://!namespace/',
         'ari://namespace/VAR/hello',
@@ -278,6 +279,7 @@ class TestAriText(unittest.TestCase):
         'ari://namespace/VAR/hello(/INT/10)',
         'ari://namespace/VAR/hello(//other/CONST/hi)',
         'ari://namespace@2020-01-01/VAR/hello',
+        'ari://0/CTRL/0',
         'ari:./VAR/hello',
         'ari://bp-agent/CTRL/reset_all_counts()',
         'ari://amp-agent/CTRL/gen_rpts(/AC/(//bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
