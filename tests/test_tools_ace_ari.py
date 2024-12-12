@@ -110,7 +110,7 @@ class TestAriRoundtrip(unittest.TestCase):
             ace_ari.run(args)
             cborhex_out = sys.stdout.getvalue()
             LOGGER.info('Got encoded %s', cborhex_out)
-            self.assertEqual(cborhex_in.lower(), cborhex_out.lower())
+            self.assertEqual(cborhex_in.casefold(), cborhex_out.casefold())
 
     def test_cborhex_to_text(self):
         for text_in, cborhex_in in self.CANONICAL_PAIRS:
@@ -178,4 +178,4 @@ class TestAriRoundtrip(unittest.TestCase):
                 ace_ari.run(args)
             cborhex_out = sys.stdout.getvalue()
             LOGGER.info('Got encoded %s', cborhex_out)
-            self.assertEqual(part_out.lower(), cborhex_out.lower())
+            self.assertEqual(part_out.casefold(), cborhex_out.casefold())

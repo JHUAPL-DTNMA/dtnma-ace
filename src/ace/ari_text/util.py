@@ -80,7 +80,7 @@ def t_null(_found):
 
 @TypeMatch.apply(r'(?i)true|false')
 def t_bool(found):
-    return (found[0].lower() == 'true')
+    return (found[0].casefold() == 'true')
 
 
 @TypeMatch.apply(r'([+-])?(\d*)\.(\d*)')
