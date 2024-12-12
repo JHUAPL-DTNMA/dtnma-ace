@@ -23,7 +23,6 @@
 ''' Parser configuration for ARI text decoding.
 '''
 import logging
-import numpy
 from ply import yacc
 from ace.ari import (
     Identity, ReferenceARI, LiteralARI, StructType,
@@ -232,6 +231,10 @@ def p_objpath_with_ns(p):
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
 
+    # Reference are only allowed with AMM types
+    if typ >= 0 or typ == StructType.OBJECT:
+        raise RuntimeError("Invalid AMM type")
+
     mod = util.MODID(p[3])
     if not isinstance(mod, tuple):
         mod = (mod, None)
@@ -251,6 +254,10 @@ def p_objpath_relative(p):
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
+
+    # Reference are only allowed with AMM types
+    if typ >= 0 or typ == StructType.OBJECT:
+        raise RuntimeError("Invalid AMM type")
 
     p[0] = Identity(ns_id=None, type_id=typ, obj_id=util.IDSEGMENT(p[5]))
 
@@ -304,7 +311,8 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     'structpair : VALSEG EQ VALSEG SC'
-    key = util.STRUCTKEY(p[1])
+    # Keys are case-insensitive so get folded to lower case
+    key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
 
 

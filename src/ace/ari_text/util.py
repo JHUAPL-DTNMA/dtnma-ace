@@ -68,19 +68,19 @@ class TypeSeq:
         raise ValueError(f'No possible literal type matched text: {text}')
 
 
-@TypeMatch.apply(r'undefined')
+@TypeMatch.apply(r'(?i)undefined')
 def t_undefined(_found):
     return UNDEFINED.value
 
 
-@TypeMatch.apply(r'null')
+@TypeMatch.apply(r'(?i)null')
 def t_null(_found):
     return None
 
 
-@TypeMatch.apply(r'true|false')
+@TypeMatch.apply(r'(?i)true|false')
 def t_bool(found):
-    return (found[0] == 'true')
+    return (found[0].casefold() == 'true')
 
 
 @TypeMatch.apply(r'([+-])?(\d*)\.(\d*)')
@@ -89,7 +89,7 @@ def t_decfrac(found):
 
 
 # float either contains a decimal point or exponent or both
-@TypeMatch.apply(r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN')
+@TypeMatch.apply(r'(?i)[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN')
 def t_float(found):
     return float(found[0])
 
@@ -119,7 +119,7 @@ def t_floatraw(found):
 
 
 # int is decimal, binary, or hexadecimal
-@TypeMatch.apply(r'[+-]?(0b[01]+|0x[0-9a-fA-F]+|\d+)')
+@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
     return int(found[0], 0)
 

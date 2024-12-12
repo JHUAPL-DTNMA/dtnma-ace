@@ -190,18 +190,22 @@ class Encoder:
                 self._encode_list(buf, obj.value.reports)
             else:
                 if isinstance(obj.value, int) and not isinstance(obj.value, bool):
+                    sign = "-" if obj.value < 0 else ""
                     if self._options.int_base == 2:
                         fmt = '0b{0:b}'
                     elif self._options.int_base == 16:
-                        fmt = '0x{0:x}'
+                        fmt = '0x{0:X}'
                     else:
                         fmt = '{0:d}'
-                    buf.write(fmt.format(obj.value))
+                    buf.write(sign)
+                    buf.write(fmt.format(abs(obj.value)))
                     return
                 elif isinstance(obj.value, float):
                     if self._options.float_form == 'x':
                         # CBOR efficient length encoding
-                        data = cbor2.dumps(obj.value, canonical=True)
+                        sign = "-" if obj.value < 0 else ""
+                        data = cbor2.dumps(abs(obj.value), canonical=True)
+                        buf.write(sign)
                         buf.write('0fx')
                         buf.write(base64.b16encode(data[1:]).decode('ascii').casefold())
                         return
