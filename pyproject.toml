@@ -51,6 +51,15 @@ docs = [
   "sphinx-argparse",
 ]
 
+[tool.pytest.ini_options]
+addopts = [
+    "--log-cli-level=warning",
+    "--import-mode=importlib",
+]
+testpaths = [
+    "tests",
+]
+
 [tool.pylint.MAIN]
 load-plugins="pylint_junit"
 suggestion-mode="no"

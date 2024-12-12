@@ -23,7 +23,6 @@
 ''' Parser configuration for ARI text decoding.
 '''
 import logging
-import numpy
 from ply import yacc
 from ace.ari import (
     Identity, ReferenceARI, LiteralARI, StructType,
@@ -86,8 +85,6 @@ def p_typedlit_am(p):
 def p_typedlit_tbl_empty(p):
     '''typedlit : SLASH TBL structlist'''
     ncol = int(p[3].get('c', 0))
-    if ncol == 0:
-        ncol = int(p[3].get('C', 0))
     table = Table((0, ncol))
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
@@ -95,8 +92,6 @@ def p_typedlit_tbl_empty(p):
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
     ncol = int(p[3].get('c', 0))
-    if ncol == 0:
-        ncol = int(p[3].get('C', 0))
     nrow = len(p[4])
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
@@ -119,8 +114,6 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
     nonce = util.NONCE(p[3].get('n', 'null'))
-    if nonce == 'null':
-        nonce = util.NONCE(p[3].get('N', 'null'))
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
@@ -131,8 +124,6 @@ def p_typedlit_execset(p):
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
     nonce = util.NONCE(p[3].get('n', 'null'))
-    if nonce == 'null':
-        nonce = util.NONCE(p[3].get('N', 'null'))
     rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
@@ -242,7 +233,7 @@ def p_objpath_with_ns(p):
 
     # Reference are only allowed with AMM types
     if typ >= 0 or typ == StructType.OBJECT:
-      raise RuntimeError("Invalid AMM type")
+        raise RuntimeError("Invalid AMM type")
 
     mod = util.MODID(p[3])
     if not isinstance(mod, tuple):
@@ -266,7 +257,7 @@ def p_objpath_relative(p):
 
     # Reference are only allowed with AMM types
     if typ >= 0 or typ == StructType.OBJECT:
-      raise RuntimeError("Invalid AMM type")
+        raise RuntimeError("Invalid AMM type")
 
     p[0] = Identity(ns_id=None, type_id=typ, obj_id=util.IDSEGMENT(p[5]))
 
@@ -320,7 +311,8 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     'structpair : VALSEG EQ VALSEG SC'
-    key = util.STRUCTKEY(p[1])
+    # Keys are case-insensitive so get folded to lower case
+    key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
 
 
