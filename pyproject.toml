@@ -26,6 +26,7 @@ dependencies = [
   "PLY >= 3",
   "portion ~=2.4",
   "pyang ~=2.5",
+  "setuptools",
   "xdg-base-dirs ~=6.0",
   "sqlalchemy >= 1.3",
 ]
