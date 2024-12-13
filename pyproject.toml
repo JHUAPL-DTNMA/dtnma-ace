@@ -11,7 +11,7 @@ authors = [
 description = "DTNMA AMM CODEC Engine (ACE)"
 readme = "README.md"
 license = { text="Apache-2.0" }
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "License :: OSI Approved :: Apache Software License",
@@ -26,6 +26,7 @@ dependencies = [
   "PLY >= 3",
   "portion ~=2.4",
   "pyang ~=2.5",
+  "setuptools",
   "xdg-base-dirs ~=6.0",
   "sqlalchemy >= 1.3",
 ]
