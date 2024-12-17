@@ -77,7 +77,7 @@ class BaseType:
         '''
         return set()
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         raise NotImplementedError()
 
     def convert(self, obj:ARI) -> ARI:
@@ -125,7 +125,7 @@ class NullType(BuiltInType):
     def __init__(self):
         super().__init__(StructType.NULL)
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -145,7 +145,7 @@ class BoolType(BuiltInType):
     def __init__(self):
         super().__init__(StructType.BOOL)
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -184,7 +184,7 @@ class NumericType(BuiltInType):
         self.dom_min = dom_min
         self.dom_max = dom_max
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -237,7 +237,7 @@ class StringType(BuiltInType):
     }
     ''' Required value type for target string type. '''
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -275,7 +275,7 @@ class TimeType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -321,7 +321,7 @@ class ContainerType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -354,7 +354,7 @@ class ObjRefType(BuiltInType):
     def __init__(self, type_id=None):
         super().__init__(type_id)
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if not isinstance(obj, ReferenceARI):
             return None
         if self.type_id is not None and obj.ident.type_id != self.type_id:
@@ -381,7 +381,7 @@ class AnyType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> ARI:
+    def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         typ = self.VALUE_CLS[self.type_id]
