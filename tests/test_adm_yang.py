@@ -226,6 +226,7 @@ module empty {}
     }
     amm:parameter def {
       amm:type "//ietf-amm/TYPEDEF/expr";
+      amm:default "ari:/AC/()";
     }
   }
   amm:ctrl test1 {
@@ -248,11 +249,26 @@ module empty {}
         obj = adm.ctrl[0]
         self.assertIsInstance(obj, models.Ctrl)
         self.assertEqual("test1", obj.name)
+
         self.assertEqual(2, len(obj.parameters.items))
-        self.assertEqual("id", obj.parameters.items[0].name)
+        param = obj.parameters.items[0]
+        self.assertEqual("id", param.name)
         self.assertEqual(
             self._from_text('//ietf-amm/typedef/any'),
-            obj.parameters.items[0].typeobj.type_ari
+            param.typeobj.type_ari
+        )
+        self.assertIsNone(param.default_value)
+        self.assertIsNone(param.default_ari)
+        param = obj.parameters.items[1]
+        self.assertEqual("def", param.name)
+        self.assertEqual(
+            self._from_text('//ietf-amm/typedef/expr'),
+            param.typeobj.type_ari
+        )
+        self.assertEqual("ari:/AC/()", param.default_value)
+        self.assertEqual(
+            self._from_text('ari:/AC/()'),
+            param.default_ari
         )
 
         self.assertEqual(1, len(adm.edd))
