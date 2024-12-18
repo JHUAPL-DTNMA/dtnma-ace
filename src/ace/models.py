@@ -22,8 +22,6 @@
 #
 ''' ORM models for the ADM and its contents.
 '''
-import logging
-from typing import List
 from sqlalchemy import (
     Column, ForeignKey, Integer, String, DateTime, Text, PickleType
 )

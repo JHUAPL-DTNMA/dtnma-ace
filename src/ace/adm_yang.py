@@ -444,9 +444,13 @@ class Decoder:
                     name=param_stmt.arg,
                     typeobj=self._get_typeobj(param_stmt)
                 )
+
                 def_stmt = search_one_exp(param_stmt, (AMM_MOD, 'default'))
                 if def_stmt:
                     item.default_value = def_stmt.arg
+                    # actually check the content
+                    item.default_ari = self._handle_ari(def_stmt.arg)
+
                 orm_val.items.append(item)
 
             obj.parameters = orm_val
