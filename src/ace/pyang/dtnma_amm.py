@@ -218,11 +218,7 @@ AMM_ORDERED_NAMES = (
 )
 ''' All data-like keywords to preserve order in canonical encoding. '''
 
-AMM_GROUPING_NAMES = (
-    (MODULE_NAME, 'parameter'),
-    (MODULE_NAME, 'operand'),
-    (MODULE_NAME, 'result'),
-)
+AMM_GROUPING_NAMES = tuple(AMM_ORDERED_NAMES)
 ''' Extensions allowed in grouping statements. '''
 
 MODULE_STMT_ALLOW = (
@@ -252,6 +248,7 @@ def type_use(parent:str) -> List:
     :return: Choice of semantic type substatements.
     '''
     opts = [
+        [('uses', '1')],
         [((MODULE_NAME, 'type'), '1')],
         [((MODULE_NAME, 'ulist'), '1')],
         [((MODULE_NAME, 'dlist'), '1')],
@@ -540,24 +537,32 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
 
 
 def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
-    ''' Mark modules as used based on ARI content. '''
+    ''' Check that referenced modules exist and
+    mark those modules as used based on ARI content. '''
     if not ari_text:
         return
 
     mod_stmt = stmt.main_module()
+    if mod_stmt is None:
+        raise RuntimeError('No main module available')
+
+    # only imported modules
+    mod_map = {
+        name: key
+        for key, (name, _rev) in mod_stmt.i_prefixes.items()
+    }
 
     def visitor(ari):
+        # only care about references with absolute namespace
         if not isinstance(ari, ReferenceARI):
             return
+        if ari.ident.ns_id is None:
+            return
 
-        mod_prefix = [
-            key
-            for key, (name, _rev) in mod_stmt.i_prefixes.items()
-            if name == ari.ident.ns_id
-        ]
+        mod_prefix = mod_map.get(ari.ident.ns_id)
         if mod_prefix:
-            if mod_prefix[0] in mod_stmt.i_unused_prefixes:
-                del mod_stmt.i_unused_prefixes[mod_prefix[0]]
+            if mod_prefix in mod_stmt.i_unused_prefixes:
+                del mod_stmt.i_unused_prefixes[mod_prefix]
         else:
             mod_stmt.i_missing_prefixes[ari.ident.ns_id] = True
 
