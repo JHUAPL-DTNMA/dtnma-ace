@@ -31,10 +31,13 @@ from typing import List, Optional, Set, Iterator
 import numpy
 from .ari import (
     DTN_EPOCH, StructType, Table,
-    ARI, LiteralARI, ReferenceARI, is_undefined, NULL, TRUE
+    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 
 LOGGER = logging.getLogger(__name__)
+
+AMM_MODULE_ID = 'ietf-amm'
+''' Identifier of the ietf-amm module. '''
 
 
 class Constraint:
@@ -77,6 +80,11 @@ class BaseType:
         '''
         return set()
 
+    def ari_name(self) -> ARI:
+        ''' Get an ARI introspective representation of this type.
+        '''
+        raise NotImplementedError()
+
     def get(self, obj:ARI) -> Optional[ARI]:
         raise NotImplementedError()
 
@@ -115,6 +123,9 @@ class BuiltInType(BaseType):
 
     def all_type_ids(self) -> Set[StructType]:
         return set([self.type_id])
+
+    def ari_name(self) -> ARI:
+        return LiteralARI(self.type_id, StructType.ARITYPE)
 
 
 class NullType(BuiltInType):
@@ -485,6 +496,14 @@ class TypeUse(SemType):
     def all_constraints(self) -> Set[Constraint]:
         return set(self.constraints)
 
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-use'),
+            params={
+                LiteralARI('name'): self.type_ari,
+            }
+        )
+
     def get(self, obj:ARI) -> Optional[ARI]:
         # extract the value before checks
         got = self.base.get(obj)
@@ -537,6 +556,14 @@ class TypeUnion(SemType):
     def all_constraints(self) -> Set[Constraint]:
         return reduce(set.union, [typ.all_constraints() for typ in self.types])
 
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-union'),
+            params={
+                LiteralARI('choices'): LiteralARI([choice.ari_name() for choice in self.types], StructType.AC),
+            }
+        )
+
     def get(self, obj:ARI) -> Optional[ARI]:
         for typ in self.types:
             try:
@@ -586,6 +613,15 @@ class UniformList(SemType):
     def all_type_ids(self) -> Set[StructType]:
         # The type of the container itself
         return set([StructType.AC])
+
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-ulist'),
+            params={
+                LiteralARI('item-type'): self.base.ari_name(),
+                # FIXME other parameters
+            }
+        )
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -841,6 +877,15 @@ class TableColumn:
     base:BaseType
     ''' Type for this column. '''
 
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-tblt-col'),
+            params={
+                LiteralARI('name'): LiteralARI('name'),
+                LiteralARI('datatype'): self.base.ari_name(),
+            }
+        )
+
 
 @dataclass
 class TableTemplate(SemType):
@@ -864,6 +909,15 @@ class TableTemplate(SemType):
     def all_type_ids(self) -> Set[StructType]:
         # The type of the container itself
         return set([StructType.TBL])
+
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-tblt'),
+            params={
+                LiteralARI('columns'): LiteralARI([col.ari_name() for col in self.columns], StructType.AC),
+                # FIXME other parameters
+            }
+        )
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):

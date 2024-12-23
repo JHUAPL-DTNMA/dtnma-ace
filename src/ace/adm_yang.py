@@ -29,7 +29,7 @@ import logging
 import math
 import optparse
 import os
-from typing import TextIO, Tuple
+from typing import TextIO, Tuple, Union
 import portion
 import pyang.plugin
 import pyang.context
@@ -82,26 +82,6 @@ MOD_META_KYWDS = {
 }
 
 
-def search_one_exp(stmt, kywd):
-    ''' Search-one within uses-expanded substatements. '''
-    found = stmt.search_one(kywd)
-    if found is not None:
-        return found
-    subs = getattr(stmt, 'i_children', None)
-    return stmt.search_one(kywd, children=subs)
-
-
-def search_all_exp(stmt, kywd):
-    ''' Search-one within uses-expanded substatements. '''
-    subs = getattr(stmt, 'i_children', None)
-    if subs:
-        found = stmt.search(kywd, children=subs)
-    else:
-        found = stmt.search(kywd)
-
-    return found
-
-
 def range_from_text(text:str) -> portion.Interval:
     ''' Parse a YANG "range" statement argument.
     '''
@@ -143,6 +123,234 @@ def range_to_text(ranges:portion.Interval) -> str:
     return ' | '.join(parts)
 
 
+class AriTextDecoder:
+    ''' Wrapper for :cls:`ari_text.Decoder` '''
+
+    def __init__(self):
+        self._ari_dec = ari_text.Decoder()
+        self._adm_id = None
+
+    def set_adm(self, adm_id: Union[str, int]):
+        ''' Set the ID of the current ADM for resolving relative ARIs.
+        '''
+        self._adm_id = adm_id
+
+    def decode(self, text:str) -> ARI:
+        ''' Decode ARI text and resolve any relative reference.
+        '''
+        ari = self._ari_dec.decode(io.StringIO(text))
+        if self._adm_id is not None:
+            ari = ari.map(RelativeResolver(self._adm_id))
+        return ari
+
+
+class TypingDecoder:
+    ''' Decoder for just semantic typing structures. '''
+
+    _TYPE_REFINE_KWDS = (
+        'units',
+        'length',
+        'pattern',
+        'range',
+        (AMM_MOD, 'int-labels'),
+        (AMM_MOD, 'cddl'),
+        (AMM_MOD, 'base'),
+    )
+
+    def __init__(self, ari_dec: AriTextDecoder):
+        self._type_handlers = {
+            (AMM_MOD, 'type'): self._handle_type,
+            (AMM_MOD, 'ulist'): self._handle_ulist,
+            (AMM_MOD, 'dlist'): self._handle_dlist,
+            (AMM_MOD, 'umap'): self._handle_umap,
+            (AMM_MOD, 'tblt'): self._handle_tblt,
+            (AMM_MOD, 'union'): self._handle_union,
+            (AMM_MOD, 'seq'): self._handle_seq,
+        }
+        self._ari_dec = ari_dec
+
+    def _get_ari(self, text:str) -> ARI:
+        ''' Decode ARI text and resolve any relative reference.
+        '''
+        ari = self._ari_dec.decode(text)
+        return ari
+
+    def decode(self, parent: pyang.statements.Statement) -> SemType:
+        # Only one type statement is valid
+        found_type_stmts = [
+            type_stmt for type_stmt in parent.substmts
+            if type_stmt.keyword in self._type_handlers
+        ]
+        if not found_type_stmts:
+            raise RuntimeError('No type present where required')
+        elif len(found_type_stmts) > 1:
+            raise RuntimeError('Too many types present where one required')
+        type_stmt = found_type_stmts[0]
+
+        typeobj = self._type_handlers[type_stmt.keyword](type_stmt)
+        LOGGER.debug('Got type for %s: %s', type_stmt.keyword, typeobj)
+        return typeobj
+
+    def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = TypeUse()
+
+        typeobj.type_text = stmt.arg
+
+        ari = self._get_ari(stmt.arg)
+        if not (
+            (isinstance(ari, LiteralARI) and ari.type_id == StructType.ARITYPE)
+            or (isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.TYPEDEF)
+        ):
+            raise ValueError(f'Type reference must be either ARITYPE or LITERAL, got: {stmt.arg}')
+        typeobj.type_ari = ari
+
+        # keep constraints in the same order as refinement statements
+        refinements = list(filter(None, [
+            stmt.search_one(kywd)
+            for kywd in self._TYPE_REFINE_KWDS
+        ]))
+        for rfn in refinements:
+            if rfn.keyword == 'units':
+                typeobj.units = rfn.arg.strip()
+            elif rfn.keyword == 'length':
+                ranges = range_from_text(rfn.arg)
+                typeobj.constraints.append(StringLength(ranges=ranges))
+            elif rfn.keyword == 'pattern':
+                typeobj.constraints.append(TextPattern(pattern=rfn.arg))
+            elif rfn.keyword == 'range':
+                ranges = range_from_text(rfn.arg)
+                typeobj.constraints.append(NumericRange(ranges=ranges))
+            elif rfn.keyword == (AMM_MOD, 'int-labels'):
+                enum_stmts = rfn.search('enum')
+                bit_stmts = rfn.search('bit')
+                if enum_stmts and bit_stmts:
+                    raise RuntimeError('Cannot specify both enum and bit values')
+                if enum_stmts:
+                    labels = {
+                        int(stmt.search_one('value').arg): stmt.arg
+                        for stmt in enum_stmts
+                    }
+                    typeobj.constraints.append(IntegerEnums(values=labels))
+                if bit_stmts:
+                    labels = {
+                        int(stmt.search_one('position').arg): stmt.arg
+                        for stmt in bit_stmts
+                    }
+                    mask = sum((1 << pos) for pos in labels.keys())
+                    typeobj.constraints.append(IntegerBits(labels, mask))
+            elif rfn.keyword == (AMM_MOD, 'cddl'):
+                typeobj.constraints.append(CborCddl(text=rfn.arg))
+            elif rfn.keyword == (AMM_MOD, 'base'):
+                text = rfn.arg
+                ari = self._get_ari(text)
+                typeobj.constraints.append(IdentRefBase(
+                    base_text=text,
+                    base_ari=ari
+                ))
+
+        return typeobj
+
+    def _handle_ulist(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = UniformList(
+            base=self.decode(stmt)
+        )
+
+        size_stmt = stmt.search_one('min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = stmt.search_one('max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
+        return typeobj
+
+    def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = DiverseList(
+            parts=[],  # FIXME populate
+        )
+        return typeobj
+
+    def _handle_umap(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = UniformMap()
+
+        sub_stmt = stmt.search_one((AMM_MOD, 'keys'))
+        if sub_stmt:
+            typeobj.kbase = self.decode(sub_stmt)
+
+        sub_stmt = stmt.search_one((AMM_MOD, 'values'))
+        if sub_stmt:
+            typeobj.vbase = self.decode(sub_stmt)
+
+        return typeobj
+
+    def _handle_tblt(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = TableTemplate()
+
+        col_names = set()
+        for col_stmt in stmt.search((AMM_MOD, 'column')):
+            col = TableColumn(
+                name=col_stmt.arg,
+                base=self.decode(col_stmt)
+            )
+            if isinstance(col.base, TableTemplate):
+                LOGGER.warn('A table column is typed to contain another table')
+            if col.name in col_names:
+                LOGGER.warn('A duplicate column name is present: %s', col)
+
+            typeobj.columns.append(col)
+            col_names.add(col.name)
+
+        key_stmt = stmt.search_one((AMM_MOD, 'key'))
+        if key_stmt:
+            typeobj.key = key_stmt.arg
+
+        for unique_stmt in stmt.search((AMM_MOD, 'unique')):
+            col_names = [
+                name.strip()
+                for name in unique_stmt.arg.split(',')
+            ]
+            typeobj.unique.append(col_names)
+
+        size_stmt = stmt.search_one('min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = stmt.search_one('max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
+        return typeobj
+
+    def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
+        found_type_stmts = [
+            type_stmt for type_stmt in stmt.substmts
+            if type_stmt.keyword in self._type_handlers
+        ]
+
+        types = []
+        for type_stmt in found_type_stmts:
+            subtype = self._type_handlers[type_stmt.keyword](type_stmt)
+            types.append(subtype)
+
+        return TypeUnion(types=tuple(types))
+
+    def _handle_seq(self, stmt:pyang.statements.Statement) -> SemType:
+        typeobj = Sequence(
+            base=self.decode(stmt)
+        )
+
+        size_stmt = stmt.search_one('min-elements')
+        if size_stmt:
+            typeobj.min_elements = int(size_stmt.arg)
+
+        size_stmt = stmt.search_one('max-elements')
+        if size_stmt:
+            typeobj.max_elements = int(size_stmt.arg)
+
+        return typeobj
+
+
 class EmptyRepos(pyang.repository.Repository):
 
     def get_modules_and_revisions(self, ctx):
@@ -172,47 +380,15 @@ class Decoder:
             p.pre_load_modules(self._ctx)
 
         self._ari_dec = ari_text.Decoder()
+        self._type_dec = TypingDecoder(self._ari_dec)
 
         # Set to an object while processing a top-level module
         self._module = None
         self._obj_pos = 0
         self._adm = None
 
-        self._type_handlers = {
-            (AMM_MOD, 'type'): self._handle_type,
-            (AMM_MOD, 'ulist'): self._handle_ulist,
-            (AMM_MOD, 'dlist'): self._handle_dlist,
-            (AMM_MOD, 'umap'): self._handle_umap,
-            (AMM_MOD, 'tblt'): self._handle_tblt,
-            (AMM_MOD, 'union'): self._handle_union,
-            (AMM_MOD, 'seq'): self._handle_seq,
-        }
-
     def _get_typeobj(self, parent: pyang.statements.Statement) -> SemType:
-        # Only one type statement is valid
-        found_type_stmts = [
-            type_stmt for type_stmt in parent.substmts
-            if type_stmt.keyword in self._type_handlers
-        ]
-        if not found_type_stmts:
-            raise RuntimeError('No type present where required')
-        elif len(found_type_stmts) > 1:
-            raise RuntimeError('Too many types present where one required')
-        type_stmt = found_type_stmts[0]
-
-        typeobj = self._type_handlers[type_stmt.keyword](type_stmt)
-        LOGGER.debug('Got type for %s: %s', type_stmt.keyword, typeobj)
-        return typeobj
-
-    _TYPE_REFINE_KWDS = (
-        'units',
-        'length',
-        'pattern',
-        'range',
-        (AMM_MOD, 'int-labels'),
-        (AMM_MOD, 'cddl'),
-        (AMM_MOD, 'base'),
-    )
+        return self._type_dec.decode(parent)
 
     def _check_ari(self, ari:ARI):
         ''' Verify ARI references only imported modules. '''
@@ -221,11 +397,10 @@ class Decoder:
             if ari.ident.ns_id is not None and ari.ident.ns_id not in imports:
                 raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
 
-    def _handle_ari(self, text:str) -> ARI:
+    def _get_ari(self, text:str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
         '''
-        ari = self._ari_dec.decode(io.StringIO(text))
-        ari = ari.map(RelativeResolver(self._adm.norm_name))
+        ari = self._ari_dec.decode(text)
         ari.visit(self._check_ari)
         return ari
 
@@ -243,165 +418,6 @@ class Decoder:
             stmt_name = normalize_ident(text)
         return (stmt_ns, stmt_name)
 
-    def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = TypeUse()
-
-        typeobj.type_text = stmt.arg
-
-        ari = self._handle_ari(stmt.arg)
-        if not (
-            (isinstance(ari, LiteralARI) and ari.type_id == StructType.ARITYPE)
-            or (isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.TYPEDEF)
-        ):
-            raise ValueError(f'Type reference must be either ARITYPE or LITERAL, got: {stmt.arg}')
-        typeobj.type_ari = ari
-
-        # keep constraints in the same order as refinement statements
-        refinements = list(filter(None, [
-            search_one_exp(stmt, kywd)
-            for kywd in self._TYPE_REFINE_KWDS
-        ]))
-        for rfn in refinements:
-            if rfn.keyword == 'units':
-                typeobj.units = rfn.arg.strip()
-            elif rfn.keyword == 'length':
-                ranges = range_from_text(rfn.arg)
-                typeobj.constraints.append(StringLength(ranges=ranges))
-            elif rfn.keyword == 'pattern':
-                typeobj.constraints.append(TextPattern(pattern=rfn.arg))
-            elif rfn.keyword == 'range':
-                ranges = range_from_text(rfn.arg)
-                typeobj.constraints.append(NumericRange(ranges=ranges))
-            elif rfn.keyword == (AMM_MOD, 'int-labels'):
-                enum_stmts = search_all_exp(rfn, 'enum')
-                bit_stmts = search_all_exp(rfn, 'bit')
-                if enum_stmts and bit_stmts:
-                    raise RuntimeError('Cannot specify both enum and bit values')
-                if enum_stmts:
-                    labels = {
-                        int(search_one_exp(stmt, 'value').arg): stmt.arg
-                        for stmt in enum_stmts
-                    }
-                    typeobj.constraints.append(IntegerEnums(values=labels))
-                if bit_stmts:
-                    labels = {
-                        int(search_one_exp(stmt, 'position').arg): stmt.arg
-                        for stmt in bit_stmts
-                    }
-                    mask = sum((1 << pos) for pos in labels.keys())
-                    typeobj.constraints.append(IntegerBits(labels, mask))
-            elif rfn.keyword == (AMM_MOD, 'cddl'):
-                typeobj.constraints.append(CborCddl(text=rfn.arg))
-            elif rfn.keyword == (AMM_MOD, 'base'):
-                text = rfn.arg
-                ari = self._handle_ari(text)
-                typeobj.constraints.append(IdentRefBase(
-                    base_text=text,
-                    base_ari=ari
-                ))
-
-        return typeobj
-
-    def _handle_ulist(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = UniformList(
-            base=self._get_typeobj(stmt)
-        )
-
-        size_stmt = search_one_exp(stmt, 'min-elements')
-        if size_stmt:
-            typeobj.min_elements = int(size_stmt.arg)
-
-        size_stmt = search_one_exp(stmt, 'max-elements')
-        if size_stmt:
-            typeobj.max_elements = int(size_stmt.arg)
-
-        return typeobj
-
-    def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = DiverseList(
-            parts=[],  # FIXME populate
-        )
-        return typeobj
-
-    def _handle_umap(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = UniformMap()
-
-        sub_stmt = search_one_exp(stmt, (AMM_MOD, 'keys'))
-        if sub_stmt:
-            typeobj.kbase = self._get_typeobj(sub_stmt)
-
-        sub_stmt = search_one_exp(stmt, (AMM_MOD, 'values'))
-        if sub_stmt:
-            typeobj.vbase = self._get_typeobj(sub_stmt)
-
-        return typeobj
-
-    def _handle_tblt(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = TableTemplate()
-
-        col_names = set()
-        for col_stmt in search_all_exp(stmt, (AMM_MOD, 'column')):
-            col = TableColumn(
-                name=col_stmt.arg,
-                base=self._get_typeobj(col_stmt)
-            )
-            if isinstance(col.base, TableTemplate):
-                LOGGER.warn('A table column is typed to contain another table')
-            if col.name in col_names:
-                LOGGER.warn('A duplicate column name is present: %s', col)
-
-            typeobj.columns.append(col)
-            col_names.add(col.name)
-
-        key_stmt = search_one_exp(stmt, (AMM_MOD, 'key'))
-        if key_stmt:
-            typeobj.key = key_stmt.arg
-
-        for unique_stmt in search_all_exp(stmt, (AMM_MOD, 'unique')):
-            col_names = [
-                name.strip()
-                for name in unique_stmt.arg.split(',')
-            ]
-            typeobj.unique.append(col_names)
-
-        size_stmt = search_one_exp(stmt, 'min-elements')
-        if size_stmt:
-            typeobj.min_elements = int(size_stmt.arg)
-
-        size_stmt = search_one_exp(stmt, 'max-elements')
-        if size_stmt:
-            typeobj.max_elements = int(size_stmt.arg)
-
-        return typeobj
-
-    def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
-        found_type_stmts = [
-            type_stmt for type_stmt in stmt.substmts
-            if type_stmt.keyword in self._type_handlers
-        ]
-
-        types = []
-        for type_stmt in found_type_stmts:
-            subtype = self._type_handlers[type_stmt.keyword](type_stmt)
-            types.append(subtype)
-
-        return TypeUnion(types=tuple(types))
-
-    def _handle_seq(self, stmt:pyang.statements.Statement) -> SemType:
-        typeobj = Sequence(
-            base=self._get_typeobj(stmt)
-        )
-
-        size_stmt = search_one_exp(stmt, 'min-elements')
-        if size_stmt:
-            typeobj.min_elements = int(size_stmt.arg)
-
-        size_stmt = search_one_exp(stmt, 'max-elements')
-        if size_stmt:
-            typeobj.max_elements = int(size_stmt.arg)
-
-        return typeobj
-
     def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
 
@@ -417,11 +433,11 @@ class Decoder:
         if issubclass(cls, AdmObjMixin):
             obj.norm_name = normalize_ident(obj.name)
 
-            enum_stmt = search_one_exp(stmt, (AMM_MOD, 'enum'))
+            enum_stmt = stmt.search_one((AMM_MOD, 'enum'))
             if enum_stmt:
                 obj.enum = int(enum_stmt.arg)
 
-            feat_stmt = search_one_exp(stmt, 'if-feature')
+            feat_stmt = stmt.search_one('if-feature')
             if feat_stmt:
                 expr = pyang.syntax.parse_if_feature_expr(feat_stmt.arg)
 
@@ -439,17 +455,20 @@ class Decoder:
 
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
-            for param_stmt in search_all_exp(stmt, (AMM_MOD, 'parameter')):
-                item = TypeNameItem(
-                    name=param_stmt.arg,
-                    typeobj=self._get_typeobj(param_stmt)
-                )
+            for param_stmt in stmt.search((AMM_MOD, 'parameter')):
+                try:
+                    item = TypeNameItem(
+                        name=param_stmt.arg,
+                        typeobj=self._get_typeobj(param_stmt)
+                    )
 
-                def_stmt = search_one_exp(param_stmt, (AMM_MOD, 'default'))
-                if def_stmt:
-                    item.default_value = def_stmt.arg
-                    # actually check the content
-                    item.default_ari = self._handle_ari(def_stmt.arg)
+                    def_stmt = param_stmt.search_one((AMM_MOD, 'default'))
+                    if def_stmt:
+                        item.default_value = def_stmt.arg
+                        # actually check the content
+                        item.default_ari = self._get_ari(def_stmt.arg)
+                except Exception as err:
+                    raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err;
 
                 orm_val.items.append(item)
 
@@ -459,11 +478,11 @@ class Decoder:
             obj.typeobj = self._get_typeobj(stmt)
 
         if issubclass(cls, Ident):
-            for base_stmt in search_all_exp(stmt, (AMM_MOD, 'base')):
+            for base_stmt in stmt.search((AMM_MOD, 'base')):
                 base = IdentBase()
                 base.base_text = base_stmt.arg
                 # actually check the content
-                ari = self._handle_ari(base_stmt.arg)
+                ari = self._get_ari(base_stmt.arg)
                 if not (
                     isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.IDENT
                 ):
@@ -473,36 +492,45 @@ class Decoder:
                 obj.bases.append(base)
 
         elif issubclass(cls, (Const, Var)):
-            value_stmt = search_one_exp(stmt, (AMM_MOD, 'init-value'))
-            if not value_stmt:
-                LOGGER.warning('const is missing init-value substatement')
-            else:
+            value_stmt = stmt.search_one((AMM_MOD, 'init-value'))
+            if value_stmt:
                 obj.init_value = value_stmt.arg
                 # actually check the content
-                obj.init_ari = self._handle_ari(value_stmt.arg)
+                obj.init_ari = self._get_ari(value_stmt.arg)
+            elif cls is Const:
+                LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
         elif issubclass(cls, Ctrl):
-            result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
+            result_stmt = stmt.search_one((AMM_MOD, 'result'))
             if result_stmt:
-                obj.result = TypeNameItem(
-                    name=result_stmt.arg,
-                    typeobj=self._get_typeobj(result_stmt)
-                )
+                try:
+                    obj.result = TypeNameItem(
+                        name=result_stmt.arg,
+                        typeobj=self._get_typeobj(result_stmt)
+                    )
+                except Exception as err:
+                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err;
 
         elif issubclass(cls, Oper):
             obj.operands = TypeNameList()
-            for opnd_stmt in search_all_exp(stmt, (AMM_MOD, 'operand')):
-                obj.operands.items.append(TypeNameItem(
-                    name=opnd_stmt.arg,
-                    typeobj=self._get_typeobj(opnd_stmt)
-                ))
+            for opnd_stmt in stmt.search((AMM_MOD, 'operand')):
+                try:
+                    obj.operands.items.append(TypeNameItem(
+                        name=opnd_stmt.arg,
+                        typeobj=self._get_typeobj(opnd_stmt)
+                    ))
+                except Exception as err:
+                    raise RuntimeError(f'Failure handling operand "{opnd_stmt.arg}": {err}') from err;
 
-            result_stmt = search_one_exp(stmt, (AMM_MOD, 'result'))
+            result_stmt = stmt.search_one((AMM_MOD, 'result'))
             if result_stmt:
-                obj.result = TypeNameItem(
-                    name=result_stmt.arg,
-                    typeobj=self._get_typeobj(result_stmt)
-                )
+                try:
+                    obj.result = TypeNameItem(
+                        name=result_stmt.arg,
+                        typeobj=self._get_typeobj(result_stmt)
+                    )
+                except Exception as err:
+                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err;
 
         return obj
 
@@ -520,7 +548,7 @@ class Decoder:
         sec_kywd = KEYWORDS[orm_cls]
 
         enum = 0
-        for yang_stmt in search_all_exp(module, sec_kywd):
+        for yang_stmt in module.search(sec_kywd):
             try:
                 obj = self.from_stmt(orm_cls, yang_stmt)
             except Exception as err:
@@ -593,13 +621,14 @@ class Decoder:
         # Normalize the intrinsic ADM name
         adm.norm_name = normalize_ident(adm.name)
         self._adm = adm
+        self._ari_dec.set_adm(self._adm.norm_name)
 
         enum_stmt = module.search_one((AMM_MOD, 'enum'))
         if enum_stmt:
             adm.enum = int(enum_stmt.arg)
 
         for sub_stmt in module.search('import'):
-            prefix_stmt = search_one_exp(sub_stmt, 'prefix')
+            prefix_stmt = sub_stmt.search_one('prefix')
             adm.imports.append(AdmImport(
                 name=sub_stmt.arg,
                 prefix=prefix_stmt.arg,
@@ -607,7 +636,7 @@ class Decoder:
 
         adm.metadata_list = MetadataList()
         for kywd in MOD_META_KYWDS:
-            meta_stmt = search_one_exp(module, kywd)
+            meta_stmt = module.search_one(kywd)
             if meta_stmt:
                 adm.metadata_list.items.append(MetadataItem(
                     name=meta_stmt.keyword,

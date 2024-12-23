@@ -90,6 +90,8 @@ def pyang_plugin_init():
     )
     for name in AMM_GROUPING_NAMES:
         statements.add_data_keyword(name)
+    for name in AMM_USING_PARENTS:
+        statements.add_copy_uses_keyword(name)
 
     statements.add_validation_fun(
         'grammar',
@@ -207,6 +209,7 @@ AMM_ORDERED_NAMES = (
     (MODULE_NAME, 'parameter'),
     (MODULE_NAME, 'operand'),
     (MODULE_NAME, 'result'),
+    (MODULE_NAME, 'column'),
     # semantic type statements
     (MODULE_NAME, 'type'),
     (MODULE_NAME, 'ulist'),
@@ -220,6 +223,8 @@ AMM_ORDERED_NAMES = (
 
 AMM_GROUPING_NAMES = tuple(AMM_ORDERED_NAMES)
 ''' Extensions allowed in grouping statements. '''
+AMM_USING_PARENTS = tuple(AMM_ORDERED_NAMES)
+''' Extensions containing using statements. '''
 
 MODULE_STMT_ALLOW = (
     '_comment',
@@ -417,12 +422,12 @@ MODULE_EXTENSIONS = (
     Ext('const', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +type_use('const')
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
                 ((MODULE_NAME, 'init-value'), '1'),
                 ('uses', '*'),
             ]
+            +type_use('const')
         ),
     ),
     Ext('init-value', 'ARI'),

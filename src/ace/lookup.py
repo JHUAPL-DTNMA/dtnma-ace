@@ -79,7 +79,7 @@ def find_adm(ns_id, db_sess:Session) -> Optional[AdmModule]:
     elif isinstance(ns_id, str):
         query_adm = query_adm.filter(AdmModule.norm_name == normalize_ident(ns_id))
     else:
-        raise TypeError('ReferenceARI ns_id is not int or str')
+        raise TypeError(f'ReferenceARI ns_id is not int or str: {ns_id}')
     found_adm = query_adm.one_or_none()
     return found_adm
 
