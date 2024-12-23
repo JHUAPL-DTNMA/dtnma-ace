@@ -288,7 +288,7 @@ class TypingDecoder:
         typeobj = TableTemplate()
 
         col_names = set()
-        for col_stmt in stmt.search((AMM_MOD, 'column')):
+        for col_stmt in stmt.search((AMM_MOD, 'column'), children=stmt.i_children):
             col = TableColumn(
                 name=col_stmt.arg,
                 base=self.decode(col_stmt)
@@ -353,7 +353,7 @@ class TypingDecoder:
 
 class EmptyRepos(pyang.repository.Repository):
 
-    def get_modules_and_revisions(self, ctx):
+    def get_modules_and_revisions(self, _ctx:pyang.context.Context):
         return []
 
 
@@ -379,7 +379,7 @@ class Decoder:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
 
-        self._ari_dec = ari_text.Decoder()
+        self._ari_dec = AriTextDecoder()
         self._type_dec = TypingDecoder(self._ari_dec)
 
         # Set to an object while processing a top-level module
@@ -455,7 +455,8 @@ class Decoder:
 
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
-            for param_stmt in stmt.search((AMM_MOD, 'parameter')):
+            print('PARAM parent has', stmt.i_children)
+            for param_stmt in stmt.search((AMM_MOD, 'parameter'), children=stmt.i_children):
                 try:
                     item = TypeNameItem(
                         name=param_stmt.arg,
@@ -501,7 +502,7 @@ class Decoder:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
         elif issubclass(cls, Ctrl):
-            result_stmt = stmt.search_one((AMM_MOD, 'result'))
+            result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
             if result_stmt:
                 try:
                     obj.result = TypeNameItem(
@@ -513,7 +514,7 @@ class Decoder:
 
         elif issubclass(cls, Oper):
             obj.operands = TypeNameList()
-            for opnd_stmt in stmt.search((AMM_MOD, 'operand')):
+            for opnd_stmt in stmt.search((AMM_MOD, 'operand'), children=stmt.i_children):
                 try:
                     obj.operands.items.append(TypeNameItem(
                         name=opnd_stmt.arg,
@@ -522,7 +523,7 @@ class Decoder:
                 except Exception as err:
                     raise RuntimeError(f'Failure handling operand "{opnd_stmt.arg}": {err}') from err;
 
-            result_stmt = stmt.search_one((AMM_MOD, 'result'))
+            result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
             if result_stmt:
                 try:
                     obj.result = TypeNameItem(

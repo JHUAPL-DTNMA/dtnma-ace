@@ -90,8 +90,6 @@ def pyang_plugin_init():
     )
     for name in AMM_GROUPING_NAMES:
         statements.add_data_keyword(name)
-    for name in AMM_USING_PARENTS:
-        statements.add_copy_uses_keyword(name)
 
     statements.add_validation_fun(
         'grammar',
@@ -205,26 +203,31 @@ AMM_OBJ_NAMES = (
 ''' AMM object types at the module/submodule level. '''
 
 AMM_ORDERED_NAMES = (
-    # definition substatements
+    # definition statements must preserve order
     (MODULE_NAME, 'parameter'),
     (MODULE_NAME, 'operand'),
     (MODULE_NAME, 'result'),
-    (MODULE_NAME, 'column'),
     # semantic type statements
     (MODULE_NAME, 'type'),
     (MODULE_NAME, 'ulist'),
     (MODULE_NAME, 'dlist'),
     (MODULE_NAME, 'umap'),
     (MODULE_NAME, 'tblt'),
+    (MODULE_NAME, 'column'),
     (MODULE_NAME, 'union'),
     (MODULE_NAME, 'seq'),
 )
 ''' All data-like keywords to preserve order in canonical encoding. '''
 
 AMM_GROUPING_NAMES = tuple(AMM_ORDERED_NAMES)
-''' Extensions allowed in grouping statements. '''
-AMM_USING_PARENTS = tuple(AMM_ORDERED_NAMES)
-''' Extensions containing using statements. '''
+''' Extensions allowed in "grouping" statements. '''
+AMM_USING_PARENTS = AMM_OBJ_NAMES + (
+    (MODULE_NAME, 'parameter'),
+    (MODULE_NAME, 'default'),
+    (MODULE_NAME, 'operand'),
+    (MODULE_NAME, 'result'),
+)
+''' Extensions containing "uses" statements. '''
 
 MODULE_STMT_ALLOW = (
     '_comment',
