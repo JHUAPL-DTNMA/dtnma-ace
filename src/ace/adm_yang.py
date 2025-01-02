@@ -455,7 +455,6 @@ class Decoder:
 
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
-            print('PARAM parent has', stmt.i_children)
             for param_stmt in stmt.search((AMM_MOD, 'parameter'), children=stmt.i_children):
                 try:
                     item = TypeNameItem(

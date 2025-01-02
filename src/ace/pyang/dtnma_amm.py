@@ -221,7 +221,7 @@ AMM_ORDERED_NAMES = (
 
 AMM_GROUPING_NAMES = tuple(AMM_ORDERED_NAMES)
 ''' Extensions allowed in "grouping" statements. '''
-AMM_USING_PARENTS = AMM_OBJ_NAMES + (
+AMM_USES_PARENTS = AMM_OBJ_NAMES + (
     (MODULE_NAME, 'parameter'),
     (MODULE_NAME, 'default'),
     (MODULE_NAME, 'operand'),

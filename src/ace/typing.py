@@ -619,7 +619,8 @@ class UniformList(SemType):
             Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-ulist'),
             params={
                 LiteralARI('item-type'): self.base.ari_name(),
-                # FIXME other parameters
+                LiteralARI('min-elements'): LiteralARI(self.min_elements),
+                LiteralARI('max-elements'): LiteralARI(self.max_elements),
             }
         )
 
@@ -694,6 +695,16 @@ class Sequence(SemType):
     def all_type_ids(self) -> Set[StructType]:
         return self.base.all_type_ids()
 
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-seq'),
+            params={
+                LiteralARI('item-type'): self.base.ari_name(),
+                LiteralARI('min-elements'): LiteralARI(self.min_elements),
+                LiteralARI('max-elements'): LiteralARI(self.max_elements),
+            }
+        )
+
     def get(self, obj:ARI) -> Optional[ARI]:
         raise NotImplementedError
 
@@ -744,6 +755,14 @@ class DiverseList(SemType):
     def all_type_ids(self) -> Set[StructType]:
         # The type of the container itself
         return set([StructType.AC])
+
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-dlist'),
+            params={
+                LiteralARI('item-types'): LiteralARI([part.ari_name() for part in self.parts], StructType.AC),
+            }
+        )
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -825,6 +844,15 @@ class UniformMap(SemType):
         # The type of the container itself
         return set([StructType.AM])
 
+    def ari_name(self) -> ARI:
+        return ReferenceARI(
+            Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-umap'),
+            params={
+                LiteralARI('key-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
+                LiteralARI('value-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
+            }
+        )
+
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
@@ -895,9 +923,9 @@ class TableTemplate(SemType):
     ''' Column definitions, with significant order. '''
 
     key:Optional[str] = None
-    ''' Name of the key column. '''
-    unique:List[List[str]] = field(default_factory=list)
-    ''' Names of unique column tuples. '''
+    ''' The key column tuple. '''
+    unique:List[str] = field(default_factory=list)
+    ''' Unique column tuples. '''
     min_elements:Optional[int] = None
     ''' Lower limit on the number of rows. '''
     max_elements:Optional[int] = None
@@ -915,7 +943,10 @@ class TableTemplate(SemType):
             Identity(ns_id=AMM_MODULE_ID, type_id=StructType.IDENT, obj_id='semtype-tblt'),
             params={
                 LiteralARI('columns'): LiteralARI([col.ari_name() for col in self.columns], StructType.AC),
-                # FIXME other parameters
+                LiteralARI('min-elements'): LiteralARI(self.min_elements),
+                LiteralARI('max-elements'): LiteralARI(self.max_elements),
+                LiteralARI('key'): LiteralARI(self.key),
+                LiteralARI('unique'): LiteralARI([LiteralARI(tup) for tup in self.unique], StructType.AC),
             }
         )
 

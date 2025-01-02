@@ -34,10 +34,12 @@ from pyang.statements import Statement
 from pyang.error import err_add
 try:
     from ace.adm_yang import AriTextDecoder, TypingDecoder
+    from ace.typing import TypeUse
     from ace.ari_text import Encoder as AriEncoder
 except ImportError:
     AriTextDecoder = None
     TypingDecoder = None
+    TypeUse = None
     AriEncoder = None
 
 logger = logging.getLogger(__name__)
@@ -77,7 +79,11 @@ class AdmTree(pyang.plugin.PyangPlugin):
             optparse.make_option("--full-ari",
                                  dest="full_ari",
                                  action="store_true",
-                                 help="Show fullly qualified ARI for each object"),
+                                 help="Show fully qualified ARI for each object"),
+            optparse.make_option("--type-params",
+                                 dest="type_params",
+                                 action="store_true",
+                                 help="Show semantic type parameters, wich could be very long"),
         ]
         g = optparser.add_option_group("ADM tree specific options")
         g.add_options(optlist)
@@ -128,17 +134,17 @@ class AdmTree(pyang.plugin.PyangPlugin):
                     )
                     self._indent()
 
-                    paramlist = obj.search((MODULE_NAME, 'parameter'))
+                    paramlist = obj.search((MODULE_NAME, 'parameter'), children=obj.i_children)
                     for param in paramlist:
                         typename = self._get_type(ctx, param)
                         self._emit_line(outfile, f'Param {param.arg}', typestr=typename)
 
-                    operandlist = obj.search((MODULE_NAME, 'operand'))
+                    operandlist = obj.search((MODULE_NAME, 'operand'), children=obj.i_children)
                     for operand in operandlist:
                         typename = self._get_type(ctx, operand)
                         self._emit_line(outfile, f'Operand {operand.arg}', typestr=typename)
 
-                    resultlist = obj.search((MODULE_NAME, 'result'))
+                    resultlist = obj.search((MODULE_NAME, 'result'), children=obj.i_children)
                     for result in resultlist:
                         typename = self._get_type(ctx, result)
                         self._emit_line(outfile, f'Result {result.arg}', typestr=typename)
@@ -168,7 +174,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
         elif status.arg == 'obsolete':
             return 'o'
 
-    def _get_type(self, ctx:Context, typeuse:Statement) -> str:
+    def _get_type(self, ctx:Context, parent:Statement) -> str:
         if TypingDecoder is None:
             return "(need ACE)";
 
@@ -176,14 +182,23 @@ class AdmTree(pyang.plugin.PyangPlugin):
         type_dec = TypingDecoder(ari_dec)
         ari_enc = AriEncoder()
 
-        typeobj = type_dec.decode(typeuse)
+        def get_text(ari) -> str:
+            buf = io.StringIO()
+            ari_enc.encode(ari, buf)
+            return buf.getvalue()
 
-        # logger.warning('Type object %s', typeobj)
-        typeari = typeobj.ari_name()
-        # logger.warning('Type name %s', typeari)
-        buf = io.StringIO()
-        ari_enc.encode(typeari, buf)
-        return buf.getvalue()
+        typeobj = type_dec.decode(parent)
+        if ctx.opts.type_params:
+            # full parameters
+            show = get_text(typeobj.ari_name())
+        else:
+            # summary text only
+            if isinstance(typeobj, TypeUse):
+                show = 'use of ' + get_text(typeobj.type_ari)
+            else:
+                show = typeobj.ari_name().ident.obj_id
+
+        return show
 
 
 def pyang_plugin_init():
