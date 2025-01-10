@@ -49,13 +49,19 @@ class DbRepository(Repository):
         for adm_mod in found.all():
             rev = adm_mod.revisions[0].name if adm_mod.revisions else None
             result.append((adm_mod.name, rev, ('yang', adm_mod.source_id)))
+
         for file_entry in self._file_entries:
-            if '@' in file_entry.name:
-                name, rev = file_entry.name.split('@', 2)
+            name, ext = os.path.splitext(file_entry.name)
+            if ext != '.yang':
+                continue
+
+            if '@' in name:
+                name, rev = name.split('@', 2)
             else:
-                name = file_entry.name
                 rev = None
             result.append((name, rev, ('yang', file_entry.path)))
+
+        LOGGER.debug('available modules %s', result)
         return result
 
     def get_module_from_handle(self, handle):
@@ -71,7 +77,7 @@ class DbRepository(Repository):
             file_text = found.file_text
             return (found.abs_file_path, 'yang', file_text)
         elif isinstance(handle[1], str):
-            with os.open(handle[1], 'r') as infile:
+            with open(handle[1], 'r') as infile:
                 file_text = infile.read()
             return (handle, 'yang', file_text)
 
@@ -356,8 +362,8 @@ class AdmSet:
             )
             return mod
 
+        LOGGER.debug('Loading ADM from %s', file_path)
         try:
-            LOGGER.debug('Loading ADM from %s', file_path)
             with open(file_path, 'r') as adm_file:
                 adm_new = dec.decode(adm_file)
         except Exception as err:
