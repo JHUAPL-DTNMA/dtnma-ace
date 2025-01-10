@@ -83,7 +83,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
             optparse.make_option("--type-params",
                                  dest="type_params",
                                  action="store_true",
-                                 help="Show semantic type parameters, wich could be very long"),
+                                 help="Show semantic type parameters, which could be very long"),
         ]
         g = optparser.add_option_group("ADM tree specific options")
         g.add_options(optlist)
