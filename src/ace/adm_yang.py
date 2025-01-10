@@ -475,7 +475,7 @@ class Decoder:
         elif issubclass(cls, (Const, Var)):
             value_stmt = search_one_exp(stmt, (AMM_MOD, 'init-value'))
             if not value_stmt:
-                LOGGER.warning('const is missing init-value substatement')
+                LOGGER.warning('object "%s" is missing init-value substatement', stmt.arg)
             else:
                 obj.init_value = value_stmt.arg
                 # actually check the content
