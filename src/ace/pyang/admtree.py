@@ -25,11 +25,22 @@
 
 from dataclasses import dataclass, field
 import optparse
-import re
+import io
 import logging
 from typing import List, Tuple
 import pyang
+from pyang.context import Context
+from pyang.statements import Statement
 from pyang.error import err_add
+try:
+    from ace.adm_yang import AriTextDecoder, TypingDecoder
+    from ace.typing import TypeUse
+    from ace.ari_text import Encoder as AriEncoder
+except ImportError:
+    AriTextDecoder = None
+    TypingDecoder = None
+    TypeUse = None
+    AriEncoder = None
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +65,6 @@ TYPED_OBJS = (
     (MODULE_NAME, 'var'),
 )
 
-TYPE_RESTRICTS = {
-    'length',
-    'pattern',
-    (MODULE_NAME, 'int-labels'),
-    (MODULE_NAME, 'cddl'),
-}
-TYPE_USES = {'type', 'ulist', 'dlist', 'umap', 'tblt', 'union'}
-
 
 class AdmTree(pyang.plugin.PyangPlugin):
     ''' An output formatter for visualizing an ADM module as an ARI tree.
@@ -76,18 +79,22 @@ class AdmTree(pyang.plugin.PyangPlugin):
             optparse.make_option("--full-ari",
                                  dest="full_ari",
                                  action="store_true",
-                                 help="Show fullly qualified ARI for each object"),
+                                 help="Show fully qualified ARI for each object"),
+            optparse.make_option("--type-params",
+                                 dest="type_params",
+                                 action="store_true",
+                                 help="Show semantic type parameters, which could be very long"),
         ]
         g = optparser.add_option_group("ADM tree specific options")
         g.add_options(optlist)
 
-    def setup_fmt(self, ctx):
+    def setup_fmt(self, ctx:Context):
         return pyang.plugin.PyangPlugin.setup_fmt(self, ctx)
 
-    def post_validate(self, ctx, modules):
+    def post_validate(self, ctx:Context, modules):
         return pyang.plugin.PyangPlugin.post_validate(self, ctx, modules)
 
-    def emit(self, ctx, modules, outfile):
+    def emit(self, ctx:Context, modules:List[Statement], outfile):
         self._prefix = ''
 
         for module in modules:
@@ -127,17 +134,17 @@ class AdmTree(pyang.plugin.PyangPlugin):
                     )
                     self._indent()
 
-                    paramlist = self._search(ctx, obj, (MODULE_NAME, 'parameter'))
+                    paramlist = obj.search((MODULE_NAME, 'parameter'), children=obj.i_children)
                     for param in paramlist:
                         typename = self._get_type(ctx, param)
                         self._emit_line(outfile, f'Param {param.arg}', typestr=typename)
 
-                    operandlist = self._search(ctx, obj, (MODULE_NAME, 'operand'))
+                    operandlist = obj.search((MODULE_NAME, 'operand'), children=obj.i_children)
                     for operand in operandlist:
                         typename = self._get_type(ctx, operand)
                         self._emit_line(outfile, f'Operand {operand.arg}', typestr=typename)
 
-                    resultlist = self._search(ctx, obj, (MODULE_NAME, 'result'))
+                    resultlist = obj.search((MODULE_NAME, 'result'), children=obj.i_children)
                     for result in resultlist:
                         typename = self._get_type(ctx, result)
                         self._emit_line(outfile, f'Result {result.arg}', typestr=typename)
@@ -158,7 +165,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
         featurestr = f'{{{feature.arg}}}?' if feature else ''
         outfile.write(f'{start:<59} {typestr or "":<19} {featurestr}\n')
 
-    def _get_status_str(self, obj):
+    def _get_status_str(self, obj:Statement):
         status = obj.search_one('status')
         if status is None or status.arg == 'current':
             return '+'
@@ -167,51 +174,31 @@ class AdmTree(pyang.plugin.PyangPlugin):
         elif status.arg == 'obsolete':
             return 'o'
 
-    def _search(self, ctx, stmt, name):
-        children = getattr(stmt, 'i_children', stmt.substmts)
-        return stmt.search(name, children=children)
+    def _get_type(self, ctx:Context, parent:Statement) -> str:
+        if TypingDecoder is None:
+            return "(need ACE)";
 
-    def _get_type(self, ctx, typeuse):
-        found = {
-            keywd: typeuse.search_one((MODULE_NAME, keywd))
-            for keywd in TYPE_USES
-        }
-        found_count = len(tuple(filter(None, found.values())))
-        if found_count == 0:
-            pass
-        elif found_count > 1:
-            pass
+        ari_dec = AriTextDecoder()
+        type_dec = TypingDecoder(ari_dec)
+        ari_enc = AriEncoder()
 
-        if found['type'] is not None:
-            typestmt = found['type']
-            typename = typestmt.arg
-            restrict = []
-            for keywd in TYPE_RESTRICTS:
-                restrict += typestmt.search(keywd)
+        def get_text(ari) -> str:
+            buf = io.StringIO()
+            ari_enc.encode(ari, buf)
+            return buf.getvalue()
 
-            if restrict:
-                return f'{typename} ({len(restrict)} restrictions)'
-            else:
-                return typename
-        elif found['ulist'] is not None:
-            elemtype = self._get_type(ctx, found['ulist'])
-            return f'ulist ({elemtype})'
-        elif found['dlist'] is not None:
-            types = self._search(ctx, found['dlist'], (MODULE_NAME, 'type'))
-            seqs = self._search(ctx, found['dlist'], (MODULE_NAME, 'seq'))
-            return f'dlist ({len(types) + len(seqs)} parts)'
-        elif found['umap'] is not None:
-            return f'map'
-        elif found['tblt'] is not None:
-            cols = self._search(ctx, found['tblt'], (MODULE_NAME, 'column'))
-            return f'tblt ({len(cols)} columns)'
-        elif found['union'] is not None:
-            subs = []
-            for keywd in TYPE_USES:
-                subs += self._search(ctx, found['union'], (MODULE_NAME, keywd))
-            return f'union ({len(subs)} types)'
+        typeobj = type_dec.decode(parent)
+        if ctx.opts.type_params:
+            # full parameters
+            show = get_text(typeobj.ari_name())
         else:
-            return 'No type'
+            # summary text only
+            if isinstance(typeobj, TypeUse):
+                show = 'use of ' + get_text(typeobj.type_ari)
+            else:
+                show = typeobj.ari_name().ident.obj_id
+
+        return show
 
 
 def pyang_plugin_init():

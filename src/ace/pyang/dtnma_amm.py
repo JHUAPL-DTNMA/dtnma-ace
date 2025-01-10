@@ -203,7 +203,7 @@ AMM_OBJ_NAMES = (
 ''' AMM object types at the module/submodule level. '''
 
 AMM_ORDERED_NAMES = (
-    # definition substatements
+    # definition statements must preserve order
     (MODULE_NAME, 'parameter'),
     (MODULE_NAME, 'operand'),
     (MODULE_NAME, 'result'),
@@ -213,13 +213,21 @@ AMM_ORDERED_NAMES = (
     (MODULE_NAME, 'dlist'),
     (MODULE_NAME, 'umap'),
     (MODULE_NAME, 'tblt'),
+    (MODULE_NAME, 'column'),
     (MODULE_NAME, 'union'),
     (MODULE_NAME, 'seq'),
 )
 ''' All data-like keywords to preserve order in canonical encoding. '''
 
 AMM_GROUPING_NAMES = tuple(AMM_ORDERED_NAMES)
-''' Extensions allowed in grouping statements. '''
+''' Extensions allowed in "grouping" statements. '''
+AMM_USES_PARENTS = AMM_OBJ_NAMES + (
+    (MODULE_NAME, 'parameter'),
+    (MODULE_NAME, 'default'),
+    (MODULE_NAME, 'operand'),
+    (MODULE_NAME, 'result'),
+)
+''' Extensions containing "uses" statements. '''
 
 MODULE_STMT_ALLOW = (
     '_comment',
@@ -417,12 +425,12 @@ MODULE_EXTENSIONS = (
     Ext('const', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +type_use('const')
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
                 ((MODULE_NAME, 'init-value'), '1'),
                 ('uses', '*'),
             ]
+            +type_use('const')
         ),
     ),
     Ext('init-value', 'ARI'),

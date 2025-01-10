@@ -237,8 +237,10 @@ class Encoder:
                 buf.write(obj.ident.type_id.name)
                 buf.write('/')
                 buf.write(str(obj.ident.obj_id))
-                if obj.params is not None:
+                if isinstance(obj.params, list):
                     self._encode_list(buf, obj.params)
+                elif isinstance(obj.params, dict):
+                    self._encode_map(buf, obj.params)
 
         # FIXME: special cases for recursion
         elif isinstance(obj, Report):
