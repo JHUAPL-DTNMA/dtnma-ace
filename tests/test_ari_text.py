@@ -423,7 +423,7 @@ class TestAriText(unittest.TestCase):
             ("test", False, False, "ari:%22test%22"),
             ("test", True, True, "ari:test"),
             ("\\'\'", True, True, "ari:%22%5C%27%27%22"),
-            #("':!@$%^&*()-+[]{},./?", True, True, "ari:%22':!@%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
+            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22%27%3A%21%40%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
             ("_-~The quick brown fox", True, True, "ari:%22_-~The%20quick%20brown%20fox%22"),
             ("hi\u1234", False, False, "ari:%22hi%E1%88%B4%22"),
             ("hi\u0001D11E", False, False, "ari:%22hi%01D11E%22")
