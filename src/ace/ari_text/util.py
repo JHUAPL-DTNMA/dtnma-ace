@@ -146,9 +146,30 @@ def unescape(esc:str) -> str:
             break
         if char == '\\':
             char = next(esc_it)
+            if char == 'b':
+              char = "\b"
+            elif char == 'f':
+              char = "\f"
+            elif char == 'n':
+              char = "\n"
+            elif char == 'r':
+              char = "\r"
+            elif char == 't':
+              char = "\t"
+            elif char == 'u':
+              buf = ''
+              while len(buf) < 4:
+                try:
+                  buf += next(esc_it)
+                except StopIteration:
+                  break
+              char = decode_unicode(buf)
         txt += char
     return txt
 
+def decode_unicode(hex_str):
+  code_point = int(hex_str, 16)
+  return chr(code_point)
 
 @TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
 def t_tstr(found):

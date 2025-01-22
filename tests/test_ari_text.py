@@ -422,11 +422,11 @@ class TestAriText(unittest.TestCase):
             ("test", False, True, "ari:test"),
             ("test", False, False, "ari:%22test%22"),
             ("test", True, True, "ari:test"),
-            # FIXME: ("\\'\'", True, True, "ari:%22%5C''%22"),
-            # FIXME: ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22':!@%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
+            ("\\'\'", True, True, "ari:%22%5C%27%27%22"),
+            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22%27%3A%21%40%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
             ("_-~The quick brown fox", True, True, "ari:%22_-~The%20quick%20brown%20fox%22"),
-            # FIXME: ("hi\u1234", False, False, "ari:%22hi%5Cu1234%22"),
-            # FIXME: ("hi\U0001D11E", False, False, "ari:%22hi%5CuD834%5CuDD1E%22"),
+            ("hi\u1234", False, False, "ari:%22hi%E1%88%B4%22"),
+            ("hi\u0001D11E", False, False, "ari:%22hi%01D11E%22")
         ]
 
         for row in TEST_CASE:
@@ -776,10 +776,9 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_prim_tstr(self):
         TEST_CASE = [
             ("label", "label"),
-            # FIXME: ("\"\"", None),
             ("\"hi\"", "hi"),
-            # FIXME: ("\"h%20i\"", "h i"),
-            # FIXME: ("\"h%5c%22i\"", "h\"i"),
+            ("\"%22h%20i%22\"", "h i"),
+            ("\"%22h%5c%22i%22\"", "h\"i"),
         ]
 
         dec = ari_text.Decoder()
@@ -794,16 +793,14 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_typed_tstr(self):
         TEST_CASE = [
             ("ari:/TEXTSTR/label", "label", 6),
-            # FIXME: ("ari:/TEXTSTR/\"\"", None, 0),
             ("ari:/TEXTSTR/\"hi\"", "hi", 3),
-            # FIXME: ("ari:/TEXTSTR/\"h%20i\"", "h i", 4),
-            # FIXME: ("ari:/TEXTSTR/\"h%5c%22i\"", "h\"i", 4),
+            ("ari:/TEXTSTR/\"%22h%20i%22\"", "h i", 4),
             ("ari:/TEXTSTR/%22h%5c%22i%22", "h\"i", 4),
             ("ari:/TEXTSTR/%22!@-+.:'%22", "!@-+.:'", 8),
             ("ari:/TEXTSTR/%22%5C%22'%22", "\"'", 3),
             ("ari:/TEXTSTR/%22''%22", "''", 3),
             ("ari:/TEXTSTR/%22%5C''%22", "''", 3),
-            # FIXME: ("ari:/TEXTSTR/%22a%5Cu0000test%22", "atest", 6),
+            ("ari:/TEXTSTR/%22a%5Cu0000test%22", "a\x00test", 6),
         ]
 
         dec = ari_text.Decoder()
