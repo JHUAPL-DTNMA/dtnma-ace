@@ -27,7 +27,6 @@ import cbor2
 import math
 
 _TSTR_TRANS = str.maketrans({
-    '\\': '\\\\',
     '"': '\\"',
 })
 
