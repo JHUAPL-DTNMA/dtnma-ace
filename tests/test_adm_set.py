@@ -73,7 +73,7 @@ class TestAdmSet(unittest.TestCase):
 
         # one new ADM
         os.makedirs(adms_path)
-        shutil.copy(os.path.join(SELFDIR, 'test-adm-minimal.yang'), adms_path)
+        shutil.copy(os.path.join(SELFDIR, 'example-adm-minimal.yang'), adms_path)
         self.assertEqual(1, adms.load_from_dirs([adms_path]))
         self.assertEqual(1, len(adms))
 
@@ -84,7 +84,7 @@ class TestAdmSet(unittest.TestCase):
         self.assertEqual(1, len(adms))
 
         # updated file
-        with open(os.path.join(adms_path, 'test-adm-minimal.yang'), 'ab') as outfile:
+        with open(os.path.join(adms_path, 'example-adm-minimal.yang'), 'ab') as outfile:
             outfile.write(b'\r\n')
         self.assertEqual(1, adms.load_from_dirs([adms_path]))
         self.assertEqual(1, len(adms))
@@ -95,51 +95,51 @@ class TestAdmSet(unittest.TestCase):
 
         self.assertEqual(0, adms.load_default_dirs())
         self.assertEqual(0, len(adms))
-        self.assertNotIn('test-adm-minimal', adms)
+        self.assertNotIn('example-adm-minimal', adms)
         with self.assertRaises(KeyError):
-            adms['test-adm-minimal']  # pylint: disable=pointless-statement
+            adms['example-adm-minimal']  # pylint: disable=pointless-statement
         self.assertEqual(frozenset(), adms.names())
 
         adms_path = os.path.join(os.environ['XDG_DATA_HOME'], 'ace', 'adms')
         os.makedirs(adms_path)
-        shutil.copy(os.path.join(SELFDIR, 'test-adm-minimal.yang'), adms_path)
+        shutil.copy(os.path.join(SELFDIR, 'example-adm-minimal.yang'), adms_path)
         self.assertEqual(1, adms.load_default_dirs())
         self.assertEqual(1, len(adms))
-        self.assertIn('test-adm-minimal', adms)
-        self.assertIsInstance(adms['test-adm-minimal'], AdmModule)
-        self.assertEqual(frozenset(['test-adm-minimal']), adms.names())
+        self.assertIn('example-adm-minimal', adms)
+        self.assertIsInstance(adms['example-adm-minimal'], AdmModule)
+        self.assertEqual(frozenset(['example-adm-minimal']), adms.names())
         for adm in adms:
             self.assertIsInstance(adm, AdmModule)
 
     def test_load_from_file(self):
         adms = AdmSet()
         self.assertEqual(0, len(adms))
-        self.assertNotIn('test-adm-minimal', adms)
+        self.assertNotIn('example-adm-minimal', adms)
 
-        file_path = os.path.join(SELFDIR, 'test-adm-minimal.yang')
+        file_path = os.path.join(SELFDIR, 'example-adm-minimal.yang')
         adm_new = adms.load_from_file(file_path)
         self.assertIsNotNone(adm_new.id)
-        self.assertEqual('test-adm-minimal', adm_new.norm_name)
+        self.assertEqual('example-adm-minimal', adm_new.norm_name)
 
         self.assertEqual(1, len(adms))
-        self.assertIn('test-adm-minimal', adms)
+        self.assertIn('example-adm-minimal', adms)
 
         # Still only one ADM after loading
         adm_next = adms.load_from_file(file_path)
         self.assertIsNotNone(adm_new.id)
-        self.assertEqual('test-adm-minimal', adm_next.norm_name)
+        self.assertEqual('example-adm-minimal', adm_next.norm_name)
         # Identical object due to cache
         self.assertEqual(adm_new.id, adm_next.id)
 
         self.assertEqual(1, len(adms))
-        self.assertIn('test-adm-minimal', adms)
+        self.assertIn('example-adm-minimal', adms)
 
     def test_load_from_data(self):
         adms = AdmSet()
         self.assertEqual(0, len(adms))
-        self.assertNotIn('test-adm-minimal', adms)
+        self.assertNotIn('example-adm-minimal', adms)
 
-        file_path = os.path.join(SELFDIR, 'test-adm-minimal.yang')
+        file_path = os.path.join(SELFDIR, 'example-adm-minimal.yang')
         buf = io.StringIO()
         with open(file_path, 'r') as infile:
             buf.write(infile.read())
@@ -147,9 +147,9 @@ class TestAdmSet(unittest.TestCase):
         buf.seek(0)
         adm_new = adms.load_from_data(buf)
         self.assertIsNotNone(adm_new.id)
-        self.assertEqual('test-adm-minimal', adm_new.norm_name)
+        self.assertEqual('example-adm-minimal', adm_new.norm_name)
         self.assertEqual(1, len(adms))
-        self.assertIn('test-adm-minimal', adms)
+        self.assertIn('example-adm-minimal', adms)
 
         buf.seek(0)
         adm_next = adms.load_from_data(buf, del_dupe=True)
@@ -157,11 +157,11 @@ class TestAdmSet(unittest.TestCase):
         # Non-identical due to replacement
         self.assertNotEqual(adm_new.id, adm_next.id)
         self.assertEqual(1, len(adms))
-        self.assertIn('test-adm-minimal', adms)
+        self.assertIn('example-adm-minimal', adms)
 
         buf.seek(0)
         adm_next = adms.load_from_data(buf, del_dupe=False)
         self.assertIsNotNone(adm_new.id)
         self.assertNotEqual(adm_new.id, adm_next.id)
         self.assertEqual(2, len(adms))
-        self.assertIn('test-adm-minimal', adms)
+        self.assertIn('example-adm-minimal', adms)

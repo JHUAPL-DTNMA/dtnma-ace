@@ -67,11 +67,9 @@ def pyang_plugin_init():
     # ADM enumeration only at module level and optional
     # allowing for non-ADM YANG modules
     grammar.add_to_stmts_rules(
-        ['module'],
+        ['module', 'organization'],
         [((MODULE_NAME, 'enum'), '?')],
     )
-#    rules = grammar.stmt_map['module'][1]
-#    rules.insert(rules.index(('prefix', '1')) + 1, ((MODULE_NAME, 'enum'), '?'))
 
     # AMM object extensions with preferred canonicalization order
     grammar.add_to_stmts_rules(
@@ -537,7 +535,7 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
         ns_ref = None
 
     if (not isinstance(ns_ref, ReferenceARI)
-        or ns_ref.ident.ns_id != stmt.main_module().arg.casefold()
+        or ns_ref.ident.module_name != stmt.main_module().arg.casefold()
         or ns_ref.ident.type_id is not None
         or ns_ref.ident.obj_id is not None):
         error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS',
@@ -564,7 +562,7 @@ def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
         # only care about references with absolute namespace
         if not isinstance(ari, ReferenceARI):
             return
-        if ari.ident.ns_id is None:
+        if ari.ident.model_id is None:
             return
 
         mod_prefix = mod_map.get(ari.ident.ns_id)

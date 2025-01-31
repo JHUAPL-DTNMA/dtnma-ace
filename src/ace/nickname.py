@@ -71,7 +71,7 @@ class Converter:
         if obj:
             adm = obj.module
         else:
-            adm = find_adm(ari.ident.ns_id, self._db_sess)
+            adm = find_adm(ari.ident.org_id, ari.ident.model_id, self._db_sess)
         LOGGER.debug('ARI for %s resolved to ADM %s, obj %s',
                      ari.ident, adm, obj)
 

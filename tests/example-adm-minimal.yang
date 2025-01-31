@@ -1,16 +1,20 @@
-module test-adm-minimal {
-  namespace "ari://test-adm-minimal/";
+module example-adm-minimal {
+  namespace "ari://example/adm-minimal/";
   prefix test;
 
   import ietf-amm {
     prefix amm;
   }
 
+  organization "example" {
+    amm:enum 65535;
+  }
   revision 2023-10-31 {
     description
       "Initial test";
   }
-  amm:enum "0";
+  amm:enum 0;
+
   amm:edd edd1 {
     amm:type /ARITYPE/int;
     description
@@ -18,10 +22,10 @@ module test-adm-minimal {
   }
   amm:ctrl test1 {
     amm:parameter id {
-      amm:type "//ietf-amm/TYPEDEF/any";
+      amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type "//ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf/amm/TYPEDEF/expr";
     }
     description
       "This control resets all Agent ADM statistics reported in the Agent ADM report.";

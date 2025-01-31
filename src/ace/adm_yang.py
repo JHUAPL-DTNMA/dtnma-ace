@@ -128,19 +128,19 @@ class AriTextDecoder:
 
     def __init__(self):
         self._ari_dec = ari_text.Decoder()
-        self._adm_id = None
+        self._ns_id = None
 
-    def set_adm(self, adm_id: Union[str, int]):
+    def set_namespace(self, org_id: Union[str, int], model_id: Union[str, int]):
         ''' Set the ID of the current ADM for resolving relative ARIs.
         '''
-        self._adm_id = adm_id
+        self._ns_id = (org_id, model_id)
 
     def decode(self, text:str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
         '''
         ari = self._ari_dec.decode(io.StringIO(text))
-        if self._adm_id is not None:
-            ari = ari.map(RelativeResolver(self._adm_id))
+        if self._ns_id is not None:
+            ari = ari.map(RelativeResolver(*self._ns_id))
         return ari
 
 
@@ -394,7 +394,7 @@ class Decoder:
         ''' Verify ARI references only imported modules. '''
         if isinstance(ari, ReferenceARI):
             imports = [mod[0] for mod in self._module.i_prefixes.values()]
-            if ari.ident.ns_id is not None and ari.ident.ns_id not in imports:
+            if ari.ident.module_name is not None and ari.ident.module_name not in imports:
                 raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
 
     def _get_ari(self, text:str) -> ARI:
@@ -617,15 +617,28 @@ class Decoder:
 
         adm = AdmModule()
         adm.source = src
-        adm.name = module.arg
+        adm.module_name = module.arg
         # Normalize the intrinsic ADM name
-        adm.norm_name = normalize_ident(adm.name)
+        adm.norm_name = normalize_ident(adm.module_name)
         self._adm = adm
-        self._ari_dec.set_adm(self._adm.norm_name)
+
+        ns_stmt = module.search_one('namespace')
+        if ns_stmt is None:
+            raise RuntimeError('ADM module is missing "namespace" statement')
+        ns_ari = self._ari_dec.decode(ns_stmt.arg)
+        self._ari_dec.set_namespace(ns_ari.ident.org_id, ns_ari.ident.model_id)
+        adm.ns_org_name = ns_ari.ident.org_id.casefold()
+        adm.ns_model_name = ns_ari.ident.model_id.casefold()
+
+        org_stmt = module.search_one('organization')
+        if org_stmt:
+            enum_stmt = org_stmt.search_one((AMM_MOD, 'enum'))
+            if enum_stmt:
+                adm.ns_org_enum = int(enum_stmt.arg)
 
         enum_stmt = module.search_one((AMM_MOD, 'enum'))
         if enum_stmt:
-            adm.enum = int(enum_stmt.arg)
+            adm.ns_model_enum = int(enum_stmt.arg)
 
         for sub_stmt in module.search('import'):
             prefix_stmt = sub_stmt.search_one('prefix')
@@ -664,7 +677,7 @@ class Decoder:
             self._get_section(adm.oper, Oper, module)
             self._get_section(adm.var, Var, module)
         except Exception as err:
-            raise RuntimeError(f'Failure processing object definitions from ADM "{adm.name}": {err}') from err
+            raise RuntimeError(f'Failure processing object definitions from ADM "{adm.module_name}": {err}') from err
 
         self._module = None
         return adm
@@ -697,15 +710,17 @@ class Encoder:
         :param adm: The ORM root object.
         :param buf: The buffer to write into.
         '''
-        module = pyang.statements.new_statement(None, None, None, 'module', adm.name)
+        module = pyang.statements.new_statement(None, None, None, 'module', adm.module_name)
         self._module = module
         self._denorm_prefixes = {}
 
         self._add_substmt(module, 'yang-version', '1.1')
-        self._add_substmt(module, 'namespace', f'ari://{adm.name}/')
+        self._add_substmt(module, 'namespace', f'ari://{adm.ns_org_name}/{adm.ns_model_name}/')
 
         for item in adm.metadata_list.items:
-            self._add_substmt(module, item.name, item.arg)
+            item_stmt = self._add_substmt(module, item.name, item.arg)
+            if item.name == 'organization' and adm.ns_org_enum is not None:
+                self._add_substmt(item_stmt, (AMM_MOD, 'enum'), str(adm.ns_org_enum))
 
         for imp in adm.imports:
             imp_stmt = self._add_substmt(module, 'import', imp.name)
@@ -719,8 +734,9 @@ class Encoder:
             modname = modtup[0]
             self._denorm_prefixes[modname] = prefix
 
-        # prefixed keyword after v_init_module
-        self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.enum))
+        if adm.ns_model_enum is not None:
+            # prefixed keyword after v_init_module
+            self._add_substmt(module, (AMM_MOD, 'enum'), str(adm.ns_model_enum))
 
         for rev in adm.revisions:
             sub_stmt = self._add_substmt(module, 'revision', rev.name)

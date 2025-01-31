@@ -179,7 +179,7 @@ class IdentRefBase(Constraint):
     ''' Original required base text. '''
     base_ari:ReferenceARI
     ''' The  base object reference. '''
-    base_ident:Ident = None
+    base_ident:Optional[Ident] = None
     ''' ADM object lookup session '''
 
     def applicable(self) -> Set[StructType]:
@@ -187,6 +187,8 @@ class IdentRefBase(Constraint):
 
     def is_valid(self, obj:ARI) -> bool:
         if isinstance(obj, ReferenceARI) and obj.ident.type_id == StructType.IDENT:
+            if self.base_ident is None:
+                return False
             db_sess = object_session(self.base_ident)
 
             def match_base(ref:ARI):

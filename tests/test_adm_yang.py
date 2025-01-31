@@ -101,18 +101,23 @@ class BaseYang(unittest.TestCase):
     NOOBJECT_MODULE_HEAD = '''\
 module example-mod {
   yang-version 1.1;
-  namespace "ari://example-mod/";
+  namespace "ari://example/mod/";
   prefix empty;
 
   import ietf-amm {
     prefix amm;
   }
 
+  organization
+    "example" {
+    amm:enum 65535;
+  }
+
   revision 2023-10-31 {
     description
       "Initial test";
   }
-  amm:enum 65536;
+  amm:enum 1;
 '''
     NOOBJECT_MODULE_TAIL = '''\
 }
@@ -132,7 +137,9 @@ class TestAdmYang(BaseYang):
     ''' Tests of the YANG-based syntax handler separate from ADM logic. '''
 
     EMPTY_MODULE = '''\
-module empty {}
+module example-empty {
+  namespace "ari://example/empty/";
+}
 '''
 
     def test_decode_empty(self):
@@ -142,7 +149,11 @@ module empty {}
         self._db_sess.add(adm)
         self._db_sess.commit()
 
-        self.assertEqual('empty', adm.name)
+        self.assertEqual('example-empty', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertIsNone(adm.ns_org_enum)
+        self.assertEqual('empty', adm.ns_model_name)
+        self.assertIsNone(adm.ns_model_enum)
 
     def test_decode_noobject(self):
         buf = self._get_mod_buf('')
@@ -152,8 +163,12 @@ module empty {}
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
+
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
         self.assertEqual(0, len(adm.typedef))
@@ -174,10 +189,10 @@ module empty {}
   amm:ctrl test1 {
     amm:enum 5;
     amm:parameter id {
-      amm:type "//ietf-amm/TYPEDEF/any";
+      amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type "//ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
 ''')
@@ -187,8 +202,11 @@ module empty {}
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
@@ -199,7 +217,7 @@ module empty {}
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
         self.assertEqual(
-            self._from_text('//ietf-amm/typedef/any'),
+            self._from_text('//ietf/amm/typedef/any'),
             obj.parameters.items[0].typeobj.type_ari
         )
 
@@ -222,10 +240,10 @@ module empty {}
   }
   grouping paramgrp {
     amm:parameter id {
-      amm:type "//ietf-amm/TYPEDEF/any";
+      amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
-      amm:type "//ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf/amm/TYPEDEF/expr";
       amm:default "ari:/AC/()";
     }
   }
@@ -240,8 +258,11 @@ module empty {}
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
@@ -254,7 +275,7 @@ module empty {}
         param = obj.parameters.items[0]
         self.assertEqual("id", param.name)
         self.assertEqual(
-            self._from_text('//ietf-amm/typedef/any'),
+            self._from_text('//ietf/amm/typedef/any'),
             param.typeobj.type_ari
         )
         self.assertIsNone(param.default_value)
@@ -262,7 +283,7 @@ module empty {}
         param = obj.parameters.items[1]
         self.assertEqual("def", param.name)
         self.assertEqual(
-            self._from_text('//ietf-amm/typedef/expr'),
+            self._from_text('//ietf/amm/typedef/expr'),
             param.typeobj.type_ari
         )
         self.assertEqual("ari:/AC/()", param.default_value)
@@ -477,7 +498,7 @@ module empty {}
       amm:type "/ARITYPE/INT";
     }
     amm:parameter two {
-      amm:type "//ietf-amm/TYPEDEF/expr";
+      amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
 ''',
@@ -505,11 +526,11 @@ module empty {}
     }
     amm:operand vals {
       amm:seq {
-        amm:type "//ietf-amm/TYPEDEF/numeric";
+        amm:type "//ietf/amm/TYPEDEF/numeric";
       }
     }
     amm:result total {
-      amm:type "//ietf-amm/TYPEDEF/numeric";
+      amm:type "//ietf/amm/TYPEDEF/numeric";
     }
   }
 ''',
@@ -679,14 +700,14 @@ class TestAdmContents(BaseYang):
         ('''\
   amm:typedef typeobj {
     amm:type "/ARITYPE/IDENT" {
-      amm:base "//ietf-amm/IDENT/somename";
+      amm:base "//ietf/amm/IDENT/somename";
     }
   }
 ''', True),
         ('''\
   amm:typedef typeobj {
     amm:type "/ARITYPE/TEXTSTR" {
-      amm:base "//ietf-amm/IDENT/somename";
+      amm:base "//ietf/amm/IDENT/somename";
     }
   }
 ''', False),
@@ -744,8 +765,11 @@ class TestAdmContents(BaseYang):
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
@@ -756,19 +780,19 @@ class TestAdmContents(BaseYang):
         self.assertEqual('type-any', type_any.norm_name)
         typeobj_any = lookup.TypeResolver().resolve(type_any.typeobj, adm)
         self.assertIsNone(typeobj_any.get(self._from_text('hi')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-b')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example-mod/IDENT/ident-c')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-b')))
+        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-c')))
 
         type_a = adm.typedef[1]
         self.assertEqual('type-a', type_a.norm_name)
         typeobj_a = lookup.TypeResolver().resolve(type_a.typeobj, adm)
         self.assertIsNone(typeobj_a.get(self._from_text('hi')))
-        self.assertIsNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-b')))
-        self.assertIsNone(typeobj_a.get(self._from_text('//example-mod/IDENT/ident-c')))
+        self.assertIsNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-z')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-a')))
+        self.assertIsNotNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-b')))
+        self.assertIsNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-c')))
 
     def test_ident_params(self):
         buf = self._get_mod_buf('''
@@ -789,8 +813,11 @@ class TestAdmContents(BaseYang):
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 

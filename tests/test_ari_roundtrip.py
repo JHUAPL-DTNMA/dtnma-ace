@@ -60,18 +60,18 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/AM/(1=1,2=3)',
         'ari:/TBL/c=3;',
         'ari:/TBL/c=3;(1,2,3)(a,b,c)',
-        'ari:/EXECSET/n=1234;(//adm/CTRL/name)',
-        'ari:/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//adm/CTRL/name;(null))',
+        'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
+        'ari:/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//example/adm/CTRL/name;(null))',
         # Reference
-        'ari://65536/VAR/0',
-        'ari://4294967296/VAR/2',
-        'ari://namespace/VAR/hello',
-        'ari://namespace/VAR/hello()',
-        'ari://namespace/VAR/hello(/INT/10)',
-        'ari://bp-agent/CTRL/reset_all_counts()',
-        'ari://amp-agent/CTRL/gen_rpts(/AC/(//DTN.bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
+        'ari://65536/65536/VAR/0',
+        'ari://4294967296/4294967296/VAR/2',
+        'ari://org/model/VAR/hello',
+        'ari://org/model/VAR/hello()',
+        'ari://org/model/VAR/hello(/INT/10)',
+        'ari://ietf/bp-agent/CTRL/reset_all_counts()',
+        'ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
-        'ari://AMP-AGENT/CTRL/ADD_SBR(//APL_SC/SBR/HEAT_ON,/VAST/0,/AC/(//APL_SC/EDD/payload_temperature,//APL_SC/CONST/payload_heat_on_temp,//AMP.AGENT/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(//APL_SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
+        'ari://ietf/AMP-AGENT/CTRL/ADD_SBR(//APL/SC/SBR/HEAT_ON,/VAST/0,/AC/(//APL/SC/EDD/payload_temperature,//APL/SC/CONST/payload_heat_on_temp,//ietf/AMP-AGENT/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(//APL/SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
     ]
 
     def test_text_cbor_roundtrip(self):

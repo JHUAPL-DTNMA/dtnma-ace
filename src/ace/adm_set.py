@@ -48,7 +48,7 @@ class DbRepository(Repository):
         result = []
         for adm_mod in found.all():
             rev = adm_mod.revisions[0].name if adm_mod.revisions else None
-            result.append((adm_mod.name, rev, ('yang', adm_mod.source_id)))
+            result.append((adm_mod.module_name, rev, ('yang', adm_mod.source_id)))
 
         for file_entry in self._file_entries:
             name, ext = os.path.splitext(file_entry.name)
