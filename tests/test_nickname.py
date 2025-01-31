@@ -22,11 +22,10 @@
 #
 ''' Verify behavior of the :mod:`ace.adm_yang` module tree.
 '''
-import io
 import logging
 import os
 import unittest
-from ace import ari, ari_text, nickname
+from ace import ari, nickname
 from .test_adm_yang import BaseYang
 
 LOGGER = logging.getLogger(__name__)
@@ -34,6 +33,8 @@ SELFDIR = os.path.dirname(__file__)
 
 
 class TestNickname(BaseYang):
+
+    maxDiff = None
 
     def setUp(self):
         BaseYang.setUp(self)
@@ -50,8 +51,8 @@ class TestNickname(BaseYang):
         self._db_sess.commit()
 
     def test_to_enum_must_valid(self):
-        as_text = '//example-mod/CTRL/with-enum'
-        as_enum = '//65536/-3/4'
+        as_text = '//example/mod/CTRL/with-enum'
+        as_enum = '//65535/1/-3/4'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -61,7 +62,7 @@ class TestNickname(BaseYang):
         self.assertEqual(ari_enum, got_enum)
 
     def test_to_enum_must_nomod(self):
-        as_text = '//no-mod/CTRL/no-enum'
+        as_text = '//no/mod/CTRL/no-enum'
 
         ari_text = self._from_text(as_text)
 
@@ -70,7 +71,7 @@ class TestNickname(BaseYang):
             to_enum(ari_text)
 
     def test_to_enum_must_noobj(self):
-        as_text = '//example-mod/CTRL/missing'
+        as_text = '//example/mod/CTRL/missing'
 
         ari_text = self._from_text(as_text)
 
@@ -79,8 +80,8 @@ class TestNickname(BaseYang):
             to_enum(ari_text)
 
     def test_to_enum_nomust_valid(self):
-        as_text = '//example-mod/CTRL/with-enum'
-        as_enum = '//65536/-3/4'
+        as_text = '//example/mod/CTRL/with-enum'
+        as_enum = '//65535/1/-3/4'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -90,8 +91,8 @@ class TestNickname(BaseYang):
         self.assertEqual(ari_enum, got_enum)
 
     def test_to_enum_nomust_noobj(self):
-        as_text = '//example-mod/CTRL/missing'
-        as_enum = '//65536/-3/missing'
+        as_text = '//example/mod/CTRL/missing'
+        as_enum = '//65535/1/-3/missing'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -102,8 +103,8 @@ class TestNickname(BaseYang):
 
     @unittest.expectedFailure
     def test_to_enum_nomust_noobjenum(self):
-        as_text = '//example-mod/CTRL/no-enum'
-        as_enum = '//65536/-3/no-enum'
+        as_text = '//example/mod/CTRL/no-enum'
+        as_enum = '//65535/1/-3/no-enum'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -113,8 +114,8 @@ class TestNickname(BaseYang):
         self.assertEqual(ari_enum, got_enum)
 
     def test_from_enum_must_valid(self):
-        as_text = '//example-mod/CTRL/with-enum'
-        as_enum = '//65536/-3/4'
+        as_text = '//example/mod/CTRL/with-enum'
+        as_enum = '//65535/1/-3/4'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -124,7 +125,7 @@ class TestNickname(BaseYang):
         self.assertEqual(ari_text, got_text)
 
     def test_from_enum_must_nomod(self):
-        as_text = '//100/CTRL/4'
+        as_text = '//100/1/CTRL/4'
 
         ari_text = self._from_text(as_text)
 
@@ -133,7 +134,7 @@ class TestNickname(BaseYang):
             from_enum(ari_text)
 
     def test_from_enum_must_noobj(self):
-        as_text = '//65536/CTRL/100'
+        as_text = '//65535/1/CTRL/100'
 
         ari_text = self._from_text(as_text)
 
@@ -142,8 +143,8 @@ class TestNickname(BaseYang):
             from_enum(ari_text)
 
     def test_from_enum_nomust_valid(self):
-        as_text = '//example-mod/CTRL/with-enum'
-        as_enum = '//65536/-3/4'
+        as_text = '//example/mod/CTRL/with-enum'
+        as_enum = '//65535/1/-3/4'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)
@@ -153,8 +154,8 @@ class TestNickname(BaseYang):
         self.assertEqual(ari_text, got_text)
 
     def test_from_enum_nomust_noobj(self):
-        as_text = '//example-mod/CTRL/missing'
-        as_enum = '//65536/-3/missing'
+        as_text = '//example/mod/CTRL/missing'
+        as_enum = '//65535/1/-3/missing'
 
         ari_text = self._from_text(as_text)
         ari_enum = self._from_text(as_enum)

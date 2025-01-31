@@ -390,8 +390,8 @@ class AdmSet:
         # if dependant adm not added yet
         import_names = [obj.name for obj in adm_new.imports]
         pending = False
-        for adm_name in import_names:
-            if not adm_name in self:
+        for module_name in import_names:
+            if not module_name in self:
                 pending = True
                 break
 

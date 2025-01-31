@@ -316,8 +316,8 @@ class Identity:
             text += f'/{self.org_id}'
         if self.model_id is not None:
             text += f'/{self.model_id}'
-        if self.ns_rev:
-            text += f'@{self.ns_rev}'
+        if self.model_rev:
+            text += f'@{self.model_rev}'
         text += f'/{self.type_id.name}'
         text += f'/{self.obj_id}'
         return text

@@ -77,17 +77,29 @@ class Converter:
 
         if self._mode == Mode.TO_NN:
             # Prefer nicknames
-            ns_id = ari.ident.ns_id
-            if adm is None or adm.enum is None:
+            org_id = ari.ident.org_id
+            if adm is None or adm.ns_org_enum is None:
                 if self._must:
                     if adm is None:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {ns_id} {err}'
+                    msg = f'The ADM named {org_id} {err}'
                     raise RuntimeError(msg)
             else:
-                ns_id = adm.enum
+                org_id = adm.ns_org_enum
+
+            model_id = ari.ident.model_id
+            if adm is None or adm.ns_model_enum is None:
+                if self._must:
+                    if adm is None:
+                        err = 'does not exist'
+                    else:
+                        err = 'does not have an enumeration'
+                    msg = f'The ADM named {model_id} {err}'
+                    raise RuntimeError(msg)
+            else:
+                model_id = adm.ns_model_enum
 
             obj_id = ari.ident.obj_id
             if obj is None or obj.enum is None:
@@ -103,19 +115,28 @@ class Converter:
 
             # ARI IDs from enums
             new_ident = Identity(
-                ns_id=ns_id,
+                org_id=org_id,
+                model_id=model_id,
                 type_id=ari.ident.type_id,
                 obj_id=obj_id
             )
 
         elif self._mode == Mode.FROM_NN:
-            ns_id = ari.ident.ns_id
+            org_id = ari.ident.org_id
             if adm is None:
                 if self._must:
-                    msg = f'The ADM named {ns_id} does not exist'
+                    msg = f'The ADM organization named {org_id} does not exist'
                     raise RuntimeError(msg)
             else:
-                ns_id = adm.norm_name
+                org_id = adm.ns_org_name
+
+            model_id = ari.ident.model_id
+            if adm is None:
+                if self._must:
+                    msg = f'The ADM model named {model_id} does not exist'
+                    raise RuntimeError(msg)
+            else:
+                model_id = adm.ns_model_name
 
             obj_id = ari.ident.obj_id
             if obj is None:
@@ -127,7 +148,8 @@ class Converter:
 
             # ARI IDs from names
             new_ident = Identity(
-                ns_id=ns_id,
+                org_id=org_id,
+                model_id=model_id,
                 type_id=ari.ident.type_id,
                 obj_id=obj_id
             )
