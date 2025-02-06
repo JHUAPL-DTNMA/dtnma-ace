@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 import io
 from typing import List, Tuple
 from pyang import plugin, context, statements, syntax, grammar, error
+from pyang.util import keyword_to_str
 
 # Use ARI processing library when possible
 try:
@@ -130,39 +131,57 @@ def pyang_plugin_init():
         ['module'],
         _stmt_check_enum_unique
     )
+    statements.add_validation_fun(
+        'grammar',
+        AMM_OBJ_NAMES
+        + (
+            (MODULE_NAME, 'parameter'),
+            (MODULE_NAME, 'operand'),
+            (MODULE_NAME, 'result'),
+        ),
+        _stmt_check_documentation
+    )
 
     # Register special error codes
     error.add_error_code(
-        'AMM_MODULE_NS', 1,
+        'AMM_MODULE_NS', 1,  # critical
         "An ADM module must have an ARI namespace, not %s"
     )
     error.add_error_code(
-        'AMM_MODULE_OBJS', 1,
+        'AMM_MODULE_OBJS', 1,  # critical
         "An ADM module cannot contain a statement %r named \"%s\""
     )
     error.add_error_code(
-        'AMM_MODULE_ENUM', 4,
-        "The ADM module %s must contain an amm:enum statement"
+        'AMM_MODULE_ENUM', 4,  # warning
+        "The ADM module \"%s\" must contain an amm:enum statement"
     )
     error.add_error_code(
-        'AMM_OBJ_ENUM', 4,
+        'AMM_OBJ_ENUM', 4,  # warning
         "The ADM object %s named \"%s\" should contain an amm:enum statement"
     )
     error.add_error_code(
-        'AMM_OBJ_ENUM_UNIQUE', 1,
+        'AMM_OBJ_ENUM_UNIQUE', 1,  # critical
         "An amm:enum must be unique among all %s objects, has value %s"
     )
     error.add_error_code(
-        'AMM_INTLABELS', 1,
-        "An amm:int-labels must have either 'enum' or 'bit' statements %s"
+        'AMM_INTLABELS', 1,  # critical
+        "An amm:int-labels must have either 'enum' or 'bit' substatements in \"%s\""
     )
     error.add_error_code(
-        'AMM_INTLABELS_ENUM_VALUE', 1,
+        'AMM_INTLABELS_ENUM_VALUE', 1,  # critical
         "An amm:int-labels 'enum' statement %r must have a unique 'value'"
     )
     error.add_error_code(
-        'AMM_INTLABELS_BIT_VALUE', 1,
+        'AMM_INTLABELS_BIT_VALUE', 1,  # critical
         "An amm:int-labels 'bit' statement %r must have a unique 'position'"
+    )
+    error.add_error_code(
+        'AMM_DOC_DESCRIPTION', 4,  # warning
+        "A description should be present under %s statement \"%s\""
+    )
+    error.add_error_code(
+        'AMM_DOC_REFERENCE', 4,  # warning
+        "A reference should be present under %s statement \"%s\""
     )
 
 
@@ -596,7 +615,7 @@ def _stmt_check_module_objs(ctx:context.Context, stmt:statements.Statement):
     for sub in stmt.substmts:
         if sub.keyword not in allowed:
             error.err_add(ctx.errors, sub.pos, 'AMM_MODULE_OBJS',
-                          (sub.keyword, sub.arg))
+                          (keyword_to_str(sub.keyword), sub.arg))
 
 
 def _stmt_check_obj_enum(ctx:context.Context, stmt:statements.Statement):
@@ -657,3 +676,11 @@ def _stmt_check_enum_unique(ctx:context.Context, stmt:statements.Statement):
                 error.err_add(ctx.errors, obj_stmt.pos, 'AMM_OBJ_ENUM_UNIQUE',
                               (obj_kywd[1], enum_stmt.arg))
             seen_enum.add(enum_val)
+
+def _stmt_check_documentation(ctx:context.Context, stmt:statements.Statement):
+    if stmt.search_one('description') is None:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_DESCRIPTION',
+                      (keyword_to_str(stmt.keyword), stmt.arg))
+    if stmt.search_one('reference') is None and False:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_REFERENCE',
+                      (keyword_to_str(stmt.keyword), stmt.arg))

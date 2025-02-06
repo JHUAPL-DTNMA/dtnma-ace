@@ -20,7 +20,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "cbor2 ~=5.5",
+  "cbor2 ~=5.6.4", # specific patch version for tag 100 fix
   "cbor-diag",
   "numpy",
   "PLY >= 3",
