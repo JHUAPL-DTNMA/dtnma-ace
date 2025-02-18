@@ -48,7 +48,7 @@ class DbRepository(Repository):
         result = []
         for adm_mod in found.all():
             rev = adm_mod.revisions[0].name if adm_mod.revisions else None
-            result.append((adm_mod.name, rev, ('yang', adm_mod.source_id)))
+            result.append((adm_mod.module_name, rev, ('yang', adm_mod.source_id)))
 
         for file_entry in self._file_entries:
             name, ext = os.path.splitext(file_entry.name)
@@ -390,8 +390,8 @@ class AdmSet:
         # if dependant adm not added yet
         import_names = [obj.name for obj in adm_new.imports]
         pending = False
-        for adm_name in import_names:
-            if not adm_name in self:
+        for module_name in import_names:
+            if not module_name in self:
                 pending = True
                 break
 

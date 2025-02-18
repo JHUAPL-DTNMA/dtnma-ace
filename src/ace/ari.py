@@ -26,7 +26,7 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 import datetime
 from dataclasses import dataclass
 import enum
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
 
@@ -280,25 +280,44 @@ class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
 
-    ns_id:Union[str, int, None] = None
-    ''' The None value indicates a module-relative path. '''
-    ns_rev:Optional[str] = None
-    ''' For the text-form ARI a specific module revision date. '''
+    org_id:Union[str, int, None] = None
+    ''' The None value indicates an org-relative path. '''
+    model_id:Union[str, int, None] = None
+    ''' The None value indicates an model-relative path. '''
+    model_rev:Optional[str] = None
+    ''' For the text-form ARI a specific ADM revision date. '''
     type_id:Optional[StructType] = None
     ''' ADM type of the referenced object '''
     obj_id:Union[str, int, None] = None
     ''' Name with the type removed '''
 
-    def __str__(self):
-        ''' Pretty format the identity.
+    @property
+    def ns_id(self) -> Tuple:
+        ''' Get a tuple representing the namespace. '''
+        return (self.org_id, self.model_id)
+
+    @property
+    def module_name(self) -> Optional[str]:
+        ''' Get the ADM module name associated with this namespace. '''
+        if self.org_id is None or self.model_id is None:
+            return None
+        return f'{self.org_id}-{self.model_id}'
+
+    def __str__(self) -> str:
+        ''' Pretty format the identity similar to URI text encoding.
         '''
         text = ''
-        if self.ns_id is None:
-            text += '.'
+        if self.org_id is None:
+            if self.model_id is None:
+                text += '.'
+            else:
+                text += '..'
         else:
-            text += f'/{self.ns_id}'
-            if self.ns_rev:
-                text += f'@{self.ns_rev}'
+            text += f'/{self.org_id}'
+        if self.model_id is not None:
+            text += f'/{self.model_id}'
+        if self.model_rev:
+            text += f'@{self.model_rev}'
         text += f'/{self.type_id.name}'
         text += f'/{self.obj_id}'
         return text

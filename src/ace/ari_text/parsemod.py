@@ -209,57 +209,73 @@ def p_params_amlist(p):
 
 
 def p_objpath_only_ns(p):
-    '''objpath : SLASH SLASH VALSEG
-               | SLASH SLASH VALSEG SLASH'''
-    mod = util.MODID(p[3])
+    '''objpath : SLASH SLASH VALSEG SLASH VALSEG
+               | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
+    org = util.IDSEGMENT(p[3])
+    mod = util.MODID(p[5])
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
     p[0] = Identity(
-        ns_id=mod[0],
-        ns_rev=mod[1],
+        org_id=org,
+        model_id=mod[0],
+        model_rev=mod[1],
         type_id=None,
         obj_id=None,
     )
 
 
 def p_objpath_with_ns(p):
-    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+    org = util.IDSEGMENT(p[3])
+    mod = util.MODID(p[5])
+    if not isinstance(mod, tuple):
+        mod = (mod, None)
+
     try:
-        typ = util.get_structtype(p[5])
+        typ = util.get_structtype(p[7])
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
-
     # Reference are only allowed with AMM types
     if typ >= 0 or typ == StructType.OBJECT:
         raise RuntimeError("Invalid AMM type")
 
-    mod = util.MODID(p[3])
-    if not isinstance(mod, tuple):
-        mod = (mod, None)
+    obj = util.IDSEGMENT(p[9])
 
     p[0] = Identity(
-        ns_id=mod[0],
-        ns_rev=mod[1],
+        org_id=org,
+        model_id=mod[0],
+        model_rev=mod[1],
         type_id=typ,
-        obj_id=util.IDSEGMENT(p[7]),
+        obj_id=obj,
     )
 
 
 def p_objpath_relative(p):
-    'objpath : DOT SLASH VALSEG SLASH VALSEG'
+    '''objpath : DOT SLASH VALSEG SLASH VALSEG
+               | DOT DOT SLASH VALSEG SLASH VALSEG SLASH VALSEG'''
+    got = len(p)
+
+    if got > 6:
+        mod = util.MODID(p[got - 5])
+        if not isinstance(mod, tuple):
+            mod = (mod, None)
+    else:
+        mod = (None, None)
+
     try:
-        typ = util.get_structtype(p[3])
+        typ = util.get_structtype(p[got - 3])
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
-
     # Reference are only allowed with AMM types
     if typ >= 0 or typ == StructType.OBJECT:
         raise RuntimeError("Invalid AMM type")
 
-    p[0] = Identity(ns_id=None, type_id=typ, obj_id=util.IDSEGMENT(p[5]))
+    obj = util.IDSEGMENT(p[got - 1])
+
+    p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)
 
 
 def p_acbracket(p):

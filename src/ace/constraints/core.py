@@ -26,24 +26,23 @@ from dataclasses import dataclass
 import logging
 from ace import models
 
-
 LOGGER = logging.getLogger(__name__)
-#: Accumulated list of all constraints to check
 CONSTRAINTS = {}
+''' Accumulated list of all constraints to check '''
 
 
 @dataclass
 class Issue:
     ''' An issue resulting from a failed constraint.
     '''
-    #: The name of the constraint noting the issue, which will be set automatically
     check_name: str = None
-    #: The name of the ADM containing the issue, which will be set automatically
-    adm_name: str = None
-    #: The object containing the issue
+    ''' The name of the constraint noting the issue, which will be set automatically '''
+    module_name: str = None
+    ''' The name of the ADM module containing the issue, which will be set automatically '''
     obj: object = None
-    #: Any specific detail about the issue
+    ''' The object containing the issue '''
     detail: str = None
+    ''' Any specific detail about the issue '''
 
 
 def register(obj):
@@ -74,7 +73,7 @@ class Checker:
     def __init__(self, db_sess):
         self._db_sess = db_sess
 
-    def check(self, src: models.AdmModule = None):
+    def check(self, src: models.AdmModule=None):
         ''' Check a specific ADM for issues.
 
         :param src: The ADM to check or None.
@@ -97,8 +96,8 @@ class Checker:
 
         # Run non-global constraints per each adm
         for adm in adm_list:
-            adm_name = adm.norm_name
-            LOGGER.debug('Checking ADM: %s', adm_name)
+            module_name = adm.norm_name
+            LOGGER.debug('Checking ADM: %s', module_name)
             for cst_name, cst in CONSTRAINTS.items():
                 if getattr(cst, 'is_global', False):
                     continue
@@ -117,11 +116,11 @@ class Checker:
         check_count += count
 
         for issue in issuelist:
-            if issue.adm_name is None:
+            if issue.module_name is None:
                 if adm is not None:
-                    issue.adm_name = adm.norm_name
+                    issue.module_name = adm.norm_name
                 elif isinstance(issue.obj, models.AdmModule):
-                    issue.adm_name = issue.obj.norm_name
+                    issue.module_name = issue.obj.norm_name
             if issue.check_name is None:
                 issue.check_name = cst_name
         LOGGER.debug(

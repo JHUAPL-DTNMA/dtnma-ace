@@ -68,20 +68,21 @@ class Decoder:
         LOGGER.debug('Got ARI item: %s', item)
 
         if isinstance(item, list):
-            if len(item) >= 3:
+            if len(item) in {4, 5}:
                 # Object reference
-                type_id = StructType(item[1]) if item[1] is not None else None
+                type_id = StructType(item[2]) if item[2] is not None else None
                 ident = Identity(
-                    ns_id=item[0],
+                    org_id=item[0],
+                    model_id=item[1],
                     type_id=type_id,
-                    obj_id=item[2],
+                    obj_id=item[3],
                 )
 
                 params = None
-                if len(item) >= 4:
+                if len(item) == 5:
                     params = [
                         self._item_to_ari(param_item)
-                        for param_item in item[3]
+                        for param_item in item[4]
                     ]
 
                 res = ReferenceARI(ident=ident, params=params)
@@ -183,7 +184,8 @@ class Encoder:
         if isinstance(obj, ReferenceARI):
             type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
-                obj.ident.ns_id,
+                obj.ident.org_id,
+                obj.ident.model_id,
                 type_id,
                 obj.ident.obj_id,
             ]

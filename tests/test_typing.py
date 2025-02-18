@@ -189,10 +189,10 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(b'hi')))
         self.assertIsNone(typ.get(LiteralARI(123)))
 
-        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
         self.assertEqual(ref, typ.get(ref))
 
-        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.CTRL, obj_id='name'))
         self.assertIsNone(typ.get(ref))
 
     def test_edd_convert(self):
@@ -208,10 +208,10 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             typ.convert(LiteralARI('hi'))
 
-        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
         self.assertEqual(ref, typ.convert(ref))
 
-        ref = ReferenceARI(Identity(ns_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.CTRL, obj_id='name'))
         with self.assertRaises(ValueError):
             typ.convert(ref)
 

@@ -223,14 +223,20 @@ class Encoder:
         elif isinstance(obj, ReferenceARI):
             if prefix:
                 buf.write('ari:')
-            if obj.ident.ns_id is None:
-                buf.write('.')
+            if obj.ident.org_id is None:
+                if obj.ident.model_id is None:
+                    buf.write('.')
+                else:
+                    buf.write('..')
             else:
                 buf.write('//')
-                buf.write(str(obj.ident.ns_id))
-            if obj.ident.ns_rev is not None:
+                buf.write(str(obj.ident.org_id))
+            if obj.ident.model_id is not None:
+                buf.write('/')
+                buf.write(str(obj.ident.model_id))
+            if obj.ident.model_rev is not None:
                 buf.write('@')
-                buf.write(obj.ident.ns_rev)
+                buf.write(obj.ident.model_rev)
             buf.write('/')
 
             if obj.ident.type_id is not None and obj.ident.obj_id is not None:

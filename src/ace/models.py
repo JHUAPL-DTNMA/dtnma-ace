@@ -31,7 +31,7 @@ from sqlalchemy.orm import (
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
 
-CURRENT_SCHEMA_VERSION = 17
+CURRENT_SCHEMA_VERSION = 18
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -146,6 +146,18 @@ class AdmSource(Base):
     ''' Cached full file content. '''
 
 
+class Organization(Base):
+    ''' A namespace organization. '''
+    __tablename__ = 'ns_org'
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
+    name = Column(String, index=True)
+    ''' Normalized name of this organization '''
+    enum = Column(Integer, index=True)
+    ''' Enumeration for this organization '''
+
+
 class AdmModule(Base):
     ''' The ADM itself with relations to its attributes and objects '''
     __tablename__ = "adm_module"
@@ -159,12 +171,20 @@ class AdmModule(Base):
         cascade="all, delete"
     )
 
-    # Normalized ADM name (for searching)
-    name = Column(String)
-    # Normalized ADM name (for searching)
+    module_name = Column(String)
+    ''' Original module name '''
     norm_name = Column(String, index=True)
-    # Enumeration for this ADM
-    enum = Column(Integer, index=True)
+    ''' Normalized module name (for searching) '''
+
+    ns_org_name = Column(String, index=True)
+    ''' Namespace organization name '''
+    ns_org_enum = Column(Integer, index=True)
+    ''' Organization enumeration from the module '''
+
+    ns_model_name = Column(String, index=True)
+    ''' Name of this model, in normalized form, within the organization '''
+    ns_model_enum = Column(Integer, index=True)
+    ''' Enumeration for this model within the organization '''
 
     metadata_id = Column(Integer, ForeignKey('metadata_list.id'), nullable=False)
     metadata_list = relationship(
