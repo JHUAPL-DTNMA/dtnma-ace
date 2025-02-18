@@ -46,7 +46,7 @@ concurrency:
 
 jobs:
   apidoc:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,7 +73,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     needs: apidoc
     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apl-fy24' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4
         with:
