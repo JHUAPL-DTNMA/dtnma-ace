@@ -211,8 +211,8 @@ class Encoder:
                 obj.ident.model_id,
             ]
             if obj.ident.model_rev is not None:
-                # Be explicit about CBOR tag, use inverse of built-in conversion logic
-                item.append(cbor2.CBORTag(100, obj.ident.model_rev.toordinal() - 719163))
+                # Be explicit about CBOR tag
+                item.append(cbor2.CBORTag(1004, obj.ident.model_rev.isoformat()))
             item += [
                 type_id,
                 obj.ident.obj_id,
