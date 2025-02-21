@@ -212,7 +212,7 @@ def p_objpath_only_ns(p):
     '''objpath : SLASH SLASH VALSEG SLASH VALSEG
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
     org = util.IDSEGMENT(p[3])
-    mod = util.MODID(p[5])
+    mod = util.MODSEGMENT(p[5])
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -228,7 +228,7 @@ def p_objpath_only_ns(p):
 def p_objpath_with_ns(p):
     'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
     org = util.IDSEGMENT(p[3])
-    mod = util.MODID(p[5])
+    mod = util.MODSEGMENT(p[5])
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -258,7 +258,7 @@ def p_objpath_relative(p):
     got = len(p)
 
     if got > 6:
-        mod = util.MODID(p[got - 5])
+        mod = util.MODSEGMENT(p[got - 5])
         if not isinstance(mod, tuple):
             mod = (mod, None)
     else:

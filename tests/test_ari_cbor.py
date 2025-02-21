@@ -93,6 +93,8 @@ class TestAriCbor(unittest.TestCase):
         cbor2.dumps([65535, 1, None, None]),
         # from `ari://65535/hi/`
         cbor2.dumps([65535, "hi", None, None]),
+        # from 'ari:/ietf/dtnma-agent@2024-06-25/',
+        cbor2.dumps([1, 1, cbor2.CBORTag(1004, "2024-06-25"), None, None]),
         # from `ari://65535/1/CTRL/0`
         cbor2.dumps([65535, 1, StructType.CTRL.value, 0]),
         # from 'ari:/ietf/bp-agent/CTRL/reset_all_counts()',
