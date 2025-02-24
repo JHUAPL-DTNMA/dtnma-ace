@@ -60,6 +60,11 @@ If you are a developer seeking to do unit testing, you can run the following two
 pip3 install -e '.[test]'
 python3 -m pytest -v --cov=ace tests
 ```
+Likewise, if you wish to update our Sphinx documentation and then see your changes, you can run the following two commands to install and build the docs, and then open the generated html files in a web browser:
+```
+pip3 install .[docs]
+./build_docs.sh
+```
 
 If you are still encountering installation errors, you may need to update the submodules:
 ```
