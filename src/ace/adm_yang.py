@@ -607,6 +607,8 @@ class Decoder:
             else:
                 kind = logging.ERROR
             emsg = pyang.error.err_to_str(etag, eargs)
+            if isinstance(epos.ref, tuple):
+                epos.ref = epos.ref[1]
             LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
 
         src = AdmSource()
