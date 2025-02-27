@@ -349,21 +349,6 @@ module empty {}
         '''\
   amm:typedef typeobj {
     amm:enum 2;
-    amm:dlist {
-      amm:type "/ARITYPE/TEXTSTR" {
-        length "min..255";
-      }
-      amm:seq {
-       amm:type "/aritype/int";
-       min-elements 2;
-       max-elements 10;
-     }
-    }
-  }
-''',
-        '''\
-  amm:typedef typeobj {
-    amm:enum 2;
     amm:umap {
       amm:keys {
         amm:type "/ARITYPE/TEXTSTR";
@@ -849,8 +834,10 @@ class TestAdmContents(BaseYang):
 
         obj = adm.edd[0]
         self.assertEqual('edd_no_param', obj.norm_name)
-        
         self.assertEqual(0, len(obj.parameters.items))
+        action = self._ari_dec.decode('//example-test-mod/EDD/edd_no_param(1)')
+        with self.assertRaises(lookup.ParameterError):
+            action()
 
         obj = adm.edd[1]
         self.assertEqual('edd_with_param', obj.norm_name)
