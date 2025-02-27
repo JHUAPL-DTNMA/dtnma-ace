@@ -570,7 +570,7 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
 
     # check that it agrees with module name
     module_name = stmt.main_module().arg
-    if ns_ref.ident.module_name != module_name.casefold():
+    if ns_ref and ns_ref.ident.module_name != module_name.casefold():
         error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NAME_NS',
                       (module_name, stmt.arg))
 
