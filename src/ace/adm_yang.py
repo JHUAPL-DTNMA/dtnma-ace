@@ -23,7 +23,7 @@
 ''' CODEC for converting ADM to and from YANG form.
 '''
 
-from datetime import datetime
+from datetime import datetime, date
 import io
 import logging
 import math
@@ -393,9 +393,11 @@ class Decoder:
     def _check_ari(self, ari:ARI):
         ''' Verify ARI references only imported modules. '''
         if isinstance(ari, ReferenceARI):
+            if ari.ident.module_name == self._module.arg:
+                return
             imports = [mod[0] for mod in self._module.i_prefixes.values()]
             if ari.ident.module_name is not None and ari.ident.module_name not in imports:
-                raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
+                raise ValueError(f'ARI references module {ari.ident.module_name} that is not imported')
 
     def _get_ari(self, text:str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
@@ -628,6 +630,9 @@ class Decoder:
         if ns_stmt is None:
             raise RuntimeError('ADM module is missing "namespace" statement')
         ns_ari = self._ari_dec.decode(ns_stmt.arg)
+        if ns_ari.ident.module_name != self._module.arg:
+            raise RuntimeError(f'ADM module name "{self._module.arg}" disagrees with namespace-derived "{ns_ari.ident.module_name}"')
+
         self._ari_dec.set_namespace(ns_ari.ident.org_id, ns_ari.ident.model_id)
         adm.ns_org_name = ns_ari.ident.org_id.casefold()
         adm.ns_model_name = ns_ari.ident.model_id.casefold()
@@ -661,6 +666,7 @@ class Decoder:
         for sub_stmt in module.search('revision'):
             adm.revisions.append(AdmRevision(
                 name=sub_stmt.arg,
+                date=date.fromisoformat(sub_stmt.arg),
                 description=pyang.statements.get_description(sub_stmt),
             ))
 
