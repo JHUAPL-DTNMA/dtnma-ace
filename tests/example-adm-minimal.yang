@@ -16,18 +16,22 @@ module example-adm-minimal {
   amm:enum 0;
 
   amm:edd edd1 {
-    amm:type /ARITYPE/int;
+    amm:enum 1;
     description
       "EDD test_int";
+    amm:type /ARITYPE/int;
   }
   amm:ctrl test1 {
+    amm:enum 1;
+    description
+      "This control resets all Agent ADM statistics reported in the Agent ADM report.";
     amm:parameter id {
+      description "one";
       amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
+      description "two";
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
-    description
-      "This control resets all Agent ADM statistics reported in the Agent ADM report.";
   }
 }

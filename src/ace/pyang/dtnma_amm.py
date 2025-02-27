@@ -98,7 +98,7 @@ def pyang_plugin_init():
     statements.add_validation_fun(
         'grammar',
         ['module'],
-        _stmt_check_mod_enum
+        _stmt_check_module_enums
     )
     statements.add_validation_fun(
         'grammar',
@@ -134,7 +134,7 @@ def pyang_plugin_init():
     statements.add_validation_fun(
         'grammar',
         AMM_OBJ_NAMES
-        + (
+        +(
             (MODULE_NAME, 'parameter'),
             (MODULE_NAME, 'operand'),
             (MODULE_NAME, 'result'),
@@ -144,15 +144,23 @@ def pyang_plugin_init():
 
     # Register special error codes
     error.add_error_code(
-        'AMM_MODULE_NS', 1,  # critical
-        "An ADM module must have an ARI namespace, not %s"
+        'AMM_MODULE_NS_ARI', 1,  # critical
+        "An ADM module must have an ARI namespace , not %s"
+    )
+    error.add_error_code(
+        'AMM_MODULE_NAME_NS', 1,  # critical
+        "The ADM module name \"%s\" does not agree with the module namespace \"%s\""
     )
     error.add_error_code(
         'AMM_MODULE_OBJS', 1,  # critical
         "An ADM module cannot contain a statement %r named \"%s\""
     )
     error.add_error_code(
-        'AMM_MODULE_ENUM', 4,  # warning
+        'AMM_ORG_ENUM', 4,  # warning
+        "The ADM module \"%s\" must contain an organization with an amm:enum statement"
+    )
+    error.add_error_code(
+        'AMM_MODEL_ENUM', 4,  # warning
         "The ADM module \"%s\" must contain an amm:enum statement"
     )
     error.add_error_code(
@@ -553,12 +561,18 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
     except ari_text.ParseError:
         ns_ref = None
 
+    # check that it is a namespace reference
     if (not isinstance(ns_ref, ReferenceARI)
-        or ns_ref.ident.module_name != stmt.main_module().arg.casefold()
         or ns_ref.ident.type_id is not None
         or ns_ref.ident.obj_id is not None):
-        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS',
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS_ARI',
                       (stmt.arg))
+
+    # check that it agrees with module name
+    module_name = stmt.main_module().arg
+    if ns_ref.ident.module_name != module_name.casefold():
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NAME_NS',
+                      (module_name, stmt.arg))
 
 
 def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
@@ -595,11 +609,17 @@ def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
     ari.visit(visitor)
 
 
-def _stmt_check_mod_enum(ctx:context.Context, stmt:statements.Statement):
-    ''' Check an enum value for an ADM module. '''
+def _stmt_check_module_enums(ctx:context.Context, stmt:statements.Statement):
+    ''' Check the model and org enum values for an ADM module. '''
     enum_stmt = stmt.search_one((MODULE_NAME, 'enum'))
     if not enum_stmt:
-        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_ENUM',
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODEL_ENUM',
+                      (stmt.arg))
+
+    org_stmt = stmt.search_one('organization')
+    enum_stmt = org_stmt.search_one((MODULE_NAME, 'enum')) if org_stmt else None
+    if not enum_stmt:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_ORG_ENUM',
                       (stmt.arg))
 
 
@@ -676,6 +696,7 @@ def _stmt_check_enum_unique(ctx:context.Context, stmt:statements.Statement):
                 error.err_add(ctx.errors, obj_stmt.pos, 'AMM_OBJ_ENUM_UNIQUE',
                               (obj_kywd[1], enum_stmt.arg))
             seen_enum.add(enum_val)
+
 
 def _stmt_check_documentation(ctx:context.Context, stmt:statements.Statement):
     if stmt.search_one('description') is None:

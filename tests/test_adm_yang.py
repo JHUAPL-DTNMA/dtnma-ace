@@ -31,6 +31,7 @@ from typing import TextIO
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
+from typing import List
 from ace import adm_yang, ari, ari_text, models, lookup
 
 LOGGER = logging.getLogger(__name__)
@@ -132,6 +133,14 @@ module example-mod {
         buf.seek(0)
         return buf
 
+    def _filter_logs(self, output:List) -> List:
+        ''' Remove known isolated module set log message. '''
+
+        def incl(msg):
+            return msg != 'ERROR:ace.adm_yang:<text>:6: module "ietf-amm" not found in search path'
+
+        return list(filter(incl, output))
+
 
 class TestAdmYang(BaseYang):
     ''' Tests of the YANG-based syntax handler separate from ADM logic. '''
@@ -139,12 +148,21 @@ class TestAdmYang(BaseYang):
     EMPTY_MODULE = '''\
 module example-empty {
   namespace "ari://example/empty/";
+  prefix empty;
 }
 '''
 
     def test_decode_empty(self):
         buf = io.StringIO(self.EMPTY_MODULE)
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [
+                'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an amm:enum statement',
+                'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an organization with an amm:enum statement',
+            ],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
@@ -157,7 +175,12 @@ module example-empty {
 
     def test_decode_noobject(self):
         buf = self._get_mod_buf('')
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
@@ -182,21 +205,32 @@ module example-empty {
         buf = self._get_mod_buf('''
   amm:edd edd1 {
     amm:enum 4;
-    amm:type "/ARITYPE/INT";
     description
-      "EDD test_int";
+      "";
+    amm:type "/ARITYPE/INT";
   }
   amm:ctrl test1 {
     amm:enum 5;
+    description
+      "";
     amm:parameter id {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
 ''')
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
@@ -234,25 +268,36 @@ module example-empty {
         buf = self._get_mod_buf('''
   amm:edd edd1 {
     amm:enum 4;
-    amm:type "/ARITYPE/int";
     description
-      "EDD test_int";
+      "";
+    amm:type "/ARITYPE/int";
   }
   grouping paramgrp {
     amm:parameter id {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/any";
     }
     amm:parameter def {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/expr";
       amm:default "ari:/AC/()";
     }
   }
   amm:ctrl test1 {
     amm:enum 5;
+    description
+      "";
     uses paramgrp;
   }
 ''')
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
@@ -306,6 +351,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/UINT" {
       range "10..40";
     }
@@ -314,6 +361,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/IDENT" {
       amm:base "./IDENT/name1";
     }
@@ -322,6 +371,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/UINT" {
       amm:int-labels {
         enum one {
@@ -337,6 +388,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/UINT" {
       amm:int-labels {
         bit one {
@@ -352,6 +405,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/CBOR" {
       amm:cddl "uint / tstr";
     }
@@ -360,6 +415,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:ulist {
       amm:type "/ARITYPE/TEXTSTR" {
         length "min..255";
@@ -370,6 +427,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:umap {
       amm:keys {
         amm:type "/ARITYPE/TEXTSTR";
@@ -383,6 +442,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:umap {
       amm:keys {
         amm:type "/ARITYPE/TEXTSTR";
@@ -393,6 +454,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:umap {
       amm:values {
         amm:type "/ARITYPE/UINT";
@@ -403,6 +466,8 @@ module example-empty {
         '''\
   amm:typedef typeobj {
     amm:enum 2;
+    description
+      "";
     amm:tblt {
       amm:column col1 {
         amm:type "/ARITYPE/TEXTSTR";
@@ -414,9 +479,13 @@ module example-empty {
         '''\
   amm:ident name1 {
     amm:enum 2;
+    description
+      "";
   }
   amm:ident name2 {
     amm:enum 3;
+    description
+      "";
     amm:base "./IDENT/name1";
   }
 ''',
@@ -427,7 +496,7 @@ module example-empty {
       "one base";
   }
   amm:ident base2 {
-    amm:enum 1;
+    amm:enum 2;
     description
       "other base";
   }
@@ -444,7 +513,7 @@ module example-empty {
   amm:const val {
     amm:enum 2;
     description
-      "some value";
+      "";
     amm:init-value "hi";
     amm:type "/ARITYPE/TEXTSTR";
   }
@@ -454,7 +523,7 @@ module example-empty {
   amm:edd val {
     amm:enum 2;
     description
-      "some value";
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       pattern '.*hello.*';
     }
@@ -464,8 +533,10 @@ module example-empty {
   amm:edd val {
     amm:enum 2;
     description
-      "some value";
+      "";
     amm:parameter opt {
+      description
+        "";
       amm:type "/ARITYPE/UINT";
     }
     amm:type "/ARITYPE/TEXTSTR";
@@ -475,7 +546,7 @@ module example-empty {
   amm:var val {
     amm:enum 2;
     description
-      "some value";
+      "";
     amm:type "/ARITYPE/INT";
   }
 ''',
@@ -483,7 +554,7 @@ module example-empty {
   amm:var val {
     amm:enum 2;
     description
-      "some value";
+      "";
     amm:init-value "3";
     amm:type "/ARITYPE/INT";
   }
@@ -493,11 +564,15 @@ module example-empty {
   amm:ctrl dothing {
     amm:enum 2;
     description
-      "do a thing";
+      "";
     amm:parameter one {
+      description
+        "";
       amm:type "/ARITYPE/INT";
     }
     amm:parameter two {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
@@ -508,9 +583,13 @@ module example-empty {
     description
       "do a thing";
     amm:parameter one {
+      description
+        "";
       amm:type "/ARITYPE/INT";
     }
     amm:result val {
+      description
+        "";
       amm:type "/ARITYPE/INT";
     }
   }
@@ -522,14 +601,20 @@ module example-empty {
     description
       "sum together values";
     amm:parameter count {
+      description
+        "";
       amm:type "/ARITYPE/UINT";
     }
     amm:operand vals {
+      description
+        "";
       amm:seq {
         amm:type "//ietf/amm/TYPEDEF/numeric";
       }
     }
     amm:result total {
+      description
+        "";
       amm:type "//ietf/amm/TYPEDEF/numeric";
     }
   }
@@ -544,7 +629,12 @@ module example-empty {
                 buf_in = self._get_mod_buf(body)
                 LOGGER.info('input:\n%s', buf_in.getvalue())
 
-                adm = self._adm_dec.decode(buf_in)
+                with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+                    adm = self._adm_dec.decode(buf_in)
+                self.assertEqual(
+                    [],
+                    self._filter_logs(logs.output)
+                )
                 self.assertIsInstance(adm, models.AdmModule)
                 self._db_sess.add(adm)
                 self._db_sess.commit()
@@ -563,6 +653,9 @@ class TestAdmContents(BaseYang):
     TYPE_CONSTRAINT = (
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT" {
       range "10..40";
     }
@@ -570,6 +663,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/REAL64" {
       range "10..40";
     }
@@ -577,10 +673,16 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef base {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT";
   }
   // derived from unrestricted
   amm:typedef typeobj {
+    amm:enum 2;
+    description
+      "";
     amm:type "./TYPEDEF/base" {
       range "10..40";
     }
@@ -588,6 +690,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       range "10..40";
     }
@@ -596,6 +701,9 @@ class TestAdmContents(BaseYang):
 
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       length "10..40";
     }
@@ -603,6 +711,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/BYTESTR" {
       length "10..40";
     }
@@ -610,6 +721,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT" {
       length "10..40";
     }
@@ -618,6 +732,9 @@ class TestAdmContents(BaseYang):
 
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       pattern "hello";
     }
@@ -625,6 +742,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/BYTESTR" {
       pattern "hello";
     }
@@ -632,6 +752,9 @@ class TestAdmContents(BaseYang):
 ''', False),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT" {
       pattern "hello";
     }
@@ -640,6 +763,9 @@ class TestAdmContents(BaseYang):
 
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT" {
       amm:int-labels {
         enum "first" {
@@ -654,14 +780,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
-    amm:type "/ARITYPE/INT" {
-      amm:int-labels {
-      }
-    }
-  }
-''', True),
-        ('''\
-  amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       amm:int-labels {
         enum "first" {
@@ -677,6 +798,9 @@ class TestAdmContents(BaseYang):
 
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/CBOR" {
       amm:cddl "hi";
     }
@@ -684,6 +808,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/INT" {
       amm:cddl "hi";
     }
@@ -691,6 +818,9 @@ class TestAdmContents(BaseYang):
 ''', False),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/BYTESTR" {
       amm:cddl "hi";
     }
@@ -699,6 +829,9 @@ class TestAdmContents(BaseYang):
 
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/IDENT" {
       amm:base "//ietf/amm/IDENT/somename";
     }
@@ -706,6 +839,9 @@ class TestAdmContents(BaseYang):
 ''', True),
         ('''\
   amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/TEXTSTR" {
       amm:base "//ietf/amm/IDENT/somename";
     }
@@ -719,7 +855,12 @@ class TestAdmContents(BaseYang):
                 buf_in = self._get_mod_buf(body)
                 LOGGER.info('input:\n%s', buf_in.getvalue())
 
-                adm = self._adm_dec.decode(buf_in)
+                with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+                    adm = self._adm_dec.decode(buf_in)
+                self.assertEqual(
+                    [],
+                    self._filter_logs(logs.output)
+                )
                 self.assertIsInstance(adm, models.AdmModule)
                 self._db_sess.add(adm)
                 self._db_sess.commit()
@@ -736,30 +877,45 @@ class TestAdmContents(BaseYang):
     def test_ident_base_constraint(self):
         buf = self._get_mod_buf('''
   amm:ident ident-a {
-      description "A base ident";
+    amm:enum 1;
+    description "A base ident";
   }
   amm:ident ident-b {
-      amm:base "./IDENT/ident-a";
-      description "A derived ident";
+    amm:enum 2;
+    description "A derived ident";
+    amm:base "./IDENT/ident-a";
   }
   amm:ident ident-c {
-      description "Another base ident";
+    amm:enum 3;
+    description "Another base ident";
   }
   amm:ident ident-d {
-      amm:base "./IDENT/ident-a";
-      amm:base "./IDENT/ident-c";
-      description "Double derived";
+    amm:enum 4;
+    description "Double derived";
+    amm:base "./IDENT/ident-a";
+    amm:base "./IDENT/ident-c";
   }
   amm:typedef type-any {
+    amm:enum 1;
+    description
+      "";
     amm:type "/ARITYPE/ident";
   }
   amm:typedef type-a {
+    amm:enum 2;
+    description
+      "";
     amm:type "/ARITYPE/ident" {
       amm:base "./IDENT/ident-a";
     }
   }
 ''')
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
@@ -797,17 +953,26 @@ class TestAdmContents(BaseYang):
     def test_ident_params(self):
         buf = self._get_mod_buf('''
   amm:ident ident-a {
+    amm:enum 1;
     description "A base ident";
   }
   amm:ident ident-b {
+    amm:enum 2;
     amm:parameter one {
+      description
+        "";
       amm:type "/ARITYPE/INT";
     }
     amm:base "./IDENT/ident-a";
     description "A derived ident";
   }
 ''')
-        adm = self._adm_dec.decode(buf)
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
