@@ -461,6 +461,7 @@ class Decoder:
                 try:
                     item = TypeNameItem(
                         name=param_stmt.arg,
+                        description=pyang.statements.get_description(param_stmt),
                         typeobj=self._get_typeobj(param_stmt)
                     )
 
@@ -508,6 +509,7 @@ class Decoder:
                 try:
                     obj.result = TypeNameItem(
                         name=result_stmt.arg,
+                        description=pyang.statements.get_description(result_stmt),
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
@@ -519,6 +521,7 @@ class Decoder:
                 try:
                     obj.operands.items.append(TypeNameItem(
                         name=opnd_stmt.arg,
+                        description=pyang.statements.get_description(opnd_stmt),
                         typeobj=self._get_typeobj(opnd_stmt)
                     ))
                 except Exception as err:
@@ -529,6 +532,7 @@ class Decoder:
                 try:
                     obj.result = TypeNameItem(
                         name=result_stmt.arg,
+                        description=pyang.statements.get_description(result_stmt),
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
@@ -630,9 +634,6 @@ class Decoder:
         if ns_stmt is None:
             raise RuntimeError('ADM module is missing "namespace" statement')
         ns_ari = self._ari_dec.decode(ns_stmt.arg)
-        if ns_ari.ident.module_name != self._module.arg:
-            raise RuntimeError(f'ADM module name "{self._module.arg}" disagrees with namespace-derived "{ns_ari.ident.module_name}"')
-
         self._ari_dec.set_namespace(ns_ari.ident.org_id, ns_ari.ident.model_id)
         adm.ns_org_name = ns_ari.ident.org_id.casefold()
         adm.ns_model_name = ns_ari.ident.model_id.casefold()
@@ -829,8 +830,10 @@ class Encoder:
         if issubclass(cls, ParamMixin):
             for param in obj.parameters.items:
                 param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
+                if param.description is not None:
+                    self._add_substmt(param_stmt, 'description', param.description)
                 self._put_typeobj(param.typeobj, param_stmt)
-                if param.default_value:
+                if param.default_value is not None:
                     self._add_substmt(param_stmt, (AMM_MOD, 'default'), param.default_value)
 
         if issubclass(cls, TypeUseMixin):
@@ -841,21 +844,27 @@ class Encoder:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'base'), base.base_text)
 
         elif issubclass(cls, (Const, Var)):
-            if obj.init_value:
+            if obj.init_value is not None:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
 
         elif issubclass(cls, Ctrl):
             if obj.result:
                 res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                if obj.result.description is not None:
+                    self._add_substmt(res_stmt, 'description', obj.result.description)
                 self._put_typeobj(obj.result.typeobj, res_stmt)
 
         elif issubclass(cls, Oper):
             for operand in obj.operands.items:
                 opnd_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'operand'), operand.name)
+                if operand.description is not None:
+                    self._add_substmt(opnd_stmt, 'description', operand.description)
                 self._put_typeobj(operand.typeobj, opnd_stmt)
 
             if obj.result:
                 res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                if obj.result.description is not None:
+                    self._add_substmt(res_stmt, 'description', obj.result.description)
                 self._put_typeobj(obj.result.typeobj, res_stmt)
 
         return obj_stmt
@@ -864,7 +873,7 @@ class Encoder:
         if isinstance(typeobj, TypeUse):
             type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), typeobj.type_text)
 
-            if typeobj.units:
+            if typeobj.units is not None:
                 self._add_substmt(type_stmt, 'units', typeobj.units)
 
             for cnst in typeobj.constraints:
