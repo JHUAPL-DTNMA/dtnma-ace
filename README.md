@@ -32,7 +32,7 @@ It also includes an `ace_ari` command line interface (CLI) for translating betwe
 
 ## Development
 
-To install development and test dependencies for this project, run from the root directory (possibly under sudo if installing to the system path):
+To install development and test dependencies for this project, run from the root directory (possibly under `sudo` if installing to the system path):
 ```sh
 pip3 install -r <(python3 -m piptools compile --extra test pyproject.toml 2>&1)
 ```
@@ -44,14 +44,14 @@ pip3 install .
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
 ```
-echo 'ari:/IANA:ion_admin/CTRL.node_contact_add(UVAST.1685728970,UVAST.1685729269,UINT.2,UINT.2,UVAST.25000,UVAST.1)' | PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex
+echo 'ari:/EXECSET/n=123;(//ietf/dtnma-agent/CTRL/inspect(//ietf/dtnma-agent/EDD/sw-version))' | PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex 
 ```
 which will produce a hexadecimal output:
 ```
-0xC1188D410605061616141416161A647A2ECA1A647A2FF502041961A801
+0x821482187B8501012205818401012301
 ```
 
-An example of using the ADM parser, from the soruce tree, to normalize and compare ADMs (with meld tool) is:
+An example of using the ADM parser, from the source tree, to normalize and compare ADMs (with meld tool) is:
 ```
 ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
 ```
