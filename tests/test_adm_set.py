@@ -26,6 +26,7 @@ import io
 import logging
 import os
 import shutil
+from typing import List
 import unittest
 from ace.adm_set import AdmSet
 from ace.models import AdmModule
@@ -44,6 +45,14 @@ class TestAdmSet(unittest.TestCase):
 
     def tearDown(self):
         del self._dir
+
+    def _filter_logs(self, output:List) -> List:
+        ''' Remove known isolated module set log message. '''
+
+        def incl(msg):
+            return msg != 'ERROR:ace.adm_yang:example-adm-minimal.yang:5: module "ietf-amm" not found in search path'
+
+        return list(filter(incl, output))
 
     def test_construct_default(self):
         adms = AdmSet()
@@ -93,7 +102,8 @@ class TestAdmSet(unittest.TestCase):
         adms = AdmSet()
         self.assertEqual(0, len(adms))
 
-        self.assertEqual(0, adms.load_default_dirs())
+        with self.assertNoLogs(level=logging.WARNING):
+            self.assertEqual(0, adms.load_default_dirs())
         self.assertEqual(0, len(adms))
         self.assertNotIn('example-adm-minimal', adms)
         with self.assertRaises(KeyError):
@@ -103,7 +113,12 @@ class TestAdmSet(unittest.TestCase):
         adms_path = os.path.join(os.environ['XDG_DATA_HOME'], 'ace', 'adms')
         os.makedirs(adms_path)
         shutil.copy(os.path.join(SELFDIR, 'example-adm-minimal.yang'), adms_path)
-        self.assertEqual(1, adms.load_default_dirs())
+        with self.assertLogs(level=logging.WARNING) as logs:
+            self.assertEqual(1, adms.load_default_dirs())
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertEqual(1, len(adms))
         self.assertIn('example-adm-minimal', adms)
         self.assertIsInstance(adms['example-adm-minimal'], AdmModule)

@@ -23,7 +23,7 @@
 ''' CODEC for converting ADM to and from YANG form.
 '''
 
-from datetime import datetime
+from datetime import datetime, date
 import io
 import logging
 import math
@@ -393,9 +393,11 @@ class Decoder:
     def _check_ari(self, ari:ARI):
         ''' Verify ARI references only imported modules. '''
         if isinstance(ari, ReferenceARI):
+            if ari.ident.module_name == self._module.arg:
+                return
             imports = [mod[0] for mod in self._module.i_prefixes.values()]
             if ari.ident.module_name is not None and ari.ident.module_name not in imports:
-                raise ValueError(f'ARI references module {ari.ident.ns_id} that is not imported')
+                raise ValueError(f'ARI references module {ari.ident.module_name} that is not imported')
 
     def _get_ari(self, text:str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
@@ -459,6 +461,7 @@ class Decoder:
                 try:
                     item = TypeNameItem(
                         name=param_stmt.arg,
+                        description=pyang.statements.get_description(param_stmt),
                         typeobj=self._get_typeobj(param_stmt)
                     )
 
@@ -506,6 +509,7 @@ class Decoder:
                 try:
                     obj.result = TypeNameItem(
                         name=result_stmt.arg,
+                        description=pyang.statements.get_description(result_stmt),
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
@@ -517,6 +521,7 @@ class Decoder:
                 try:
                     obj.operands.items.append(TypeNameItem(
                         name=opnd_stmt.arg,
+                        description=pyang.statements.get_description(opnd_stmt),
                         typeobj=self._get_typeobj(opnd_stmt)
                     ))
                 except Exception as err:
@@ -527,6 +532,7 @@ class Decoder:
                 try:
                     obj.result = TypeNameItem(
                         name=result_stmt.arg,
+                        description=pyang.statements.get_description(result_stmt),
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
@@ -607,6 +613,8 @@ class Decoder:
             else:
                 kind = logging.ERROR
             emsg = pyang.error.err_to_str(etag, eargs)
+            if isinstance(epos.ref, tuple):
+                epos.ref = epos.ref[1]
             LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
 
         src = AdmSource()
@@ -659,6 +667,7 @@ class Decoder:
         for sub_stmt in module.search('revision'):
             adm.revisions.append(AdmRevision(
                 name=sub_stmt.arg,
+                date=date.fromisoformat(sub_stmt.arg),
                 description=pyang.statements.get_description(sub_stmt),
             ))
 
@@ -821,8 +830,10 @@ class Encoder:
         if issubclass(cls, ParamMixin):
             for param in obj.parameters.items:
                 param_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'parameter'), param.name)
+                if param.description is not None:
+                    self._add_substmt(param_stmt, 'description', param.description)
                 self._put_typeobj(param.typeobj, param_stmt)
-                if param.default_value:
+                if param.default_value is not None:
                     self._add_substmt(param_stmt, (AMM_MOD, 'default'), param.default_value)
 
         if issubclass(cls, TypeUseMixin):
@@ -833,21 +844,27 @@ class Encoder:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'base'), base.base_text)
 
         elif issubclass(cls, (Const, Var)):
-            if obj.init_value:
+            if obj.init_value is not None:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
 
         elif issubclass(cls, Ctrl):
             if obj.result:
                 res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                if obj.result.description is not None:
+                    self._add_substmt(res_stmt, 'description', obj.result.description)
                 self._put_typeobj(obj.result.typeobj, res_stmt)
 
         elif issubclass(cls, Oper):
             for operand in obj.operands.items:
                 opnd_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'operand'), operand.name)
+                if operand.description is not None:
+                    self._add_substmt(opnd_stmt, 'description', operand.description)
                 self._put_typeobj(operand.typeobj, opnd_stmt)
 
             if obj.result:
                 res_stmt = self._add_substmt(obj_stmt, (AMM_MOD, 'result'), obj.result.name)
+                if obj.result.description is not None:
+                    self._add_substmt(res_stmt, 'description', obj.result.description)
                 self._put_typeobj(obj.result.typeobj, res_stmt)
 
         return obj_stmt
@@ -856,7 +873,7 @@ class Encoder:
         if isinstance(typeobj, TypeUse):
             type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), typeobj.type_text)
 
-            if typeobj.units:
+            if typeobj.units is not None:
                 self._add_substmt(type_stmt, 'units', typeobj.units)
 
             for cnst in typeobj.constraints:

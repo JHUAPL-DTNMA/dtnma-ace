@@ -25,6 +25,7 @@
 
 import copy
 from dataclasses import dataclass
+import datetime
 import logging
 from typing import Dict, List, Optional, Union
 from sqlalchemy.orm.session import Session, object_session
@@ -74,7 +75,8 @@ class RelativeResolver:
         return ari
 
 
-def find_adm(org_id: Union[str, int], model_id: Union[str, int], db_sess:Session) -> Optional[AdmModule]:
+def find_adm(org_id: Union[str, int], model_id: Union[str, int],
+             model_rev: Optional[datetime.date], db_sess:Session) -> Optional[AdmModule]:
     ''' Dereference an ADM module.
     '''
     query_adm = db_sess.query(AdmModule)
@@ -93,6 +95,9 @@ def find_adm(org_id: Union[str, int], model_id: Union[str, int], db_sess:Session
     else:
         raise TypeError(f'ReferenceARI model_id is not int or str: {model_id}')
 
+    if model_rev is not None:
+        query_adm = query_adm.filter(AdmModule.latest_revision_date == model_rev)
+
     found_adm = query_adm.one_or_none()
     return found_adm
 
@@ -102,7 +107,7 @@ def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
     '''
     orm_type = ORM_TYPE[ref.ident.type_id]
 
-    found_adm = find_adm(ref.ident.org_id, ref.ident.model_id, db_sess)
+    found_adm = find_adm(ref.ident.org_id, ref.ident.model_id, ref.ident.model_rev, db_sess)
     if found_adm is None:
         return None
 

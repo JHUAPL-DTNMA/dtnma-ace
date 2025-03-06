@@ -284,7 +284,7 @@ class Identity:
     ''' The None value indicates an org-relative path. '''
     model_id:Union[str, int, None] = None
     ''' The None value indicates an model-relative path. '''
-    model_rev:Optional[str] = None
+    model_rev:Optional[datetime.date] = None
     ''' For the text-form ARI a specific ADM revision date. '''
     type_id:Optional[StructType] = None
     ''' ADM type of the referenced object '''
@@ -294,7 +294,7 @@ class Identity:
     @property
     def ns_id(self) -> Tuple:
         ''' Get a tuple representing the namespace. '''
-        return (self.org_id, self.model_id)
+        return (self.org_id, self.model_id, self.model_rev)
 
     @property
     def module_name(self) -> Optional[str]:

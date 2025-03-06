@@ -236,7 +236,7 @@ class Encoder:
                 buf.write(str(obj.ident.model_id))
             if obj.ident.model_rev is not None:
                 buf.write('@')
-                buf.write(obj.ident.model_rev)
+                buf.write(obj.ident.model_rev.isoformat())
             buf.write('/')
 
             if obj.ident.type_id is not None and obj.ident.obj_id is not None:
