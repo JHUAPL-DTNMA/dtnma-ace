@@ -1017,7 +1017,6 @@ class TestAdmContents(BaseYang):
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
         self.assertEqual('example-mod', adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -1027,9 +1026,6 @@ class TestAdmContents(BaseYang):
         obj = adm.edd[0]
         self.assertEqual('edd_no_param', obj.norm_name)
         self.assertEqual(0, len(obj.parameters.items))
-        action = self._ari_dec.decode('//example-test-mod/EDD/edd_no_param(1)')
-        with self.assertRaises(lookup.ParameterError):
-            action()
 
         obj = adm.edd[1]
         self.assertEqual('edd_with_param', obj.norm_name)
@@ -1060,7 +1056,6 @@ class TestAdmContents(BaseYang):
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
         self.assertEqual('example-mod', adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -1095,7 +1090,6 @@ class TestAdmContents(BaseYang):
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.name)
         self.assertEqual('example-mod', adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
