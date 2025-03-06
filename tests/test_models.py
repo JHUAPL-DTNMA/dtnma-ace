@@ -44,12 +44,15 @@ class TestModels(unittest.TestCase):
 
     def test_simple(self):
         src = models.AdmSource(
-            abs_file_path='hi',
+            abs_file_path='example-hi',
         )
         mod = models.AdmModule(
             source=src,
-            norm_name='hi',
-            enum=10,
+            norm_name='example-hi',
+            ns_org_name="example",
+            ns_org_enum=65535,
+            ns_model_name="hi",
+            ns_model_enum=10,
             metadata_list=models.MetadataList(),
         )
         self._db_sess.add_all([src, mod])
@@ -58,4 +61,4 @@ class TestModels(unittest.TestCase):
         objs = self._db_sess.query(models.AdmModule)
         self.assertEqual(1, objs.count())
         adm = objs.first()
-        self.assertEqual('hi', adm.source.abs_file_path)
+        self.assertEqual('example-hi', adm.source.abs_file_path)

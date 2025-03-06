@@ -24,7 +24,7 @@
 '''
 import datetime
 import logging
-from typing import BinaryIO
+from typing import BinaryIO, Optional
 import cbor2
 from ace.ari import (
     DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType,
@@ -68,21 +68,45 @@ class Decoder:
         LOGGER.debug('Got ARI item: %s', item)
 
         if isinstance(item, list):
-            if len(item) >= 3:
+            if len(item) in {4, 5, 6}:
                 # Object reference
-                type_id = StructType(item[1]) if item[1] is not None else None
+                idx = 0
+                org_id = item[idx]
+                idx += 1
+                model_id = item[idx]
+                idx += 1
+
+                # cbor2 already handles date tags
+                if isinstance(item[idx], datetime.date):
+                    model_rev = item[idx]
+                    idx += 1
+                else:
+                    model_rev = None
+
+                if item[idx] is not None:
+                    type_id = StructType(item[idx])
+                else:
+                    type_id = None
+                idx += 1
+
+                obj_id = item[idx]
+                idx += 1
+
                 ident = Identity(
-                    ns_id=item[0],
+                    org_id=org_id,
+                    model_id=model_id,
+                    model_rev=model_rev,
                     type_id=type_id,
-                    obj_id=item[2],
+                    obj_id=obj_id,
                 )
 
-                params = None
-                if len(item) >= 4:
+                if len(item) > idx:
                     params = [
                         self._item_to_ari(param_item)
-                        for param_item in item[3]
+                        for param_item in item[4]
                     ]
+                else:
+                    params = None
 
                 res = ReferenceARI(ident=ident, params=params)
 
@@ -183,7 +207,13 @@ class Encoder:
         if isinstance(obj, ReferenceARI):
             type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
-                obj.ident.ns_id,
+                obj.ident.org_id,
+                obj.ident.model_id,
+            ]
+            if obj.ident.model_rev is not None:
+                # Be explicit about CBOR tag
+                item.append(cbor2.CBORTag(1004, obj.ident.model_rev.isoformat()))
+            item += [
                 type_id,
                 obj.ident.obj_id,
             ]

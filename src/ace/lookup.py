@@ -25,6 +25,7 @@
 
 import copy
 from dataclasses import dataclass
+import datetime
 import logging
 from typing import Dict, List, Optional, Union
 from sqlalchemy.orm.session import Session, object_session
@@ -56,30 +57,47 @@ ORM_TYPE = {
 class RelativeResolver:
     ''' Resolve module-relative ARIs '''
 
-    def __init__(self, ns_id:Union[int, str]):
-        self._ns_id = ns_id
+    def __init__(self, org_id: Union[str, int], model_id: Union[str, int]):
+        self._org_id = org_id
+        self._model_id = model_id
 
     def __call__(self, ari:ARI) -> ARI:
         if isinstance(ari, ReferenceARI):
-            if ari.ident.ns_id is None:
+            if ari.ident.org_id is None or ari.ident.model_id is None:
+                out_org_id = ari.ident.org_id if ari.ident.org_id is not None else self._org_id
+                out_mod_id = ari.ident.model_id if ari.ident.model_id is not None else self._model_id
                 ari.ident = Identity(
-                    ns_id=self._ns_id,
+                    org_id=out_org_id,
+                    model_id=out_mod_id,
                     type_id=ari.ident.type_id,
                     obj_id=ari.ident.obj_id,
                 )
         return ari
 
 
-def find_adm(ns_id, db_sess:Session) -> Optional[AdmModule]:
+def find_adm(org_id: Union[str, int], model_id: Union[str, int],
+             model_rev: Optional[datetime.date], db_sess:Session) -> Optional[AdmModule]:
     ''' Dereference an ADM module.
     '''
     query_adm = db_sess.query(AdmModule)
-    if isinstance(ns_id, int):
-        query_adm = query_adm.filter(AdmModule.enum == ns_id)
-    elif isinstance(ns_id, str):
-        query_adm = query_adm.filter(AdmModule.norm_name == normalize_ident(ns_id))
+
+    if isinstance(org_id, int):
+        query_adm = query_adm.filter(AdmModule.ns_org_enum == org_id)
+    elif isinstance(org_id, str):
+        query_adm = query_adm.filter(AdmModule.ns_org_name == normalize_ident(org_id))
     else:
-        raise TypeError(f'ReferenceARI ns_id is not int or str: {ns_id}')
+        raise TypeError(f'ReferenceARI org_id is not int or str: {org_id}')
+
+    if isinstance(model_id, int):
+        query_adm = query_adm.filter(AdmModule.ns_model_enum == model_id)
+    elif isinstance(model_id, str):
+        query_adm = query_adm.filter(AdmModule.ns_model_name == normalize_ident(model_id))
+    else:
+        raise TypeError(f'ReferenceARI model_id is not int or str: {model_id}')
+
+    if model_rev is not None:
+        query_adm = query_adm.filter(AdmModule.latest_revision_date == model_rev)
+
     found_adm = query_adm.one_or_none()
     return found_adm
 
@@ -89,7 +107,7 @@ def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
     '''
     orm_type = ORM_TYPE[ref.ident.type_id]
 
-    found_adm = find_adm(ref.ident.ns_id, db_sess)
+    found_adm = find_adm(ref.ident.org_id, ref.ident.model_id, ref.ident.model_rev, db_sess)
     if found_adm is None:
         return None
 

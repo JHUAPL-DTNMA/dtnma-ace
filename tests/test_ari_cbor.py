@@ -89,14 +89,16 @@ class TestAriCbor(unittest.TestCase):
             )
 
     REFERENCE_DATAS = [
-        # from `ari://0/`
-        cbor2.dumps([0, None, None]),
-        # from `ari://65536/`
-        cbor2.dumps([65536, None, None]),
-        # from `ari://0/CTRL/0`
-        cbor2.dumps([0, StructType.CTRL.value, 0]),
-        # from 'ari:/bp-agent/CTRL/reset_all_counts()',
-        cbor2.dumps([0, StructType.CTRL.value, 10]),
+        # from `ari://65535/1/`
+        cbor2.dumps([65535, 1, None, None]),
+        # from `ari://65535/hi/`
+        cbor2.dumps([65535, "hi", None, None]),
+        # from 'ari:/ietf/dtnma-agent@2024-06-25/',
+        cbor2.dumps([1, 1, cbor2.CBORTag(1004, "2024-06-25"), None, None]),
+        # from `ari://65535/1/CTRL/0`
+        cbor2.dumps([65535, 1, StructType.CTRL.value, 0]),
+        # from 'ari:/ietf/bp-agent/CTRL/reset_all_counts()',
+        cbor2.dumps([1, "bp-agent", StructType.CTRL.value, 10]),
     ]
 
     def test_reference_cbor_loopback(self):
@@ -143,24 +145,23 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_encode_objref_path_text(self):
         TEST_CASE = [
-            ("example-adm-a@2024-06-25", None, None,
-          b"8378186578616D706C652D61646D2D6140323032342D30362D3235F6F6"),
-            ("example-adm-a", None, None, b"836D6578616D706C652D61646D2D61F6F6"),
-            ("!example-odm-b", None, None, b"836E216578616D706C652D6F646D2D62F6F6"),
-            ("adm", None, None, b"836361646DF6F6"),
-            (None, StructType.CONST, "hi", b"83F621626869"),
-            ("adm", StructType.CONST, "hi", b"836361646D21626869"),
-            ("test", StructType.CONST, "that", b"836474657374216474686174"),
-            ("test@1234", StructType.CONST, "that", b"8369746573744031323334216474686174"),
-            ("!test", StructType.CONST, "that", b"83652174657374216474686174"),
+            ("example", "adm-a@2024-06-25", None, None, b"84676578616D706C657061646D2D6140323032342D30362D3235F6F6"),
+            ("example", "adm-a", None, None, b"84676578616D706C656561646D2D61F6F6"),
+            ("example", "!odm-b", None, None, b"84676578616D706C6566216F646D2D62F6F6"),
+            (65535, "adm", None, None, b"8419FFFF6361646DF6F6"),
+            (None, None, StructType.CONST, "hi", b"84F6F621626869"),
+            (65535, "adm", StructType.CONST, "hi", b"8419FFFF6361646D21626869"),
+            (65535, "test", StructType.CONST, "that", b"8419FFFF6474657374216474686174"),
+            (65535, "test@1234", StructType.CONST, "that", b"8419FFFF69746573744031323334216474686174"),
+            (65535, "!test", StructType.CONST, "that", b"8419FFFF652174657374216474686174"),
         ]
 
         enc = ari_cbor.Encoder()
         for row in TEST_CASE:
-            ns_id, type_id, obj, expect = row
+            org_id, model_id, type_id, obj_id, expect = row
             with self.subTest(expect):
                 ari = ReferenceARI(
-                    ident=Identity(ns_id, None, type_id, obj),
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
                     params=None
                 )
                 loop = io.BytesIO()
@@ -175,67 +176,68 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_encode_objref_path_int(self):
         TEST_CASE = [
-            (18, None, None, b"8312F6F6"),
-            (65536, None, None, b"831A00010000F6F6"),
-            (-20, None, None, b"8333F6F6"),
-            (None, StructType.IDENT, 34, b"83F6201822"),
-            (18, StructType.IDENT, 34, b"8312201822"),
+            (65535, 18, None, None, b"8419FFFF12F6F6"),
+            (65535, -20, None, None, b"8419FFFF33F6F6"),
+            (None, None, StructType.IDENT, 34, b"84F6F6201822"),
+            (65535, 18, StructType.IDENT, 34, b"8419FFFF12201822"),
         ]
 
         enc = ari_cbor.Encoder()
         for row  in TEST_CASE:
-            ns_id, type_id, obj_id, expect = row
+            org_id, model_id, type_id, obj_id, expect = row
             ari = ReferenceARI(
-                ident=Identity(ns_id, None, type_id, obj_id),
+                ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
                 params=None
             )
-            loop = io.BytesIO()
-            enc.encode(ari, loop)
-            LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+            buf = io.BytesIO()
+            enc.encode(ari, buf)
+            LOGGER.info('Got data: %s', to_diag(buf.getvalue()))
             self.assertEqual(
-                base64.b16encode(loop.getvalue()),
+                base64.b16encode(buf.getvalue()),
                 expect)
 
     def test_ari_cbor_decode_objref_path_text(self):
         TEST_CASE = [
-            ("836361646D21626869", "adm", StructType.CONST, "hi"),
-            ("836474657374216474686174", "test", StructType.CONST, "that"),
-            ("8369746573744031323334216474686174", "test@1234", StructType.CONST, "that"),
-            ("83652174657374216474686174", "!test", StructType.CONST, "that"),
-            ("846474657374226474686174811822", "test", StructType.CTRL, "that"),
+            ("84676578616D706C656361646D21626869", "example", "adm", StructType.CONST, "hi"),
+            ("84676578616D706C656474657374216474686174", "example", "test", StructType.CONST, "that"),
+            ("84676578616D706C6569746573744031323334216474686174", "example", "test@1234", StructType.CONST, "that"),
+            ("84676578616D706C65652174657374216474686174", "example", "!test", StructType.CONST, "that"),
+            ("85676578616D706C656474657374226474686174811822", "example", "test", StructType.CTRL, "that"),
         ]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
-            data, expect_ns_id, expect_type_id, expect_obj_id = row
+            data, expect_org_id, expect_model_id, expect_type_id, expect_obj_id = row
             data = base64.b16decode(data)
             LOGGER.info('Testing data: %s', to_diag(data))
             ari = dec.decode(io.BytesIO(data))
-            self.assertEqual(ari.ident.ns_id, expect_ns_id)
+            self.assertEqual(ari.ident.org_id, expect_org_id)
+            self.assertEqual(ari.ident.model_id, expect_model_id)
             self.assertEqual(ari.ident.type_id, expect_type_id)
             self.assertEqual(ari.ident.obj_id, expect_obj_id)
 
     def test_ari_cbor_decode_objref_path_int(self):
         TEST_CASE = [
-            ("8312201822", 18, StructType.IDENT, 34),
-            ("8402220481626869", 2, StructType.CTRL, 4),
+            ("8419FFFF12201822", 65535, 18, StructType.IDENT, 34),
+            ("8519FFFF02220481626869", 65535, 2, StructType.CTRL, 4),
         ]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
-            data, expect_ns_id, expect_type_id, expect_obj_id = row
+            data, expect_org_id, expect_model_id, expect_type_id, expect_obj_id = row
             data = base64.b16decode(data)
             LOGGER.info('Testing data: %s', to_diag(data))
             ari = dec.decode(io.BytesIO(data))
-            self.assertEqual(ari.ident.ns_id, expect_ns_id)
+            self.assertEqual(ari.ident.org_id, expect_org_id)
+            self.assertEqual(ari.ident.model_id, expect_model_id)
             self.assertEqual(ari.ident.type_id, expect_type_id)
             self.assertEqual(ari.ident.obj_id, expect_obj_id)
 
     def test_ari_cbor_decode_rptset(self):
         TEST_CASE = [
-            ("8215831904D21903E8850083647465737422626869F603426869", 1234, 1000, 0,
+            ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0,
           1),
-          ("8215831904D282211904D2850083647465737422626869F603426869", 1234, 12, 340000000, 1)
+          ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1)
         ]
 
         dec = ari_cbor.Decoder()
@@ -496,7 +498,7 @@ class TestAriCbor(unittest.TestCase):
             ("82061864"),
             ("82071864"),
             ("8212A303F50A626869626F6804"),
-            ("8464746573742A6474686174811822"),
+            ("85676578616D706C6564746573742A6474686174811822"),
             ("F5"),
             ("F4"),
             ("1904D2"),
@@ -533,15 +535,15 @@ class TestAriCbor(unittest.TestCase):
             # ("82138100"),
             ("82138101"),
             ("821481F6"),
-            ("8214821904D283647465737422626869"),
-            ("8214834268698364746573742262686983647465737422626568"),
+            ("8214821904D28419FFFF647465737422626869"),
+            ("8214834268698419FFFF6474657374226268698419FFFF647465737422626568"),
             # ("8215831904D21903E8850083647465737422626869F603426869"),
             # ("8215831904D21A2B450625850083647465737422626869F603426869"),
-            ("836474657374216474686174"),
-            ("8369746573744031323334216474686174"),
-            ("83652174657374216474686174"),
-            ("846474657374226474686174811822"),
-            ("8402220481626869"),
+            ("8419FFFF6474657374216474686174"),
+            ("8419FFFF69746573744031323334216474686174"),
+            ("8419FFFF652174657374216474686174"),
+            ("8519FFFF6474657374226474686174811822"),
+            ("8519FFFF02220481626869"),
             ("820F410A"),
             ("820F4BA164746573748203F94480"),
         ]

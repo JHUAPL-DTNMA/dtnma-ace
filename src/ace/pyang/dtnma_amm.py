@@ -31,6 +31,7 @@ from dataclasses import dataclass, field
 import io
 from typing import List, Tuple
 from pyang import plugin, context, statements, syntax, grammar, error
+from pyang.util import keyword_to_str
 
 # Use ARI processing library when possible
 try:
@@ -67,11 +68,9 @@ def pyang_plugin_init():
     # ADM enumeration only at module level and optional
     # allowing for non-ADM YANG modules
     grammar.add_to_stmts_rules(
-        ['module'],
+        ['module', 'organization'],
         [((MODULE_NAME, 'enum'), '?')],
     )
-#    rules = grammar.stmt_map['module'][1]
-#    rules.insert(rules.index(('prefix', '1')) + 1, ((MODULE_NAME, 'enum'), '?'))
 
     # AMM object extensions with preferred canonicalization order
     grammar.add_to_stmts_rules(
@@ -99,7 +98,7 @@ def pyang_plugin_init():
     statements.add_validation_fun(
         'grammar',
         ['module'],
-        _stmt_check_mod_enum
+        _stmt_check_module_enums
     )
     statements.add_validation_fun(
         'grammar',
@@ -132,39 +131,65 @@ def pyang_plugin_init():
         ['module'],
         _stmt_check_enum_unique
     )
+    statements.add_validation_fun(
+        'grammar',
+        AMM_OBJ_NAMES
+        +(
+            (MODULE_NAME, 'parameter'),
+            (MODULE_NAME, 'operand'),
+            (MODULE_NAME, 'result'),
+        ),
+        _stmt_check_documentation
+    )
 
     # Register special error codes
     error.add_error_code(
-        'AMM_MODULE_NS', 1,
-        "An ADM module must have an ARI namespace, not %s"
+        'AMM_MODULE_NS_ARI', 1,  # critical
+        "An ADM module must have an ARI namespace , not %s"
     )
     error.add_error_code(
-        'AMM_MODULE_OBJS', 1,
+        'AMM_MODULE_NAME_NS', 1,  # critical
+        "The ADM module name \"%s\" does not agree with the module namespace \"%s\""
+    )
+    error.add_error_code(
+        'AMM_MODULE_OBJS', 1,  # critical
         "An ADM module cannot contain a statement %r named \"%s\""
     )
     error.add_error_code(
-        'AMM_MODULE_ENUM', 4,
-        "The ADM module %s must contain an amm:enum statement"
+        'AMM_ORG_ENUM', 4,  # warning
+        "The ADM module \"%s\" must contain an organization with an amm:enum statement"
     )
     error.add_error_code(
-        'AMM_OBJ_ENUM', 4,
+        'AMM_MODEL_ENUM', 4,  # warning
+        "The ADM module \"%s\" must contain an amm:enum statement"
+    )
+    error.add_error_code(
+        'AMM_OBJ_ENUM', 4,  # warning
         "The ADM object %s named \"%s\" should contain an amm:enum statement"
     )
     error.add_error_code(
-        'AMM_OBJ_ENUM_UNIQUE', 1,
+        'AMM_OBJ_ENUM_UNIQUE', 1,  # critical
         "An amm:enum must be unique among all %s objects, has value %s"
     )
     error.add_error_code(
-        'AMM_INTLABELS', 1,
-        "An amm:int-labels must have either 'enum' or 'bit' statements %s"
+        'AMM_INTLABELS', 1,  # critical
+        "An amm:int-labels must have either 'enum' or 'bit' substatements in \"%s\""
     )
     error.add_error_code(
-        'AMM_INTLABELS_ENUM_VALUE', 1,
+        'AMM_INTLABELS_ENUM_VALUE', 1,  # critical
         "An amm:int-labels 'enum' statement %r must have a unique 'value'"
     )
     error.add_error_code(
-        'AMM_INTLABELS_BIT_VALUE', 1,
+        'AMM_INTLABELS_BIT_VALUE', 1,  # critical
         "An amm:int-labels 'bit' statement %r must have a unique 'position'"
+    )
+    error.add_error_code(
+        'AMM_DOC_DESCRIPTION', 4,  # warning
+        "A description should be present under %s statement \"%s\""
+    )
+    error.add_error_code(
+        'AMM_DOC_REFERENCE', 4,  # warning
+        "A reference should be present under %s statement \"%s\""
     )
 
 
@@ -536,12 +561,18 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
     except ari_text.ParseError:
         ns_ref = None
 
+    # check that it is a namespace reference
     if (not isinstance(ns_ref, ReferenceARI)
-        or ns_ref.ident.ns_id != stmt.main_module().arg.casefold()
         or ns_ref.ident.type_id is not None
         or ns_ref.ident.obj_id is not None):
-        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS',
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS_ARI',
                       (stmt.arg))
+
+    # check that it agrees with module name
+    module_name = stmt.main_module().arg
+    if ns_ref and ns_ref.ident.module_name != module_name.casefold():
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NAME_NS',
+                      (module_name, stmt.arg))
 
 
 def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
@@ -564,7 +595,7 @@ def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
         # only care about references with absolute namespace
         if not isinstance(ari, ReferenceARI):
             return
-        if ari.ident.ns_id is None:
+        if ari.ident.model_id is None:
             return
 
         mod_prefix = mod_map.get(ari.ident.ns_id)
@@ -578,11 +609,17 @@ def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
     ari.visit(visitor)
 
 
-def _stmt_check_mod_enum(ctx:context.Context, stmt:statements.Statement):
-    ''' Check an enum value for an ADM module. '''
+def _stmt_check_module_enums(ctx:context.Context, stmt:statements.Statement):
+    ''' Check the model and org enum values for an ADM module. '''
     enum_stmt = stmt.search_one((MODULE_NAME, 'enum'))
     if not enum_stmt:
-        error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_ENUM',
+        error.err_add(ctx.errors, stmt.pos, 'AMM_MODEL_ENUM',
+                      (stmt.arg))
+
+    org_stmt = stmt.search_one('organization')
+    enum_stmt = org_stmt.search_one((MODULE_NAME, 'enum')) if org_stmt else None
+    if not enum_stmt:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_ORG_ENUM',
                       (stmt.arg))
 
 
@@ -598,7 +635,7 @@ def _stmt_check_module_objs(ctx:context.Context, stmt:statements.Statement):
     for sub in stmt.substmts:
         if sub.keyword not in allowed:
             error.err_add(ctx.errors, sub.pos, 'AMM_MODULE_OBJS',
-                          (sub.keyword, sub.arg))
+                          (keyword_to_str(sub.keyword), sub.arg))
 
 
 def _stmt_check_obj_enum(ctx:context.Context, stmt:statements.Statement):
@@ -659,3 +696,12 @@ def _stmt_check_enum_unique(ctx:context.Context, stmt:statements.Statement):
                 error.err_add(ctx.errors, obj_stmt.pos, 'AMM_OBJ_ENUM_UNIQUE',
                               (obj_kywd[1], enum_stmt.arg))
             seen_enum.add(enum_val)
+
+
+def _stmt_check_documentation(ctx:context.Context, stmt:statements.Statement):
+    if stmt.search_one('description') is None:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_DESCRIPTION',
+                      (keyword_to_str(stmt.keyword), stmt.arg))
+    if stmt.search_one('reference') is None and False:
+        error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_REFERENCE',
+                      (keyword_to_str(stmt.keyword), stmt.arg))

@@ -59,23 +59,23 @@ class unique_adm_names:  # pylint: disable=invalid-name
 
     def __call__(self, issuelist, obj, db_sess):
         count = 0
-        for name in ('norm_name', 'enum'):
-            attr = getattr(models.AdmModule, name)
-            search = (
-                db_sess.query(attr, func.count(models.AdmModule.id))
-                .group_by(attr)
-                .having(func.count(models.AdmModule.id) > 1)
+        attr = models.AdmModule.norm_name
+
+        search = (
+            db_sess.query(attr, func.count(models.AdmModule.id))
+            .group_by(attr)
+            .having(func.count(models.AdmModule.id) > 1)
+        )
+        for row in search.all():
+            query = db_sess.query(models.AdmModule).filter(
+                attr == row[0]
             )
-            for row in search.all():
-                query = db_sess.query(models.AdmModule).filter(
-                    attr == row[0]
-                )
-                for adm in query.all():
-                    issuelist.append(Issue(
-                        obj=adm,
-                        detail=f'Multiple ADMs with metadata "{name}" of "{row[0]}"'
-                    ))
-            count += 1
+            for adm in query.all():
+                issuelist.append(Issue(
+                    obj=adm,
+                    detail=f'Multiple ADMs with metadata "norm_name" of "{row[0]}"'
+                ))
+        count += 1
 
         return count
 

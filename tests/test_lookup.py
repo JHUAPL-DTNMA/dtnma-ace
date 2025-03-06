@@ -110,12 +110,12 @@ class TestActualParameterSet(unittest.TestCase):
         return lookup.ActualParameterSet(ref.params, self._fparams[ref.ident.obj_id])
 
     def test_params_none(self):
-        aparams = self._process('//example-test-mod/EDD/no_params')
+        aparams = self._process('//example/test-mod/EDD/no_params')
         self.assertEqual(
             [],
             list(aparams)
         )
-        aparams = self._process('//example-test-mod/EDD/many_params')
+        aparams = self._process('//example/test-mod/EDD/many_params')
         self.assertEqual(
             [
                 ari.UNDEFINED,
@@ -131,21 +131,21 @@ class TestActualParameterSet(unittest.TestCase):
 
     def test_params_error(self):
         #too many
-        self.catch_error('//example-test-mod/EDD/no_params(1)')
-        self.catch_error('//example-test-mod/EDD/many_params(1,2,3,4)')
+        self.catch_error('//example/test-mod/EDD/no_params(1)')
+        self.catch_error('//example/test-mod/EDD/many_params(1,2,3,4)')
 
         #value cannot be coerced
-        self.catch_error('//example-test-mod/EDD/many_params(0=test)')
+        self.catch_error('//example/test-mod/EDD/many_params(0=test)')
 
 
     def test_params_empty(self):
-        aparams = self._process('//example-test-mod/EDD/no_params()')
+        aparams = self._process('//example/test-mod/EDD/no_params()')
         self.assertEqual(
             [],
             list(aparams)
         )
         
-        aparams = self._process('//example-test-mod/EDD/many_params()')
+        aparams = self._process('//example/test-mod/EDD/many_params()')
         self.assertEqual(
             [
                 ari.UNDEFINED,
@@ -156,7 +156,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_list(self):
-        aparams = self._process('//example-test-mod/EDD/many_params(1,2)')
+        aparams = self._process('//example/test-mod/EDD/many_params(1,2)')
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
@@ -167,7 +167,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_map_ord(self):
-        aparams = self._process('//example-test-mod/EDD/many_params(0=1,2=3)')
+        aparams = self._process('//example/test-mod/EDD/many_params(0=1,2=3)')
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
@@ -178,7 +178,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_map_name(self):
-        aparams = self._process('//example-test-mod/EDD/many_params(one=1,three=3)')
+        aparams = self._process('//example/test-mod/EDD/many_params(one=1,three=3)')
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
@@ -189,7 +189,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_seq_vals(self):
-        aparams = self._process('//example-test-mod/EDD/greedy_param(1,2,3,4,5)')
+        aparams = self._process('//example/test-mod/EDD/greedy_param(1,2,3,4,5)')
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
@@ -204,7 +204,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_seq_empty(self):
-        aparams = self._process('//example-test-mod/EDD/greedy_param()')
+        aparams = self._process('//example/test-mod/EDD/greedy_param()')
         self.assertEqual(
             [
                 ari.UNDEFINED,
@@ -214,7 +214,7 @@ class TestActualParameterSet(unittest.TestCase):
         )
 
     def test_params_seq_frommap(self):
-        aparams = self._process('//example-test-mod/EDD/greedy_param(0=1,1=/AC/(2,3))')
+        aparams = self._process('//example/test-mod/EDD/greedy_param(0=1,1=/AC/(2,3))')
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),

@@ -124,14 +124,22 @@ def t_int(found):
     return int(found[0], 0)
 
 
-@TypeMatch.apply(r'[a-zA-Z_][a-zA-Z0-9_\-\.]*')
+@TypeMatch.apply(r'!?[a-zA-Z_][a-zA-Z0-9_\-\.]*')
 def t_identity(found):
     return found[0]
 
 
-@TypeMatch.apply(r'(?P<name>\!?[a-zA-Z_][a-zA-Z0-9_\-\.]*)(@(?P<rev>\d{4}-\d{2}-\d{2}))?')
-def t_modid(found):
-    return (found['name'], found['rev'])
+@TypeMatch.apply(r'(?P<name>\!?[a-zA-Z_][a-zA-Z0-9_\-\.]*|[+-]?\d+)(@(?P<rev>\d{4}-\d{2}-\d{2}))?')
+def t_modseg(found):
+    mod_id = found['name']
+    if mod_id[0].isdigit() or mod_id[0] in {'+', '-'}:
+        mod_id = int(mod_id)
+
+    mod_rev = found['rev']
+    if mod_rev is not None:
+        mod_rev = datetime.date.fromisoformat(mod_rev)
+
+    return (mod_id, mod_rev)
 
 
 def unescape(esc:str) -> str:
@@ -167,9 +175,11 @@ def unescape(esc:str) -> str:
         txt += char
     return txt
 
+
 def decode_unicode(hex_str):
   code_point = int(hex_str, 16)
   return chr(code_point)
+
 
 @TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
 def t_tstr(found):
@@ -261,8 +271,8 @@ def t_timeperiod(found):
 IDSEGMENT = TypeSeq([t_int, t_identity])
 ''' Either an integer or identity text. '''
 
-MODID = TypeSeq([t_int, t_modid])
-''' Module namespace identity. '''
+MODSEGMENT = TypeSeq([t_modseg])
+''' Model namespace segment as a tuple of ID and revision. '''
 
 SINGLETONS = TypeSeq([
     t_undefined,
