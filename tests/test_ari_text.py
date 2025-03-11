@@ -480,6 +480,26 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
+    # Test case for an Object Reference with AM (dictionary) Parameters
+    def test_ari_text_encode_objref_AM(self):
+        TEST_CASE = [
+            ("example", "adm", StructType.CONST, ["list item 1", "list item 2"], "ari://example/adm/CONST/hi"),
+            (65535, 18, StructType.IDENT, {"dict key": "dict val"}, "ari://65535/18/IDENT/34"),
+        ]
+
+        for row in TEST_CASE:
+            org_id, model_id, type_id, obj, expect = row
+            with self.subTest(expect):
+                enc = ari_text.Encoder()
+                ari = ReferenceARI(
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj),
+                    params=None
+                )
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
     def test_ari_text_encode_nsref_text(self):
         TEST_CASE = [
             ("example", "adm", "ari://example/adm/"),
