@@ -996,3 +996,111 @@ class TestAdmContents(BaseYang):
         obj = adm.ident[1]
         self.assertEqual('ident-b', obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
+
+    def test_edd_params(self):
+        buf = self._get_mod_buf('''
+  amm:edd edd_no_param {
+    amm:type /ARITYPE/int;
+    description "An EDD without parameters";
+  }
+  amm:edd edd_with_param {
+    amm:type /ARITYPE/uint;
+    amm:parameter p {
+      amm:type "/ARITYPE/int";
+    }
+    description "An EDD with parameters";
+  }
+  ''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(2, len(adm.edd))
+
+        obj = adm.edd[0]
+        self.assertEqual('edd_no_param', obj.norm_name)
+        self.assertEqual(0, len(obj.parameters.items))
+
+        obj = adm.edd[1]
+        self.assertEqual('edd_with_param', obj.norm_name)
+        self.assertEqual(1, len(obj.parameters.items))
+        param = obj.parameters.items[0]
+        self.assertEqual(
+            self._from_text('/aritype/int'),
+            param.typeobj.type_ari
+        )
+
+    def test_const_params(self):
+        buf = self._get_mod_buf('''
+  amm:const const_no_param {
+    amm:type /ARITYPE/int;
+    description "A CONST without parameters";
+  }
+  amm:const const_with_param {
+    amm:type /ARITYPE/uint;
+    amm:parameter p {
+      amm:type "/ARITYPE/int";
+    }
+    description "A CONST with parameters";
+  }
+  ''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(2, len(adm.const))
+
+        obj = adm.const[0]
+        self.assertEqual('const_no_param', obj.norm_name)
+        self.assertEqual(0, len(obj.parameters.items))
+
+        obj = adm.const[1]
+        self.assertEqual('const_with_param', obj.norm_name)
+        self.assertEqual(1, len(obj.parameters.items))
+
+    def test_var_params(self):
+        buf = self._get_mod_buf('''
+  amm:var var_no_param {
+    amm:type /ARITYPE/int;
+    description "A VAR without parameters";
+  }
+  amm:var var_with_param {
+    amm:type /ARITYPE/uint;
+    amm:parameter p {
+      amm:type "/ARITYPE/int";
+    }
+    description "A VAR with parameters";
+  }
+  ''')
+        adm = self._adm_dec.decode(buf)
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(2, len(adm.var))
+
+        obj = adm.var[0]
+        self.assertEqual('var_no_param', obj.norm_name)
+        self.assertEqual(0, len(obj.parameters.items))
+
+        obj = adm.var[1]
+        self.assertEqual('var_with_param', obj.norm_name)
+        self.assertEqual(1, len(obj.parameters.items))
+

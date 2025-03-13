@@ -41,6 +41,8 @@ class TestActualParameterSet(unittest.TestCase):
 
         self._fparams = {}
 
+        self._fparams['no_params'] = []
+
         # Equivalent to:
         # amm:parameter one {
         #   amm:type "/ARITYPE/INT";
@@ -108,6 +110,11 @@ class TestActualParameterSet(unittest.TestCase):
         return lookup.ActualParameterSet(ref.params, self._fparams[ref.ident.obj_id])
 
     def test_params_none(self):
+        aparams = self._process('//example/test-mod/EDD/no_params')
+        self.assertEqual(
+            [],
+            list(aparams)
+        )
         aparams = self._process('//example/test-mod/EDD/many_params')
         self.assertEqual(
             [
@@ -118,7 +125,26 @@ class TestActualParameterSet(unittest.TestCase):
             list(aparams)
         )
 
+    def catch_error(self, ari, etype = lookup.ParameterError):
+        with self.assertRaises(etype):
+            aparams = self._process(ari)
+
+    def test_params_error(self):
+        #too many
+        self.catch_error('//example/test-mod/EDD/no_params(1)')
+        self.catch_error('//example/test-mod/EDD/many_params(1,2,3,4)')
+
+        #value cannot be coerced
+        self.catch_error('//example/test-mod/EDD/many_params(0=test)')
+
+
     def test_params_empty(self):
+        aparams = self._process('//example/test-mod/EDD/no_params()')
+        self.assertEqual(
+            [],
+            list(aparams)
+        )
+        
         aparams = self._process('//example/test-mod/EDD/many_params()')
         self.assertEqual(
             [
