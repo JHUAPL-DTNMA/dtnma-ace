@@ -195,6 +195,39 @@ class TestAriCbor(unittest.TestCase):
             self.assertEqual(
                 base64.b16encode(buf.getvalue()),
                 expect)
+            
+    #TODO: update for AM parameters
+    def test_ari_cbor_encode_objref_AM(self):
+        TEST_CASE = [
+            #TODO: update long string of numbers to be list and/or dict?
+            ("example", "adm-a@2024-06-25", None, None, b"84676578616D706C657061646D2D6140323032342D30362D3235F6F6"),
+            ("example", "adm-a", None, None, b"84676578616D706C656561646D2D61F6F6"),
+            ("example", "!odm-b", None, None, b"84676578616D706C6566216F646D2D62F6F6"),
+            (65535, "adm", None, None, b"8419FFFF6361646DF6F6"),
+            (None, None, StructType.CONST, "hi", b"84F6F621626869"),
+            (65535, "adm", StructType.CONST, "hi", b"8419FFFF6361646D21626869"),
+            (65535, "test", StructType.CONST, "that", b"8419FFFF6474657374216474686174"),
+            (65535, "test@1234", StructType.CONST, "that", b"8419FFFF69746573744031323334216474686174"),
+            (65535, "!test", StructType.CONST, "that", b"8419FFFF652174657374216474686174"),
+        ]
+
+        enc = ari_cbor.Encoder()
+        for row in TEST_CASE:
+            org_id, model_id, type_id, obj_id, expect = row
+            with self.subTest(expect):
+                ari = ReferenceARI(
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
+                    params=None
+                )
+                loop = io.BytesIO()
+                enc.encode(ari, loop)
+                # LOGGER.info('Got text_dn: %s', loop.getvalue())
+                # self.assertEqual(expect, loop.getvalue())
+                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                self.assertEqual(
+                    base64.b16encode(loop.getvalue()),
+                    expect  # base64.b16encode(expect)
+                )
 
     def test_ari_cbor_decode_objref_path_text(self):
         TEST_CASE = [
