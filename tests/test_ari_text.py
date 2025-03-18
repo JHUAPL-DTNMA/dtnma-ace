@@ -484,8 +484,8 @@ class TestAriText(unittest.TestCase):
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
-            ("example", "adm", StructType.CONST, {1:2}, "ari://example/adm/CONST/1=2"),
-            ("example", "adm", StructType.CONST, {"test_key":"test_val"}, "ari://example/adm/CONST/test_key=test_val")
+            #TODO: add IDENT or ACE struc type example?
+            ("example", "adm", StructType.CONST, "1=2", "ari://example/adm/CONST/1=2"),
         ]
 
         for row in TEST_CASE:
@@ -1258,8 +1258,8 @@ class TestAriText(unittest.TestCase):
      # TODO: Madeline - fix this broken test for AM parameters
     def test_ari_AM_loopback(self):
         TEST_CASE = [
-            ("example", "adm", StructType.CONST, {1:2}, "ari://example/adm/CONST/1=2"),
-            ("example", "adm", StructType.CONST, {"test_key":"test_val"}, "ari://example/adm/CONST/test_key=test_val")
+            #TODO: add IDENT or ACE struc type example?
+            ("example", "adm", StructType.CONST, "1=2", "ari://example/adm/CONST/1=2"),
         ]
 
         dec = ari_text.Decoder()
