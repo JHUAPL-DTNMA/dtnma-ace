@@ -1254,7 +1254,6 @@ class TestAriText(unittest.TestCase):
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
-     # TODO: Madeline - fix this broken test for AM parameters
      # NOTE: this test might be redundant, we might just need to take this test case
      # and add it to the test_case array in the function above
     def test_ari_AM_loopback(self):
