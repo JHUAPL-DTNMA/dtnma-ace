@@ -196,10 +196,10 @@ class TestAriCbor(unittest.TestCase):
                 base64.b16encode(buf.getvalue()),
                 expect)
             
-    #TODO: update for AM parameters
+    #TODO: Madeline - update for AM parameters
     def test_ari_cbor_encode_objref_AM(self):
         TEST_CASE = [
-            #TODO: update long string of numbers to be list and/or dict?
+            #TODO: update long string of numbers to be a dict?
             ("example", "adm-a@2024-06-25", None, None, b"84676578616D706C657061646D2D6140323032342D30362D3235F6F6"),
             ("example", "adm-a", None, None, b"84676578616D706C656561646D2D61F6F6"),
             ("example", "!odm-b", None, None, b"84676578616D706C6566216F646D2D62F6F6"),

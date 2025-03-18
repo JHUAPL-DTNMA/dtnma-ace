@@ -480,11 +480,12 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
+    # TODO: Madeline - fix this broken test
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
-            ("example", "adm", StructType.CONST, ["list item 1", "list item 2"], "ari://example/adm/CONST/hi"),
-            (65535, 18, StructType.IDENT, {"dict key": "dict val"}, "ari://65535/18/IDENT/34"),
+            ("example", "adm", StructType.CONST, {1:2}, "ari://example/adm/CONST/1=2"),
+            ("example", "adm", StructType.CONST, {"test_key":"test_val"}, "ari://example/adm/CONST/test_key=test_val")
         ]
 
         for row in TEST_CASE:
@@ -1240,6 +1241,25 @@ class TestAriText(unittest.TestCase):
             # FIXME: ("./CTRL/do_thing"),
             # FIXME: ("ari:/CBOR/h'0A'"),
             # FIXME: ("ari:/CBOR/h'A164746573748203F94480'"),
+        ]
+
+        dec = ari_text.Decoder()
+        enc = ari_text.Encoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text: %s', loop.getvalue())
+                self.assertLess(0, loop.tell())
+                self.assertEqual(loop.getvalue(), text)
+
+     # TODO: Madeline - fix this broken test for AM parameters
+    def test_ari_AM_loopback(self):
+        TEST_CASE = [
+            ("example", "adm", StructType.CONST, {1:2}, "ari://example/adm/CONST/1=2"),
+            ("example", "adm", StructType.CONST, {"test_key":"test_val"}, "ari://example/adm/CONST/test_key=test_val")
         ]
 
         dec = ari_text.Decoder()
