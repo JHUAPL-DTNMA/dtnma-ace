@@ -480,7 +480,6 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
-    # TODO: Madeline - fix this broken test
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
@@ -1256,10 +1255,12 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(loop.getvalue(), text)
 
      # TODO: Madeline - fix this broken test for AM parameters
+     # NOTE: this test might be redundant, we might just need to take this test case
+     # and add it to the test_case array in the function above
     def test_ari_AM_loopback(self):
         TEST_CASE = [
-            #TODO: add IDENT or ACE struc type example?
-            ("example", "adm", StructType.CONST, "1=2", "ari://example/adm/CONST/1=2"),
+            #TODO: add AM struc type example?
+            ("ari://example/adm-a/CTRL/otherobj(true,3)"),
         ]
 
         dec = ari_text.Decoder()
