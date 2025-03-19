@@ -483,10 +483,11 @@ class TestAriText(unittest.TestCase):
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
-            #TODO: add IDENT or ACE struc type example?
-            ("example", "adm", StructType.CONST, "1=2", "ari://example/adm/CONST/1=2"),
+            #TODO: separate obj and params, pass params to the ReferenceAri 
+            ("example", "adm", StructType.EDD, "1=2", "ari://example/adm/EDD/1=2"),
         ]
 
+        #TODO: update expect
         for row in TEST_CASE:
             org_id, model_id, type_id, obj, expect = row
             with self.subTest(expect):
@@ -1254,12 +1255,12 @@ class TestAriText(unittest.TestCase):
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
-     # NOTE: this test might be redundant, we might just need to take this test case
-     # and add it to the test_case array in the function above
+
     def test_ari_AM_loopback(self):
         TEST_CASE = [
-            #TODO: add AM struc type example?
             ("ari://example/adm-a/CTRL/otherobj(true,3)"),
+            #TODO: fix AM param?
+            ("ari://example/adm-a/CTRL/otherobj(%22a%20param%22,/UINT/10)"),
         ]
 
         dec = ari_text.Decoder()
