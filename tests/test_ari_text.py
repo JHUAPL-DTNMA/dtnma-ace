@@ -483,18 +483,20 @@ class TestAriText(unittest.TestCase):
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
-            #TODO: separate obj and params, pass params to the ReferenceAri 
-            ("example", "adm", StructType.EDD, "1=2", "ari://example/adm/EDD/1=2"),
+            ("example", "adm", StructType.EDD, "myEDD", {
+                LiteralARI(value=True, type_id=StructType.BOOL): 
+                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                "ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
+                #TODO: add additional struct type test cases
         ]
 
-        #TODO: update expect
         for row in TEST_CASE:
-            org_id, model_id, type_id, obj, expect = row
+            org_id, model_id, type_id, obj, params, expect = row
             with self.subTest(expect):
                 enc = ari_text.Encoder()
                 ari = ReferenceARI(
                     ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj),
-                    params=None
+                    params=params
                 )
                 loop = io.StringIO()
                 enc.encode(ari, loop)
@@ -1259,8 +1261,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_AM_loopback(self):
         TEST_CASE = [
             ("ari://example/adm-a/CTRL/otherobj(true,3)"),
-            #TODO: fix AM param?
-            ("ari://example/adm-a/CTRL/otherobj(%22a%20param%22,/UINT/10)"),
+            ("ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
         ]
 
         dec = ari_text.Decoder()
