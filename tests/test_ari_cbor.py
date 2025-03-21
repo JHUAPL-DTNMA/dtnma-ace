@@ -202,7 +202,10 @@ class TestAriCbor(unittest.TestCase):
                 LiteralARI(value=True, type_id=StructType.BOOL): 
                 LiteralARI(value=True, type_id=StructType.BOOL)}, 
                 b"85676578616D706C656361646D23656D79454444818201F5"),
-                #TODO: add additional struct type test cases
+            (65535, 18, StructType.IDENT, "34", {
+                LiteralARI(value=101, type_id=StructType.IDENT): 
+                LiteralARI(value=11, type_id=StructType.IDENT)},
+                b"8519FFFF12206233348182201865")
         ]
 
         enc = ari_cbor.Encoder()
