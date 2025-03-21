@@ -196,28 +196,22 @@ class TestAriCbor(unittest.TestCase):
                 base64.b16encode(buf.getvalue()),
                 expect)
             
-    #TODO: Madeline - update for AM parameters
     def test_ari_cbor_encode_objref_AM(self):
         TEST_CASE = [
-            #TODO: update long string of numbers to be a dict?
-            ("example", "adm-a@2024-06-25", None, None, b"84676578616D706C657061646D2D6140323032342D30362D3235F6F6"),
-            ("example", "adm-a", None, None, b"84676578616D706C656561646D2D61F6F6"),
-            ("example", "!odm-b", None, None, b"84676578616D706C6566216F646D2D62F6F6"),
-            (65535, "adm", None, None, b"8419FFFF6361646DF6F6"),
-            (None, None, StructType.CONST, "hi", b"84F6F621626869"),
-            (65535, "adm", StructType.CONST, "hi", b"8419FFFF6361646D21626869"),
-            (65535, "test", StructType.CONST, "that", b"8419FFFF6474657374216474686174"),
-            (65535, "test@1234", StructType.CONST, "that", b"8419FFFF69746573744031323334216474686174"),
-            (65535, "!test", StructType.CONST, "that", b"8419FFFF652174657374216474686174"),
+            ("example", "adm", StructType.EDD, "myEDD", {
+                LiteralARI(value=True, type_id=StructType.BOOL): 
+                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                b"85676578616D706C656361646D23656D79454444818201F5"),
+                #TODO: add additional struct type test cases
         ]
 
         enc = ari_cbor.Encoder()
         for row in TEST_CASE:
-            org_id, model_id, type_id, obj_id, expect = row
+            org_id, model_id, type_id, obj_id, params, expect = row
             with self.subTest(expect):
                 ari = ReferenceARI(
                     ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
-                    params=None
+                    params=params
                 )
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
