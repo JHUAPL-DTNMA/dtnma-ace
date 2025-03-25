@@ -51,7 +51,7 @@ from ace.models import (
     TypeNameList, TypeNameItem,
     MetadataList, MetadataItem, AdmRevision, Feature,
     AdmSource, AdmModule, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
-    Typedef, Ident, IdentBase, Const, Ctrl, Edd, Oper, Var
+    Typedef, Ident, IdentBase, Const, Ctrl, Edd, Oper, Var, Sbr, Tbr
 )
 from ace.util import normalize_ident
 
@@ -71,6 +71,8 @@ KEYWORDS = {
     Edd: (AMM_MOD, 'edd'),
     Oper: (AMM_MOD, 'oper'),
     Var: (AMM_MOD, 'var'),
+    Sbr: (AMM_MOD, 'sbr'),
+    Tbr: (AMM_MOD, 'tbr'),
 }
 
 MOD_META_KYWDS = {
@@ -503,6 +505,15 @@ class Decoder:
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
+        # TODO: elif issubclass(cls, Sbr):
+        elif issubclass(cls, Tbr):
+            enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
+            if enabled_stmt:
+              obj.init_enabled = self._get_ari(enabled_stmt.arg)
+            else:
+              obj.init_enabled = LiteralARI(value=True, type_id=None)
+            #LOGGER.warning("DEBUG init enabled = %s", obj.init_enabled)
+
         elif issubclass(cls, Ctrl):
             result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
             if result_stmt:
@@ -685,6 +696,8 @@ class Decoder:
             self._get_section(adm.edd, Edd, module)
             self._get_section(adm.oper, Oper, module)
             self._get_section(adm.var, Var, module)
+            self._get_section(adm.sbr, Sbr, module)
+            self._get_section(adm.tbr, Tbr, module)
         except Exception as err:
             raise RuntimeError(f'Failure processing object definitions from ADM "{adm.module_name}": {err}') from err
 
@@ -764,6 +777,8 @@ class Encoder:
         self._put_section(adm.var, Var, module)
         self._put_section(adm.ctrl, Ctrl, module)
         self._put_section(adm.oper, Oper, module)
+        self._put_section(adm.sbr, Sbr, module)
+        self._put_section(adm.tbr, Tbr, module)
 
         def denorm(stmt):
             if pyang.util.is_prefixed(stmt.raw_keyword):
@@ -846,6 +861,9 @@ class Encoder:
         elif issubclass(cls, (Const, Var)):
             if obj.init_value is not None:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
+
+        # TODO: elif issubclass(cls, Sbr):
+        # TODO: elif issubclass(cls, Tbr):
 
         elif issubclass(cls, Ctrl):
             if obj.result:

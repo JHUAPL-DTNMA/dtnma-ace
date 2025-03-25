@@ -50,6 +50,8 @@ ORM_TYPE = {
     StructType.VAR: models.Var,
     StructType.CTRL: models.Ctrl,
     StructType.OPER: models.Oper,
+    StructType.SBR: models.Sbr,
+    StructType.TBR: models.Tbr,
 }
 ''' Map from reference type-ID to ADM model type. '''
 

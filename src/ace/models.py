@@ -245,6 +245,14 @@ class AdmModule(Base):
                        back_populates="module",
                        order_by='asc(Var.position)',
                        cascade="all, delete")
+    sbr = relationship("Sbr",
+                       back_populates="module",
+                       order_by='asc(Sbr.position)',
+                       cascade="all, delete")
+    tbr = relationship("Tbr",
+                       back_populates="module",
+                       order_by='asc(Tbr.position)',
+                       cascade="all, delete")
 
     def __repr__(self):
         repr_attrs = ('id', 'norm_name')
@@ -460,3 +468,30 @@ class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' The initial value as text ARI '''
     init_ari = Column(PickleType)
     ''' Resolved and decoded ARI for ivar:`init_value`. '''
+
+class Sbr(Base, AdmObjMixin):
+    ''' State Based Rule '''
+    __tablename__ = "sbr"
+    # Unique ID of the row
+    id = Column(Integer, primary_key=True)
+    # ID of the file from which this came
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="sbr")
+
+    action = Column(PickleType)
+    condition = Column(PickleType)
+
+class Tbr(Base, AdmObjMixin):
+    ''' Time Based Rule '''
+    __tablename__ = "tbr"
+    # Unique ID of the row
+    id = Column(Integer, primary_key=True)
+    # ID of the file from which this came
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="tbr")
+
+    action = Column(PickleType)
+    period = Column(PickleType)
+

@@ -200,6 +200,8 @@ module example-empty {
         self.assertEqual(0, len(adm.var))
         self.assertEqual(0, len(adm.ctrl))
         self.assertEqual(0, len(adm.oper))
+        self.assertEqual(0, len(adm.sbr))
+        self.assertEqual(0, len(adm.tbr))
 
     def test_decode_minimal(self):
         buf = self._get_mod_buf('''
@@ -223,6 +225,14 @@ module example-empty {
         "";
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
+  }
+  amm:tbr tbr1 {
+    amm:enum 6;
+    description
+      "";
+    amm:action "/AC/(./CTRL/first,./CTRL/second)";
+    amm:period "/TD/PT30S";
+    amm:init-enabled "fAlse";
   }
 ''')
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
@@ -263,6 +273,11 @@ module example-empty {
             self._from_text('/aritype/int'),
             obj.typeobj.type_ari
         )
+
+        self.assertEqual(1, len(adm.tbr))
+        obj = adm.tbr[0]
+        self.assertIsInstance(obj, models.Tbr)
+        self.assertEqual("tbr1", obj.name)
 
     def test_decode_groupings(self):
         buf = self._get_mod_buf('''

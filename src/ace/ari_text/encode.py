@@ -245,8 +245,8 @@ class Encoder:
                 buf.write(str(obj.ident.obj_id))
                 if isinstance(obj.params, list):
                     self._encode_list(buf, obj.params)
-                elif isinstance(obj.params, dict):
-                    self._encode_map(buf, obj.params)
+                #elif isinstance(obj.params, dict):
+                #    self._encode_map(buf, obj.params)
 
         # FIXME: special cases for recursion
         elif isinstance(obj, Report):
