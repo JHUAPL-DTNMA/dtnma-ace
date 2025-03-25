@@ -489,9 +489,11 @@ class TestAriText(unittest.TestCase):
                 "ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
             (65535, 18, StructType.IDENT, "34", {
                 LiteralARI(value=101, type_id=StructType.IDENT): 
-                LiteralARI(value=11, type_id=StructType.IDENT)},
-                "ari://65535/18/IDENT/34(/IDENT/101=/IDENT/11)")
-                #TODO: add additional struct type test cases
+                # LiteralARI(value=11, type_id=StructType.IDENT)},
+                ReferenceARI(
+                    ident=Identity(type_id=StructType.IDENT, obj_id="11")
+                )},
+                "ari://65535/18/IDENT/34(/IDENT/101=./IDENT/11)")
         ]
 
         for row in TEST_CASE:

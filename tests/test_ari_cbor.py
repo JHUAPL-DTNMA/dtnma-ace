@@ -218,8 +218,6 @@ class TestAriCbor(unittest.TestCase):
                 )
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
-                # LOGGER.info('Got text_dn: %s', loop.getvalue())
-                # self.assertEqual(expect, loop.getvalue())
                 LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
                 self.assertEqual(
                     base64.b16encode(loop.getvalue()),
