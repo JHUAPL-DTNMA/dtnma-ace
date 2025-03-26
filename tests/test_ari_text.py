@@ -1266,7 +1266,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_AM_loopback(self):
         TEST_CASE = [
             ("ari://example/adm-a/CTRL/otherobj(true,3)"),
-            ("ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
+            ("ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
         ]
 
         dec = ari_text.Decoder()
