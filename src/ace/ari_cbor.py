@@ -101,10 +101,18 @@ class Decoder:
                 )
 
                 if len(item) > idx:
-                    params = [
-                        self._item_to_ari(param_item)
-                        for param_item in item[4]
-                    ]
+                    if isinstance(item[4], list):
+                        params = [
+                            self._item_to_ari(param_item)
+                            for param_item in item[4]
+                        ]
+                    elif isinstance(item[4], dict):
+                        mapobj = {}
+                        for key,val in item[4].items():
+                          k = self._item_to_ari(key)
+                          v = self._item_to_ari(val)
+                          mapobj[k] = v
+                        params = mapobj
                 else:
                     params = None
 
@@ -218,11 +226,18 @@ class Encoder:
                 obj.ident.obj_id,
             ]
 
-            if obj.params is not None:
+            if isinstance(obj.params, list):
                 item.append([
                     self._ari_to_item(param)
                     for param in obj.params
                 ])
+            elif isinstance(obj.params, dict):
+                mapobj = {}
+                for key,val in obj.params.items():
+                  k = self._ari_to_item(key)
+                  v = self._ari_to_item(val)
+                  mapobj[k] = v
+                item.append(mapobj)
 
         elif isinstance(obj, LiteralARI):
             if obj.type_id is not None:
