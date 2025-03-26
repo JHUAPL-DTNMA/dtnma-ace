@@ -484,9 +484,9 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
             ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True, type_id=StructType.BOOL): 
+                LiteralARI(value=True): 
                 LiteralARI(value=True, type_id=StructType.BOOL)}, 
-                "ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
+                "ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
             (65535, 18, StructType.INT, "34", {
                 LiteralARI(value=101, type_id=StructType.INT): 
                 ReferenceARI(
