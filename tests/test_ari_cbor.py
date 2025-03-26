@@ -199,13 +199,13 @@ class TestAriCbor(unittest.TestCase):
     def test_ari_cbor_encode_objref_AM(self):
         TEST_CASE = [
             ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True, type_id=StructType.BOOL): 
+                LiteralARI(value=True, type_id=None): 
                 LiteralARI(value=True, type_id=StructType.BOOL)}, 
-                b"85676578616D706C656361646D23656D79454444818201F5"),
+                b'85676578616D706C656361646D23656D79454444A1F58201F5'),
             (65535, 18, StructType.IDENT, "34", {
-                LiteralARI(value=101, type_id=StructType.IDENT): 
+                LiteralARI(value=101, type_id=None): 
                 LiteralARI(value=11, type_id=StructType.IDENT)},
-                b"8519FFFF12206233348182201865")
+                b'8519FFFF1220623334A1186582200B')
         ]
 
         enc = ari_cbor.Encoder()
@@ -527,6 +527,7 @@ class TestAriCbor(unittest.TestCase):
             ("82071864"),
             ("8212A303F50A626869626F6804"),
             ("85676578616D706C6564746573742A6474686174811822"),
+            ("85676578616D706C656361646D23656D79454444A1F58201F5"), # Ref with AM params
             ("F5"),
             ("F4"),
             ("1904D2"),
