@@ -487,13 +487,12 @@ class TestAriText(unittest.TestCase):
                 LiteralARI(value=True, type_id=StructType.BOOL): 
                 LiteralARI(value=True, type_id=StructType.BOOL)}, 
                 "ari://example/adm/EDD/myEDD(/BOOL/true=/BOOL/true)"),
-            (65535, 18, StructType.IDENT, "34", {
-                LiteralARI(value=101, type_id=StructType.IDENT): 
-                # LiteralARI(value=11, type_id=StructType.IDENT)},
+            (65535, 18, StructType.INT, "34", {
+                LiteralARI(value=101, type_id=StructType.INT): 
                 ReferenceARI(
-                    ident=Identity(type_id=StructType.IDENT, obj_id="11")
+                    ident=Identity(type_id=StructType.INT, obj_id="11")
                 )},
-                "ari://65535/18/IDENT/34(/IDENT/101=./IDENT/11)")
+                "ari://65535/18/INT/34(/INT/101=./INT/11)")
         ]
 
         for row in TEST_CASE:
