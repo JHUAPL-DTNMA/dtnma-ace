@@ -480,6 +480,34 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text_dn: %s', loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
+    # Test case for an Object Reference with AM (dictionary) Parameters
+    def test_ari_text_encode_objref_AM(self):
+        TEST_CASE = [
+            ("example", "adm", StructType.EDD, "myEDD", {
+                LiteralARI(value=True): 
+                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                "ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
+            (65535, 18, StructType.INT, "34", {
+                LiteralARI(value=101): 
+                ReferenceARI(
+                    ident=Identity(type_id=StructType.INT, obj_id="11")
+                )},
+                "ari://65535/18/INT/34(101=./INT/11)")
+        ]
+
+        for row in TEST_CASE:
+            org_id, model_id, type_id, obj, params, expect = row
+            with self.subTest(expect):
+                enc = ari_text.Encoder()
+                ari = ReferenceARI(
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj),
+                    params=params
+                )
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                self.assertEqual(expect, loop.getvalue())
+
     def test_ari_text_encode_nsref_text(self):
         TEST_CASE = [
             ("example", "adm", "ari://example/adm/"),
@@ -1220,6 +1248,25 @@ class TestAriText(unittest.TestCase):
             # FIXME: ("./CTRL/do_thing"),
             # FIXME: ("ari:/CBOR/h'0A'"),
             # FIXME: ("ari:/CBOR/h'A164746573748203F94480'"),
+        ]
+
+        dec = ari_text.Decoder()
+        enc = ari_text.Encoder()
+        for row in TEST_CASE:
+            text = row
+            with self.subTest(text):
+                ari = dec.decode(io.StringIO(text))
+                loop = io.StringIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got text: %s', loop.getvalue())
+                self.assertLess(0, loop.tell())
+                self.assertEqual(loop.getvalue(), text)
+
+
+    def test_ari_AM_loopback(self):
+        TEST_CASE = [
+            ("ari://example/adm-a/CTRL/otherobj(true,3)"),
+            ("ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
         ]
 
         dec = ari_text.Decoder()

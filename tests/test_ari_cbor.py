@@ -195,6 +195,34 @@ class TestAriCbor(unittest.TestCase):
             self.assertEqual(
                 base64.b16encode(buf.getvalue()),
                 expect)
+            
+    def test_ari_cbor_encode_objref_AM(self):
+        TEST_CASE = [
+            ("example", "adm", StructType.EDD, "myEDD", {
+                LiteralARI(value=True, type_id=None): 
+                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                b'85676578616D706C656361646D23656D79454444A1F58201F5'),
+            (65535, 18, StructType.IDENT, "34", {
+                LiteralARI(value=101, type_id=None): 
+                LiteralARI(value=11, type_id=StructType.IDENT)},
+                b'8519FFFF1220623334A1186582200B')
+        ]
+
+        enc = ari_cbor.Encoder()
+        for row in TEST_CASE:
+            org_id, model_id, type_id, obj_id, params, expect = row
+            with self.subTest(expect):
+                ari = ReferenceARI(
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
+                    params=params
+                )
+                loop = io.BytesIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                self.assertEqual(
+                    base64.b16encode(loop.getvalue()),
+                    expect  # base64.b16encode(expect)
+                )
 
     def test_ari_cbor_decode_objref_path_text(self):
         TEST_CASE = [
@@ -499,6 +527,7 @@ class TestAriCbor(unittest.TestCase):
             ("82071864"),
             ("8212A303F50A626869626F6804"),
             ("85676578616D706C6564746573742A6474686174811822"),
+            ("85676578616D706C656361646D23656D79454444A1F58201F5"), # Ref with AM params
             ("F5"),
             ("F4"),
             ("1904D2"),
