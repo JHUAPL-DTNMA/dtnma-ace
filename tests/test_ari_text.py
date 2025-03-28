@@ -445,7 +445,6 @@ class TestAriText(unittest.TestCase):
         TEST_CASE = [
             (b"", 0, "ari:h%27%27"),
             (b"test", 4, "ari:h%2774657374%27"),
-            #TODO: fix "invalid escape sequence s'\u' or \U" warning for L448 and 449
             (b"hi\\u1234", 5, "ari:h%2768695c7531323334%27"),
             (b"hi\\U0001D11E", 6, "ari:h%2768695c553030303144313145%27"),
             (b"\x68\x00\x69", 3, "ari:h%27680069%27"),
