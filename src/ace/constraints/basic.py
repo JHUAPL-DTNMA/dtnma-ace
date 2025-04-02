@@ -149,6 +149,8 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self._iter_call(issuelist, obj.var, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.ctrl, db_sess, adm=obj)
             count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.sbr, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.tbr, db_sess, adm=obj)
         elif isinstance(obj, models.Const):
             count += self._check_typeobj(issuelist, obj, obj, db_sess, adm)
         elif isinstance(obj, models.Edd):
