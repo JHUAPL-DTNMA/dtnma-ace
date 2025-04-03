@@ -1,4 +1,4 @@
-ACE & ADMs
+ACE ADM Processing
 =======================
 
 .. argparse::
@@ -20,10 +20,16 @@ library called ``pyang`` that produces a yang informational model and converts t
 Arguments
 ---------------------
 
-``-t`` = transforming data, e.g. ``-t adm-add-enum`` ensures all objects have a unique
-``amm:enum`` value
+Transforms:
+    ``-t`` to transform module data, e.g. ``-t adm-add-enum`` ensures all objects have a unique ``amm:enum`` value.
 
-``-f`` = formatting output file
+Output format:
+    ``-f`` to control output file format, _e.g._ ``-f yang`` to output in YANG text form.
+
+    ``--yang-canonical`` to canonicalize the order of statements in the output.
+
+Linting:
+    ``--ietf`` and ``--lint-ensure-hyphenated-names`` to check for consistency.
 
 Environment Variables
 ---------------------
