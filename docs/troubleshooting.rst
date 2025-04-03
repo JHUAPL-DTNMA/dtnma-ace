@@ -14,5 +14,5 @@ For running individual unit tests, these commands are useful:
 Database errors
 ---------------
 If you run into unusual DB complaints from ACE, try removing the cache DB 
-at ~/.cache/ace/adms.sqlite. This DB is versioned between releases but dev 
+at :code:`~/.cache/ace/adms.sqlite`. This DB is versioned between releases but dev 
 changes can cause mismatches.
