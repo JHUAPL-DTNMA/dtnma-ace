@@ -25,9 +25,10 @@ name: API documentation
 on:
   schedule:
     - cron: '0 0 * * 0'
-  branches:
-    - 'main'
-    - 'apl-*'
+  push:
+    branches:
+      - 'main'
+      - 'apl-*'
   pull_request: {} # any target
 
 jobs:
