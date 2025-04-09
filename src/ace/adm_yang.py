@@ -507,12 +507,39 @@ class Decoder:
 
         # TODO: elif issubclass(cls, Sbr):
         elif issubclass(cls, Tbr):
+            action_stmt = stmt.search_one((AMM_MOD, 'action'))
+            if action_stmt:
+              obj.action_value = action_stmt.arg
+              obj.action_ari = self._get_ari(action_stmt.arg)
+            else:
+              LOGGER.warning('tbr "%s" is missing action substatement', stmt.arg)
+
+            period_stmt = stmt.search_one((AMM_MOD, 'period'))
+            if period_stmt:
+              obj.period_value = period_stmt.arg
+              obj.period_ari = self._get_ari(period_stmt.arg)
+            else:
+              LOGGER.warning('tbr "%s" is missing period substatement', stmt.arg)
+
+            start_stmt = stmt.search_one((AMM_MOD, 'start'))
+            if start_stmt:
+              obj.start_value = start_stmt.arg
+              obj.start_ari = self._get_ari(start_stmt.arg)
+            else:
+              obj.start_value = "/TD/PT0S" # 0 sec default
+              obj.start_ari = self._get_ari(obj.start_value)
+
+            max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
+            if max_count_stmt:
+              obj.max_count = int(max_count_stmt.arg)
+            else:
+              obj.max_count = 0
+
             enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
             if enabled_stmt:
-              obj.init_enabled = self._get_ari(enabled_stmt.arg)
+              obj.init_enabled = (enabled_stmt.arg == 'true')
             else:
-              obj.init_enabled = LiteralARI(value=True, type_id=None)
-            #LOGGER.warning("DEBUG init enabled = %s", obj.init_enabled)
+              obj.init_enabled = True
 
         elif issubclass(cls, Ctrl):
             result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)

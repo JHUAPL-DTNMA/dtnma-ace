@@ -23,7 +23,7 @@
 ''' ORM models for the ADM and its contents.
 '''
 from sqlalchemy import (
-    Column, ForeignKey, Integer, String, Date, DateTime, Text, PickleType
+    Column, ForeignKey, Boolean, Integer, String, Date, DateTime, Text, PickleType
 )
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
@@ -479,8 +479,19 @@ class Sbr(Base, AdmObjMixin):
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="sbr")
 
-    action = Column(PickleType)
-    condition = Column(PickleType)
+    action_value = Column(String)
+    ''' The action as text ARI '''
+    action_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`action`. '''
+
+    condition_value = Column(String)
+    ''' The condition as text ARI '''
+    condition_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`condition`. '''
+
+    min_interval = Column(String) # TODO: ARI??
+    max_count = Column(Integer)
+    init_enabled = Column(Boolean)
 
 class Tbr(Base, AdmObjMixin):
     ''' Time Based Rule '''
@@ -492,6 +503,20 @@ class Tbr(Base, AdmObjMixin):
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="tbr")
 
-    action = Column(PickleType)
-    period = Column(PickleType)
+    action_value = Column(String)
+    ''' The action as text ARI '''
+    action_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`action`. '''
 
+    period_value = Column(String)
+    ''' The period as text ARI '''
+    period_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`period`. '''
+
+    start_value = Column(String)
+    ''' The start as text ARI '''
+    start_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`start`. '''
+
+    max_count = Column(Integer)
+    init_enabled = Column(Boolean)
