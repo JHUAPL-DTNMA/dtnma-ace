@@ -505,7 +505,41 @@ class Decoder:
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
-        # TODO: elif issubclass(cls, Sbr):
+        elif issubclass(cls, Sbr):
+            action_stmt = stmt.search_one((AMM_MOD, 'action'))
+            if action_stmt:
+              obj.action_value = action_stmt.arg
+              obj.action_ari = self._get_ari(action_stmt.arg)
+            else:
+              LOGGER.warning('sbr "%s" is missing action substatement', stmt.arg)
+
+            condition_stmt = stmt.search_one((AMM_MOD, 'condition'))
+            if condition_stmt:
+              obj.condition_value = condition_stmt.arg
+              obj.condition_ari = self._get_ari(condition_stmt.arg)
+            else:
+              LOGGER.warning('sbr "%s" is missing condition substatement', stmt.arg)
+
+            min_interval_stmt = stmt.search_one((AMM_MOD, 'min-interval'))
+            if min_interval_stmt:
+              obj.min_interval_value = min_interval_stmt.arg
+              obj.min_interval_ari = self._get_ari(min_interval_stmt.arg)
+            else:
+              obj.min_interval_value = "/TD/PT0S" # 0 sec default
+              obj.min_interval_ari = self._get_ari(obj.min_interval_value)
+
+            max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
+            if max_count_stmt:
+              obj.max_count = int(max_count_stmt.arg)
+            else:
+              obj.max_count = 0
+
+            enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
+            if enabled_stmt:
+              obj.init_enabled = (enabled_stmt.arg == 'true')
+            else:
+              obj.init_enabled = True
+
         elif issubclass(cls, Tbr):
             action_stmt = stmt.search_one((AMM_MOD, 'action'))
             if action_stmt:

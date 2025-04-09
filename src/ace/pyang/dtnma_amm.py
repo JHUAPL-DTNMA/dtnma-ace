@@ -561,7 +561,7 @@ MODULE_EXTENSIONS = (
     Ext('condition', 'ARI'),
     Ext('period', 'ARI'),
     Ext('start', 'ARI'),
-    Ext('min-interval', 'integer'),
+    Ext('min-interval', 'ARI'),
     Ext('init-enabled', 'boolean'),
     Ext('max-count', 'integer'),
 )

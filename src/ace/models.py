@@ -489,7 +489,11 @@ class Sbr(Base, AdmObjMixin):
     condition_ari = Column(PickleType)
     ''' Resolved and decoded ARI for ivar:`condition`. '''
 
-    min_interval = Column(String) # TODO: ARI??
+    min_interval_value = Column(String)
+    ''' The min_interval as text ARI '''
+    min_interval_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`min_interval`. '''
+
     max_count = Column(Integer)
     init_enabled = Column(Boolean)
 
