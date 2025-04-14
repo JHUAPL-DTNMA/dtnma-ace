@@ -20,8 +20,10 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
+
 ''' Parser configuration for ARI text decoding.
 '''
+
 import logging
 from ply import yacc
 from ace.ari import (
@@ -113,7 +115,12 @@ def p_rowlist_end(p):
 
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
-    nonce = util.NONCE(p[3].get('n', 'null'))
+
+    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
+        nonce = p[3].get('n', 'null')
+    else:
+        nonce = util.NONCE(p[3].get('n', 'null'))
+
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
@@ -123,8 +130,14 @@ def p_typedlit_execset(p):
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
-    nonce = util.NONCE(p[3].get('n', 'null'))
+
+    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
+        nonce = p[3].get('n', 'null')
+    else:
+        nonce = util.NONCE(p[3].get('n', 'null'))
+
     rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
         nonce=nonce,
@@ -326,8 +339,9 @@ def p_structlist_end(p):
 
 
 def p_structpair(p):
-    'structpair : VALSEG EQ VALSEG SC'
-    # Keys are case-insensitive so get folded to lower case
+    '''structpair : VALSEG EQ VALSEG SC 
+                  | VALSEG EQ typedlit SC'''
+
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
 
@@ -343,4 +357,5 @@ def p_error(p):
 
 def new_parser(**kwargs):
     obj = yacc.yacc(**kwargs)
+#    obj = yacc.yacc(debug=True, debuglog=LOGGER)
     return obj
