@@ -339,6 +339,7 @@ def p_structlist_end(p):
 
 
 def p_structpair(p):
+    # Keys are case-insensitive so get folded to lower case
     '''structpair : VALSEG EQ VALSEG SC 
                   | VALSEG EQ typedlit SC'''
 
@@ -357,5 +358,4 @@ def p_error(p):
 
 def new_parser(**kwargs):
     obj = yacc.yacc(**kwargs)
-#    obj = yacc.yacc(debug=True, debuglog=LOGGER)
     return obj
