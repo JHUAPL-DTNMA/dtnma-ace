@@ -1020,7 +1020,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/EXECSET/n=null;()", 0),
             ("ari:/EXECSET/N=null;()", 0),
             ("ari:/EXECSET/N=0xabcd;()", 0),
-            # FIXME: ("ari:/EXECSET/N=/UINT/0B0101;()", 0),
+            ("ari:/EXECSET/N=/UINT/0x0B0101;()", 0),
+            ("ari:/EXECSET/N=/UINT/1234;()", 0),
             ("ari:/EXECSET/n=1234;(//example/test/CTRL/hi)", 1),
             ("ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)", 2),
         ]
