@@ -56,6 +56,8 @@ AMP_OBJ_NAMES = (
     (MODULE_NAME, 'var'),
     (MODULE_NAME, 'ctrl'),
     (MODULE_NAME, 'oper'),
+    (MODULE_NAME, 'sbr'),
+    (MODULE_NAME, 'tbr'),
 )
 
 TYPED_OBJS = (

@@ -23,7 +23,7 @@
 ''' ORM models for the ADM and its contents.
 '''
 from sqlalchemy import (
-    Column, ForeignKey, Integer, String, Date, DateTime, Text, PickleType
+    Column, ForeignKey, Boolean, Integer, String, Date, DateTime, Text, PickleType
 )
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
@@ -245,6 +245,14 @@ class AdmModule(Base):
                        back_populates="module",
                        order_by='asc(Var.position)',
                        cascade="all, delete")
+    sbr = relationship("Sbr",
+                       back_populates="module",
+                       order_by='asc(Sbr.position)',
+                       cascade="all, delete")
+    tbr = relationship("Tbr",
+                       back_populates="module",
+                       order_by='asc(Tbr.position)',
+                       cascade="all, delete")
 
     def __repr__(self):
         repr_attrs = ('id', 'norm_name')
@@ -460,3 +468,59 @@ class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' The initial value as text ARI '''
     init_ari = Column(PickleType)
     ''' Resolved and decoded ARI for ivar:`init_value`. '''
+
+class Sbr(Base, AdmObjMixin):
+    ''' State Based Rule '''
+    __tablename__ = "sbr"
+    # Unique ID of the row
+    id = Column(Integer, primary_key=True)
+    # ID of the file from which this came
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="sbr")
+
+    action_value = Column(String)
+    ''' The action as text ARI '''
+    action_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`action`. '''
+
+    condition_value = Column(String)
+    ''' The condition as text ARI '''
+    condition_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`condition`. '''
+
+    min_interval_value = Column(String)
+    ''' The min_interval as text ARI '''
+    min_interval_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`min_interval`. '''
+
+    max_count = Column(Integer)
+    init_enabled = Column(Boolean)
+
+class Tbr(Base, AdmObjMixin):
+    ''' Time Based Rule '''
+    __tablename__ = "tbr"
+    # Unique ID of the row
+    id = Column(Integer, primary_key=True)
+    # ID of the file from which this came
+    module_id = Column(Integer, ForeignKey("adm_module.id"))
+    # Relationship to the :class:`AdmModule`
+    module = relationship("AdmModule", back_populates="tbr")
+
+    action_value = Column(String)
+    ''' The action as text ARI '''
+    action_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`action`. '''
+
+    period_value = Column(String)
+    ''' The period as text ARI '''
+    period_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`period`. '''
+
+    start_value = Column(String)
+    ''' The start as text ARI '''
+    start_ari = Column(PickleType)
+    ''' Resolved and decoded ARI for ivar:`start`. '''
+
+    max_count = Column(Integer)
+    init_enabled = Column(Boolean)

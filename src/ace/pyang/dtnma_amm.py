@@ -122,6 +122,13 @@ def pyang_plugin_init():
             (MODULE_NAME, 'type'),
             (MODULE_NAME, 'base'),
             (MODULE_NAME, 'init-value'),
+            (MODULE_NAME, 'action'),
+            (MODULE_NAME, 'condition'),
+            (MODULE_NAME, 'period'),
+            (MODULE_NAME, 'start'),
+            (MODULE_NAME, 'min-interval'),
+            (MODULE_NAME, 'init-enabled'),
+            (MODULE_NAME, 'max-count'),
             (MODULE_NAME, 'default')
         ],
         _stmt_check_ari_import_use
@@ -224,6 +231,8 @@ AMM_OBJ_NAMES = (
     (MODULE_NAME, 'var'),
     (MODULE_NAME, 'ctrl'),
     (MODULE_NAME, 'oper'),
+    (MODULE_NAME, 'sbr'),
+    (MODULE_NAME, 'tbr'),
 )
 ''' AMM object types at the module/submodule level. '''
 
@@ -522,6 +531,39 @@ MODULE_EXTENSIONS = (
             +type_use('operand')
         ),
     ),
+    Ext('sbr', 'identifier',
+        subs=(
+            OBJ_SUBS_PRE
+            +[
+                ((MODULE_NAME, 'action'), '1'),
+                ((MODULE_NAME, 'condition'), '1'),
+                ((MODULE_NAME, 'min-interval'), '?'), 
+                ((MODULE_NAME, 'max-count'), '?'), 
+                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ('uses', '*'),
+            ]
+        ),
+    ),
+    Ext('tbr', 'identifier',
+        subs=(
+            OBJ_SUBS_PRE
+            +[
+                ((MODULE_NAME, 'action'), '1'),
+                ((MODULE_NAME, 'start'), '?'),
+                ((MODULE_NAME, 'period'), '1'), 
+                ((MODULE_NAME, 'max-count'), '?'), 
+                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ('uses', '*'),
+            ]
+        ),
+    ),
+    Ext('action', 'ARI'),
+    Ext('condition', 'ARI'),
+    Ext('period', 'ARI'),
+    Ext('start', 'ARI'),
+    Ext('min-interval', 'ARI'),
+    Ext('init-enabled', 'boolean'),
+    Ext('max-count', 'integer'),
 )
 
 

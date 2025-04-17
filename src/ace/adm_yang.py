@@ -51,7 +51,7 @@ from ace.models import (
     TypeNameList, TypeNameItem,
     MetadataList, MetadataItem, AdmRevision, Feature,
     AdmSource, AdmModule, AdmImport, ParamMixin, TypeUseMixin, AdmObjMixin,
-    Typedef, Ident, IdentBase, Const, Ctrl, Edd, Oper, Var
+    Typedef, Ident, IdentBase, Const, Ctrl, Edd, Oper, Var, Sbr, Tbr
 )
 from ace.util import normalize_ident
 
@@ -71,6 +71,8 @@ KEYWORDS = {
     Edd: (AMM_MOD, 'edd'),
     Oper: (AMM_MOD, 'oper'),
     Var: (AMM_MOD, 'var'),
+    Sbr: (AMM_MOD, 'sbr'),
+    Tbr: (AMM_MOD, 'tbr'),
 }
 
 MOD_META_KYWDS = {
@@ -503,6 +505,76 @@ class Decoder:
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
+        elif issubclass(cls, Sbr):
+            action_stmt = stmt.search_one((AMM_MOD, 'action'))
+            if action_stmt:
+              obj.action_value = action_stmt.arg
+              obj.action_ari = self._get_ari(action_stmt.arg)
+            else:
+              LOGGER.warning('sbr "%s" is missing action substatement', stmt.arg)
+
+            condition_stmt = stmt.search_one((AMM_MOD, 'condition'))
+            if condition_stmt:
+              obj.condition_value = condition_stmt.arg
+              obj.condition_ari = self._get_ari(condition_stmt.arg)
+            else:
+              LOGGER.warning('sbr "%s" is missing condition substatement', stmt.arg)
+
+            min_interval_stmt = stmt.search_one((AMM_MOD, 'min-interval'))
+            if min_interval_stmt:
+              obj.min_interval_value = min_interval_stmt.arg
+              obj.min_interval_ari = self._get_ari(min_interval_stmt.arg)
+            else:
+              obj.min_interval_value = "/TD/PT0S" # 0 sec default
+              obj.min_interval_ari = self._get_ari(obj.min_interval_value)
+
+            max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
+            if max_count_stmt:
+              obj.max_count = int(max_count_stmt.arg)
+            else:
+              obj.max_count = 0
+
+            enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
+            if enabled_stmt:
+              obj.init_enabled = (enabled_stmt.arg == 'true')
+            else:
+              obj.init_enabled = True
+
+        elif issubclass(cls, Tbr):
+            action_stmt = stmt.search_one((AMM_MOD, 'action'))
+            if action_stmt:
+              obj.action_value = action_stmt.arg
+              obj.action_ari = self._get_ari(action_stmt.arg)
+            else:
+              LOGGER.warning('tbr "%s" is missing action substatement', stmt.arg)
+
+            period_stmt = stmt.search_one((AMM_MOD, 'period'))
+            if period_stmt:
+              obj.period_value = period_stmt.arg
+              obj.period_ari = self._get_ari(period_stmt.arg)
+            else:
+              LOGGER.warning('tbr "%s" is missing period substatement', stmt.arg)
+
+            start_stmt = stmt.search_one((AMM_MOD, 'start'))
+            if start_stmt:
+              obj.start_value = start_stmt.arg
+              obj.start_ari = self._get_ari(start_stmt.arg)
+            else:
+              obj.start_value = "/TD/PT0S" # 0 sec default
+              obj.start_ari = self._get_ari(obj.start_value)
+
+            max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
+            if max_count_stmt:
+              obj.max_count = int(max_count_stmt.arg)
+            else:
+              obj.max_count = 0
+
+            enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
+            if enabled_stmt:
+              obj.init_enabled = (enabled_stmt.arg == 'true')
+            else:
+              obj.init_enabled = True
+
         elif issubclass(cls, Ctrl):
             result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
             if result_stmt:
@@ -685,6 +757,8 @@ class Decoder:
             self._get_section(adm.edd, Edd, module)
             self._get_section(adm.oper, Oper, module)
             self._get_section(adm.var, Var, module)
+            self._get_section(adm.sbr, Sbr, module)
+            self._get_section(adm.tbr, Tbr, module)
         except Exception as err:
             raise RuntimeError(f'Failure processing object definitions from ADM "{adm.module_name}": {err}') from err
 
@@ -764,6 +838,8 @@ class Encoder:
         self._put_section(adm.var, Var, module)
         self._put_section(adm.ctrl, Ctrl, module)
         self._put_section(adm.oper, Oper, module)
+        self._put_section(adm.sbr, Sbr, module)
+        self._put_section(adm.tbr, Tbr, module)
 
         def denorm(stmt):
             if pyang.util.is_prefixed(stmt.raw_keyword):
@@ -846,6 +922,9 @@ class Encoder:
         elif issubclass(cls, (Const, Var)):
             if obj.init_value is not None:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'init-value'), obj.init_value)
+
+        # TODO: elif issubclass(cls, Sbr):
+        # TODO: elif issubclass(cls, Tbr):
 
         elif issubclass(cls, Ctrl):
             if obj.result:

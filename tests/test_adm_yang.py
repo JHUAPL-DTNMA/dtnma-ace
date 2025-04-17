@@ -200,6 +200,8 @@ module example-empty {
         self.assertEqual(0, len(adm.var))
         self.assertEqual(0, len(adm.ctrl))
         self.assertEqual(0, len(adm.oper))
+        self.assertEqual(0, len(adm.sbr))
+        self.assertEqual(0, len(adm.tbr))
 
     def test_decode_minimal(self):
         buf = self._get_mod_buf('''
@@ -1103,4 +1105,105 @@ class TestAdmContents(BaseYang):
         obj = adm.var[1]
         self.assertEqual('var_with_param', obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
+
+    def test_decode_rules(self):
+        buf = self._get_mod_buf('''
+  amm:sbr sbr1 {
+    amm:enum 8;
+    description
+      "";
+    amm:action "/AC/(./CTRL/first,./CTRL/second)";
+    amm:condition "/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)";
+    amm:min-interval "/TD/PT30S";
+    amm:init-enabled false;
+    amm:max-count 10;
+  }
+
+  amm:sbr sbr2 {
+    amm:enum 9;
+    description
+      "";
+    amm:action "/AC/(./CTRL/first,./CTRL/second)";
+    amm:condition "/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)";
+  }
+
+  amm:tbr tbr1 {
+    amm:enum 6;
+    description
+      "";
+    amm:action "/AC/(./CTRL/first,./CTRL/second)";
+    amm:period "/TD/PT30S";
+    amm:start "/TD/PT30S";
+    amm:init-enabled false;
+    amm:max-count 10;
+  }
+
+  amm:tbr tbr2 {
+    amm:enum 7;
+    description
+      "";
+    amm:action "/AC/(./CTRL/first,./CTRL/second)";
+    amm:period "/TD/PT30S";
+  }
+''')
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+            adm = self._adm_dec.decode(buf)
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
+        self.assertIsInstance(adm, models.AdmModule)
+        self._db_sess.add(adm)
+        self._db_sess.commit()
+        self.assertIsNone(adm.source.abs_file_path)
+
+        self.assertEqual('example-mod', adm.module_name)
+        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual(65535, adm.ns_org_enum)
+        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual(1, adm.ns_model_enum)
+        self.assertEqual(1, len(adm.imports))
+        self.assertEqual(1, len(adm.revisions))
+
+        self.assertEqual(2, len(adm.sbr))
+        obj = adm.sbr[0]
+        self.assertIsInstance(obj, models.Sbr)
+        self.assertEqual("sbr1", obj.name)
+
+        obj = adm.sbr[1]
+        self.assertIsInstance(obj, models.Sbr)
+        self.assertEqual("sbr2", obj.name)
+        self.assertEqual(2, len(adm.sbr))
+
+        self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[0].action_value)
+        self.assertEqual("/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)", adm.sbr[0].condition_value)
+        self.assertEqual("/TD/PT30S", adm.sbr[0].min_interval_value)
+        self.assertEqual(False, adm.sbr[0].init_enabled)
+        self.assertEqual(10, adm.sbr[0].max_count)
+
+        self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[1].action_value)
+        self.assertEqual("/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)", adm.sbr[1].condition_value)
+        self.assertEqual("/TD/PT0S", adm.sbr[1].min_interval_value)
+        self.assertEqual(True, adm.sbr[1].init_enabled)
+        self.assertEqual(0, adm.sbr[1].max_count)
+
+        obj = adm.tbr[0]
+        self.assertIsInstance(obj, models.Tbr)
+        self.assertEqual("tbr1", obj.name)
+
+        obj = adm.tbr[1]
+        self.assertIsInstance(obj, models.Tbr)
+        self.assertEqual("tbr2", obj.name)
+
+        self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.tbr[0].action_value)
+        self.assertEqual("/TD/PT30S", adm.tbr[0].period_value)
+        self.assertEqual("/TD/PT30S", adm.tbr[0].start_value)
+        self.assertEqual(False, adm.tbr[0].init_enabled)
+        self.assertEqual(10, adm.tbr[0].max_count)
+
+        self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.tbr[1].action_value)
+        self.assertEqual("/TD/PT30S", adm.tbr[1].period_value)
+        self.assertEqual("/TD/PT0S", adm.tbr[1].start_value)
+        self.assertEqual(True, adm.tbr[1].init_enabled)
+        self.assertEqual(0, adm.tbr[1].max_count)
 
