@@ -1000,8 +1000,10 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=2;(1,2)", 2, 2),
             ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
             ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3),
+            #TODO:add typed value for C for issue #59
+            ("ari:/TBL/c=/INT/1;(/INT/4)(/TBL/c=0;)(20)", 1, 3)
         ]
-
+        
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text, expect_cols, expect_items = row

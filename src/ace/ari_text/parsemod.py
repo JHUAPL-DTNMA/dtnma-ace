@@ -93,8 +93,16 @@ def p_typedlit_tbl_empty(p):
 
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
-    ncol = int(p[3].get('c', 0))
+    # ncol = int(p[3].get('c', 0))
+    ncol = 0
     nrow = len(p[4])
+    col_count = p[3].get('c')
+    if isinstance(col_count, LiteralARI):
+        ncol = int(str(col_count.value))
+    elif isinstance(col_count, str):
+        ncol = int(col_count)
+    else:
+        raise ParseError(f"Unexpected type for column count: {type(col_count)}")
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
         if len(row) != ncol:
