@@ -85,14 +85,14 @@ def p_typedlit_am(p):
 
 
 def p_typedlit_tbl_empty(p):
-    '''typedlit : SLASH TBL structlist'''
+    '''typedlit : SLASH TBL structpair'''
     ncol = int(p[3].get('c', 0))
     table = Table((0, ncol))
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
 def p_typedlit_tbl_rows(p):
-    '''typedlit : SLASH TBL structlist rowlist'''
+    '''typedlit : SLASH TBL structpair rowlist'''
     # ncol = int(p[3].get('c', 0))
     ncol = 0
     nrow = len(p[4])
