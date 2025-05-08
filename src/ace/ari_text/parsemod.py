@@ -140,18 +140,25 @@ def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        nonce = p[3].get('n', 'null')
+        nonce = int(str(p[3].get('n', 'null').value))
+        pass
     else:
-        nonce = util.NONCE(p[3].get('n', 'null'))
+        nonce = int(util.NONCE(p[3].get('n', 'null')))
+        pass
 
-    rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+    if(isinstance(p[3].get('r', 'null'), LiteralARI)):
+        rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
+    else:
+        rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
 
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
+    
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time.value,
         reports=p[4],
     )
+    value = null
     p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)
 
 
