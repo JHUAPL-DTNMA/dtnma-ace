@@ -158,7 +158,6 @@ def p_typedlit_rptset(p):
         ref_time=ref_time.value,
         reports=p[4],
     )
-    value = null
     p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)
 
 
@@ -170,10 +169,12 @@ def p_reportlist_join(p):
 def p_reportlist_end(p):
     'reportlist : report'
     p[0] = [p[1]]
-
-
+    
 def p_report(p):
-    'report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN'
+    #TODO: madeline - update like we updated structpair
+    #'reportlist : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN '
+    '''reportlist : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN 
+                  | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
     rawtime = util.TYPEDLIT[StructType.TD](p[4])
     rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
