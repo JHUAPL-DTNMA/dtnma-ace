@@ -93,7 +93,6 @@ def p_typedlit_tbl_empty(p):
 
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structpair rowlist'''
-    # ncol = int(p[3].get('c', 0))
     ncol = 0
     nrow = len(p[4])
     col_count = p[3].get('c')
@@ -138,19 +137,18 @@ def p_typedlit_execset(p):
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
+    #'typedlit : SLASH RPTSET structpair reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
         nonce = int(str(p[3].get('n', 'null').value))
-        pass
     else:
         nonce = int(util.NONCE(p[3].get('n', 'null')))
-        pass
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
         rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
     else:
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
-
+        
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     
     value = ReportSet(
@@ -171,10 +169,8 @@ def p_reportlist_end(p):
     p[0] = [p[1]]
     
 def p_report(p):
-    #TODO: madeline - update like we updated structpair
-    #'reportlist : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN '
-    '''reportlist : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN 
-                  | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
+    '''report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN 
+              | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
     rawtime = util.TYPEDLIT[StructType.TD](p[4])
     rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     source = p[8]
