@@ -141,13 +141,17 @@ def p_typedlit_rptset(p):
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
         nonce = int(str(p[3].get('n', 'null').value))
-    else:
+    elif(isinstance(p[3].get('n', 'null'), str)):
         nonce = int(util.NONCE(p[3].get('n', 'null')))
+    else:
+        raise ParseError(f"Madeline doesn't know what she's doing")
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
         rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
-    else:
+    elif(isinstance(p[3].get('r', 'null'), str)):
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+    else:
+        raise ParseError(f"Madeline really doesn't know what she's doing")
         
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     
