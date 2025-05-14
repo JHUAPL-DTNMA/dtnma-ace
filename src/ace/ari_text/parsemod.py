@@ -137,22 +137,27 @@ def p_typedlit_execset(p):
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
-    #'typedlit : SLASH RPTSET structpair reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
+        LOGGER.error('foo 1')
         nonce = int(str(p[3].get('n', 'null').value))
-    elif(isinstance(p[3].get('n', 'null'), str)):
-        nonce = int(util.NONCE(p[3].get('n', 'null')))
+    elif((isinstance(p[3].get('n', 'null'), str))):
+        LOGGER.error('bar 1')
+        nonce = int(p[3].get('n', 'null'))
+        #nonce = int(util.NONCE(p[3].get('n', 'null')))
     else:
-        raise ParseError(f"Madeline doesn't know what she's doing")
+        raise ParseError(f":(")
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
+        LOGGER.error('foo 2')
         rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
-    elif(isinstance(p[3].get('r', 'null'), str)):
+    elif((isinstance(p[3].get('n', 'null'), str))):
+        LOGGER.error('bar 2')
+        #rawtime = util.TYPEDLIT[StructType.TP]((p[3].get('r', 'null')))
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
     else:
-        raise ParseError(f"Madeline really doesn't know what she's doing")
-        
+        raise ParseError(f":(")
+    
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     
     value = ReportSet(
