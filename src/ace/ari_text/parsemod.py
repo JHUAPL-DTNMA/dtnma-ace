@@ -140,26 +140,27 @@ def p_typedlit_rptset(p):
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
         LOGGER.error('foo 1')
-        nonce = int(str(p[3].get('n', 'null').value))
+        #nonce = int(str(p[3].get('n', 'null').value))
+        nonce = p[3].get('n', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
         LOGGER.error('bar 1')
         nonce = int(p[3].get('n', 'null'))
         #nonce = int(util.NONCE(p[3].get('n', 'null')))
     else:
-        raise ParseError(f":(")
+        nonce = util.NONCE(p[3].get('n', 'null'))
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
         LOGGER.error('foo 2')
         rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
     elif((isinstance(p[3].get('n', 'null'), str))):
         LOGGER.error('bar 2')
-        #rawtime = util.TYPEDLIT[StructType.TP]((p[3].get('r', 'null')))
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
     else:
-        raise ParseError(f":(")
+        raise ParseError(f"idk man")
     
     ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
-    
+
+   
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time.value,
