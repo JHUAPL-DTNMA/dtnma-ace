@@ -1155,7 +1155,8 @@ class TestAriText(unittest.TestCase):
             ("ari://example/adm"),
             ("ari://example/adm/"),
             ("ari://65535/18"),
-            # ("ari://65535/18/"),
+            # FIXME: Madeline - test case below failing
+            ("ari://65535/18/"),
             ("ari://65535/-20/"),
             # ("ari://-10/20/"),
             ("ari://example/adm-a@2024-06-25/"),

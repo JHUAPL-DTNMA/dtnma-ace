@@ -222,12 +222,21 @@ def p_params_amlist(p):
 
 
 def p_objpath_only_ns(p):
-    '''objpath : SLASH SLASH VALSEG SLASH VALSEG
+    '''objpath : SLASH SLASH VALSEG SLASH VALSEG 
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
     if not isinstance(mod, tuple):
         mod = (mod, None)
+
+    try:
+        typ = util.get_structtype(p[4])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+    # Reference are only allowed with AMM types
+    if typ >= 0 or typ == StructType.OBJECT:
+        raise RuntimeError("Invalid AMM type")
 
     p[0] = Identity(
         org_id=org,
