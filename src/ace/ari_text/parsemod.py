@@ -220,14 +220,21 @@ def p_params_amlist(p):
     'params : LPAREN amlist RPAREN'
     p[0] = p[2]
 
-
+# Madeline - update this function for failing unit test for ACE #20
 def p_objpath_only_ns(p):
     '''objpath : SLASH SLASH VALSEG SLASH VALSEG 
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
     org = util.IDSEGMENT(p[3])
-    mod = util.MODSEGMENT(p[5])
+
+    # Handle both cases: with and without trailing slash
+    mod_str = p[5]
+    if mod_str.endswith('/'):
+        mod_str = mod_str[:-1]
+        
+    mod = util.MODSEGMENT(mod_str)
     if not isinstance(mod, tuple):
         mod = (mod, None)
+
 
     try:
         typ = util.get_structtype(p[4])
@@ -248,9 +255,17 @@ def p_objpath_only_ns(p):
 
 
 def p_objpath_with_ns(p):
-    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+    #'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+    '''objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG
+               | SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH'''
     org = util.IDSEGMENT(p[3])
-    mod = util.MODSEGMENT(p[5])
+
+     # Handle both cases: with and without trailing slash
+    mod_str = p[5]
+    if mod_str.endswith('/'):
+        mod_str = mod_str[:-1]
+        
+    mod = util.MODSEGMENT(mod_str)
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -263,7 +278,11 @@ def p_objpath_with_ns(p):
     if typ >= 0 or typ == StructType.OBJECT:
         raise RuntimeError("Invalid AMM type")
 
-    obj = util.IDSEGMENT(p[9])
+    obj_str = p[9]
+    if obj_str.endswith('/'):
+        obj_str = obj_str[:-1]
+        
+    obj = util.IDSEGMENT(obj_str)
 
     p[0] = Identity(
         org_id=org,
