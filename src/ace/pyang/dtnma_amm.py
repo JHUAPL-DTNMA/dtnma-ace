@@ -451,11 +451,13 @@ MODULE_EXTENSIONS = (
             OBJ_SUBS_PRE
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
+                ((MODULE_NAME, 'abstract'), '*'),
                 ((MODULE_NAME, 'base'), '*'),
                 ('uses', '*'),
             ]
         ),
     ),
+    Ext('abstract', 'boolean'),
     Ext('base', 'ARI'),
 
     Ext('const', 'identifier',
