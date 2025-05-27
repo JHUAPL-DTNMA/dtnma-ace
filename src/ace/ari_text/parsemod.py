@@ -139,26 +139,27 @@ def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        LOGGER.error('foo 1')
+        ##EJBLOGGER.error('foo 1')
         #nonce = int(str(p[3].get('n', 'null').value))
         nonce = p[3].get('n', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
-        LOGGER.error('bar 1')
+        ##EJBLOGGER.error('bar 1')
         nonce = int(p[3].get('n', 'null'))
         #nonce = int(util.NONCE(p[3].get('n', 'null')))
     else:
         nonce = util.NONCE(p[3].get('n', 'null'))
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
-        LOGGER.error('foo 2')
-        rawtime = util.TYPEDLIT[StructType.TP](str(p[3].get('r', 'null').value))
+        ##EJBLOGGER.error('foo 2')
+        ref_time = rawtime = p[3].get('r', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
-        LOGGER.error('bar 2')
+        ##EJBLOGGER.error('bar 2')
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+        ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
+
     else:
-        raise ParseError(f"idk man")
+        raise ParseError("idk man")
     
-    ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
 
    
     value = ReportSet(
@@ -181,8 +182,18 @@ def p_reportlist_end(p):
 def p_report(p):
     '''report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN 
               | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
-    rawtime = util.TYPEDLIT[StructType.TD](p[4])
-    rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
+    
+    if(isinstance(p[4], LiteralARI)):
+        ##EJBLOGGER.error('edfoo 1')
+        rel_time = rawtime = p[4]
+    elif((isinstance(p[4], str))):
+        ##EJBLOGGER.error('edbar 1')
+        rawtime = util.TYPEDLIT[StructType.TD](p[4])
+        rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
+    else:
+        raise ParseError("idk man")
+
+    
     source = p[8]
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
 
