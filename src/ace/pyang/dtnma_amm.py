@@ -319,6 +319,7 @@ MODULE_EXTENSIONS = (
             ('range', '?'),
             ('length', '?'),
             ('pattern', '?'),
+            ((MODULE_NAME, 'display-hint'), '?'),
             ((MODULE_NAME, 'int-labels'), '?'),
             ((MODULE_NAME, 'cddl'), '?'),
             ((MODULE_NAME, 'base'), '?'),
@@ -411,6 +412,7 @@ MODULE_EXTENSIONS = (
         ],
     ),
     # Type narrowing extensions
+    Ext('display-hint', 'ARI'),
     Ext('cddl', 'string'),
     Ext('int-labels', None,
         subs=[
@@ -449,11 +451,13 @@ MODULE_EXTENSIONS = (
             OBJ_SUBS_PRE
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
+                ((MODULE_NAME, 'abstract'), '*'),
                 ((MODULE_NAME, 'base'), '*'),
                 ('uses', '*'),
             ]
         ),
     ),
+    Ext('abstract', 'boolean'),
     Ext('base', 'ARI'),
 
     Ext('const', 'identifier',
@@ -537,9 +541,9 @@ MODULE_EXTENSIONS = (
             +[
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'condition'), '1'),
-                ((MODULE_NAME, 'min-interval'), '?'), 
-                ((MODULE_NAME, 'max-count'), '?'), 
-                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ((MODULE_NAME, 'min-interval'), '?'),
+                ((MODULE_NAME, 'max-count'), '?'),
+                ((MODULE_NAME, 'init-enabled'), '?'),
                 ('uses', '*'),
             ]
         ),
@@ -550,9 +554,9 @@ MODULE_EXTENSIONS = (
             +[
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'start'), '?'),
-                ((MODULE_NAME, 'period'), '1'), 
-                ((MODULE_NAME, 'max-count'), '?'), 
-                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ((MODULE_NAME, 'period'), '1'),
+                ((MODULE_NAME, 'max-count'), '?'),
+                ((MODULE_NAME, 'init-enabled'), '?'),
                 ('uses', '*'),
             ]
         ),
