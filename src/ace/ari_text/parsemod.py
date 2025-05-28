@@ -139,26 +139,23 @@ def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        ##EJBLOGGER.error('foo 1')
         #nonce = int(str(p[3].get('n', 'null').value))
         nonce = p[3].get('n', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
-        ##EJBLOGGER.error('bar 1')
         nonce = int(p[3].get('n', 'null'))
         #nonce = int(util.NONCE(p[3].get('n', 'null')))
     else:
         nonce = util.NONCE(p[3].get('n', 'null'))
 
     if(isinstance(p[3].get('r', 'null'), LiteralARI)):
-        ##EJBLOGGER.error('foo 2')
         ref_time = rawtime = p[3].get('r', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
-        ##EJBLOGGER.error('bar 2')
         rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
         ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
 
     else:
-        raise ParseError("idk man")
+        #TODO: update error message to be more descriptive
+        raise ParseError("Error: invalid input")
     
 
    
