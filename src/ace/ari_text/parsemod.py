@@ -139,11 +139,9 @@ def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        #nonce = int(str(p[3].get('n', 'null').value))
         nonce = p[3].get('n', 'null')
     elif((isinstance(p[3].get('n', 'null'), str))):
-        nonce = int(p[3].get('n', 'null'))
-        #nonce = int(util.NONCE(p[3].get('n', 'null')))
+        nonce = util.NONCE(p[3].get('n', 'null'))
     else:
         nonce = util.NONCE(p[3].get('n', 'null'))
 
@@ -154,8 +152,7 @@ def p_typedlit_rptset(p):
         ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
 
     else:
-        #TODO: update error message to be more descriptive
-        raise ParseError("Error: invalid input")
+        raise ParseError("Error: invalid rptset")
     
 
    
@@ -181,10 +178,8 @@ def p_report(p):
               | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
     
     if(isinstance(p[4], LiteralARI)):
-        ##EJBLOGGER.error('edfoo 1')
         rel_time = rawtime = p[4]
     elif((isinstance(p[4], str))):
-        ##EJBLOGGER.error('edbar 1')
         rawtime = util.TYPEDLIT[StructType.TD](p[4])
         rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
     else:
@@ -199,7 +194,7 @@ def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[2])
-    except Exception as err:
+    except Exception as err: 
         LOGGER.error('Literal value type invalid: %s', err)
         raise RuntimeError(err) from err
 
