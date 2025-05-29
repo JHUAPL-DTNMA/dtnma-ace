@@ -30,7 +30,7 @@ class ComponentPattern:
     ''' Match specific text labels '''
     enum:Optional[portion.Interval] = None
     ''' Match specific integer range '''
-    special:Optional[True] = None
+    special:Optional[bool] = None
     ''' The True value indicates match-all wildcard. '''
 
     def is_match(self, id_val:Union[str, int, None]) -> bool:
