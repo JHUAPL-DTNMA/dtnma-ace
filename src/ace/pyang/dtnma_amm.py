@@ -332,10 +332,10 @@ MODULE_EXTENSIONS = (
     Ext('ulist', None,
         subs=(
             [
-                ('min-elements', '?'),
-                ('max-elements', '?'),
                 ('description', '?'),
                 ('reference', '?'),
+                ('min-elements', '?'),
+                ('max-elements', '?'),
             ]
             +type_use('ulist')
         ),
@@ -350,20 +350,20 @@ MODULE_EXTENSIONS = (
     Ext('seq', None,
         subs=(
             [
-                ('min-elements', '?'),
-                ('max-elements', '?'),
                 ('description', '?'),
                 ('reference', '?'),
+                ('min-elements', '?'),
+                ('max-elements', '?'),
             ]
             +type_use('seq')
         ),
     ),
     Ext('umap', None,
         subs=[
-            ((MODULE_NAME, 'keys'), '?'),
-            ((MODULE_NAME, 'values'), '?'),
             ('description', '?'),
             ('reference', '?'),
+            ((MODULE_NAME, 'keys'), '?'),
+            ((MODULE_NAME, 'values'), '?'),
         ]
     ),
     Ext('keys', None,
@@ -386,18 +386,21 @@ MODULE_EXTENSIONS = (
     ),
     Ext('tblt', None,
         subs=[
-            ((MODULE_NAME, 'key'), '?'),
-            ((MODULE_NAME, 'unique'), '*'),
-            ('min-elements', '?'),
-            ('max-elements', '?'),
             ('description', '?'),
             ('reference', '?'),
-            ((MODULE_NAME, 'column'), '*'),
+            ('$interleave', [
+                ('min-elements', '?'),
+                ('max-elements', '?'),
+                ((MODULE_NAME, 'key'), '?'),
+                ((MODULE_NAME, 'unique'), '*'),
+                ((MODULE_NAME, 'column'), '*'),
+            ]),
         ],
     ),
     Ext('column', 'identifier',
         subs=(
             [
+                ('if-feature', '?'),
                 ('description', '?'),
                 ('reference', '?'),
             ]
