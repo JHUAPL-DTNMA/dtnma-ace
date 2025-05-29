@@ -20,7 +20,7 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the ace.ari module.
+''' Verify behavior of the :mod:`ace.ari` module.
 '''
 import logging
 import unittest
