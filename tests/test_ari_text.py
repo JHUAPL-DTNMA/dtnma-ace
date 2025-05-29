@@ -484,11 +484,11 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
             ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True): 
-                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                LiteralARI(value=True):
+                LiteralARI(value=True, type_id=StructType.BOOL)},
                 "ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
             (65535, 18, StructType.INT, "34", {
-                LiteralARI(value=101): 
+                LiteralARI(value=101):
                 ReferenceARI(
                     ident=Identity(type_id=StructType.INT, obj_id="11")
                 )},
@@ -1263,7 +1263,6 @@ class TestAriText(unittest.TestCase):
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
-
     def test_ari_AM_loopback(self):
         TEST_CASE = [
             ("ari://example/adm-a/CTRL/otherobj(true,3)"),
@@ -1378,7 +1377,6 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     ari = dec.decode(io.StringIO(text))
-                    LOGGER.info('Got ARI %s', ari)
 
     def test_ari_text_decode_invalid(self):
         TEST_CASE = [
@@ -1401,5 +1399,5 @@ class TestAriText(unittest.TestCase):
         for row in TEST_CASE:
             text = row
             with self.subTest(text):
-                self.assertRaises(ari_text.ParseError, lambda: dec.decode(io.StringIO(text)))
-
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(io.StringIO(text))
