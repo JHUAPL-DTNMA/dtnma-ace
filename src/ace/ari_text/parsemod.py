@@ -224,26 +224,12 @@ def p_params_amlist(p):
 def p_objpath_only_ns(p):
     '''objpath : SLASH SLASH VALSEG SLASH VALSEG 
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
-    org = util.IDSEGMENT(p[3])
 
-    # Handle both cases: with and without trailing slash
-    mod_str = p[5]
-    if mod_str.endswith('/'):
-        mod_str = mod_str[:-1]
-        
-    mod = util.MODSEGMENT(mod_str)
+    org = util.IDSEGMENT(p[3])
+    mod = util.MODSEGMENT(p[5])
+
     if not isinstance(mod, tuple):
         mod = (mod, None)
-
-
-    try:
-        typ = util.get_structtype(p[4])
-    except Exception as err:
-        LOGGER.error('Object type invalid: %s', err)
-        raise RuntimeError(err) from err
-    # Reference are only allowed with AMM types
-    if typ >= 0 or typ == StructType.OBJECT:
-        raise RuntimeError("Invalid AMM type")
 
     p[0] = Identity(
         org_id=org,
@@ -255,17 +241,11 @@ def p_objpath_only_ns(p):
 
 
 def p_objpath_with_ns(p):
-    #'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
-    '''objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG
-               | SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH'''
-    org = util.IDSEGMENT(p[3])
+    'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
 
-     # Handle both cases: with and without trailing slash
-    mod_str = p[5]
-    if mod_str.endswith('/'):
-        mod_str = mod_str[:-1]
-        
-    mod = util.MODSEGMENT(mod_str)
+    org = util.IDSEGMENT(p[3])
+    mod = util.MODSEGMENT(p[5])
+    
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -278,11 +258,7 @@ def p_objpath_with_ns(p):
     if typ >= 0 or typ == StructType.OBJECT:
         raise RuntimeError("Invalid AMM type")
 
-    obj_str = p[9]
-    if obj_str.endswith('/'):
-        obj_str = obj_str[:-1]
-        
-    obj = util.IDSEGMENT(obj_str)
+    obj = util.IDSEGMENT(p[9])
 
     p[0] = Identity(
         org_id=org,
