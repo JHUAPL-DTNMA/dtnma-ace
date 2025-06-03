@@ -220,9 +220,8 @@ def p_params_amlist(p):
     'params : LPAREN amlist RPAREN'
     p[0] = p[2]
 
-# Madeline - update this function for failing unit test for ACE #20
 def p_objpath_only_ns(p):
-    '''objpath : SLASH SLASH VALSEG SLASH VALSEG 
+    '''objpath : SLASH SLASH VALSEG SLASH VALSEG
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
 
     org = util.IDSEGMENT(p[3])
