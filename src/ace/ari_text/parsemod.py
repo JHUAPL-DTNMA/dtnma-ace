@@ -93,7 +93,16 @@ def p_typedlit_tbl_empty(p):
 
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
-    ncol = int(p[3].get('c', 0))
+
+    # Extract c parameter values
+    c_params = [part.split('=')[1] for part in p[3].split(';') if part.startswith('c=')]
+    
+    # Check for duplicate c parameters
+    if len(c_params) > 1:
+        raise ParseError("Multiple 'c=' parameters specified")
+    
+    #ncol = int(p[3].get('c', 0))
+    ncol = int(c_params[0]) if c_params else 0
     nrow = len(p[4])
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):

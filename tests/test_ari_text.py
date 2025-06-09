@@ -1361,7 +1361,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=hi;"),
             ("ari:/TBL/c=5;(1,2)"),
             ("ari:/TBL/(1,2,3)"),
-            # FIXME: ("ari:/TBL/c=aaa;c=2;(1,2)"),
+            # Madeline - fix these 5 FIXME testcases for ACE #22
+            ("ari:/TBL/c=aaa;c=2;(1,2)"),
             # FIXME: ("ari:/TBL/c=2;c=2;(1,2)"),
             ("ari:/EXECSET/()"),
             # FIXME: ("ari:/EXECSET/g=null;()"),
