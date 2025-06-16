@@ -650,7 +650,7 @@ class Decoder:
         for mod in tuple(self._ctx.modules.values()):
             self._ctx.del_module(mod)
 
-        module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True)
+        module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True, in_format='yang')
         LOGGER.debug('Loaded %s', module)
         if module is None:
             raise RuntimeError(f'Failed to load module: {self._ctx.errors}')
@@ -685,8 +685,11 @@ class Decoder:
             emsg = pyang.error.err_to_str(etag, eargs)
             if isinstance(epos.ref, tuple):
                 epos.ref = epos.ref[1]
-            LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
-
+            try:
+                LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
+            except Exception as e: 
+                LOGGER.error('Error %s, while printing msg %s .', e, emsg)
+                
         src = AdmSource()
         src.file_text = file_text
         if file_path:

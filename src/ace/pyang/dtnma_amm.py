@@ -315,13 +315,16 @@ MODULE_EXTENSIONS = (
     # Type structure extensions
     Ext('type', 'ARI',
         subs=[
-            ('units', '?'),
-            ('range', '?'),
-            ('length', '?'),
-            ('pattern', '?'),
-            ((MODULE_NAME, 'int-labels'), '?'),
-            ((MODULE_NAME, 'cddl'), '?'),
-            ((MODULE_NAME, 'base'), '?'),
+            ('$interleave', [
+                ('units', '?'),
+                ((MODULE_NAME, 'display-hint'), '?'),
+                ((MODULE_NAME, 'int-labels'), '?'),
+                ('range', '?'),
+                ('pattern', '*'),
+                ('length', '?'),
+                ((MODULE_NAME, 'cddl'), '?'),
+                ((MODULE_NAME, 'base'), '*'),
+            ]),
             ('description', '?'),
             ('reference', '?'),
         ],
@@ -329,10 +332,10 @@ MODULE_EXTENSIONS = (
     Ext('ulist', None,
         subs=(
             [
-                ('min-elements', '?'),
-                ('max-elements', '?'),
                 ('description', '?'),
                 ('reference', '?'),
+                ('min-elements', '?'),
+                ('max-elements', '?'),
             ]
             +type_use('ulist')
         ),
@@ -347,20 +350,20 @@ MODULE_EXTENSIONS = (
     Ext('seq', None,
         subs=(
             [
-                ('min-elements', '?'),
-                ('max-elements', '?'),
                 ('description', '?'),
                 ('reference', '?'),
+                ('min-elements', '?'),
+                ('max-elements', '?'),
             ]
             +type_use('seq')
         ),
     ),
     Ext('umap', None,
         subs=[
-            ((MODULE_NAME, 'keys'), '?'),
-            ((MODULE_NAME, 'values'), '?'),
             ('description', '?'),
             ('reference', '?'),
+            ((MODULE_NAME, 'keys'), '?'),
+            ((MODULE_NAME, 'values'), '?'),
         ]
     ),
     Ext('keys', None,
@@ -383,18 +386,21 @@ MODULE_EXTENSIONS = (
     ),
     Ext('tblt', None,
         subs=[
-            ((MODULE_NAME, 'key'), '?'),
-            ((MODULE_NAME, 'unique'), '*'),
-            ('min-elements', '?'),
-            ('max-elements', '?'),
             ('description', '?'),
             ('reference', '?'),
-            ((MODULE_NAME, 'column'), '*'),
+            ('$interleave', [
+                ('min-elements', '?'),
+                ('max-elements', '?'),
+                ((MODULE_NAME, 'key'), '?'),
+                ((MODULE_NAME, 'unique'), '*'),
+                ((MODULE_NAME, 'column'), '*'),
+            ]),
         ],
     ),
     Ext('column', 'identifier',
         subs=(
             [
+                ('if-feature', '?'),
                 ('description', '?'),
                 ('reference', '?'),
             ]
@@ -411,6 +417,7 @@ MODULE_EXTENSIONS = (
         ],
     ),
     # Type narrowing extensions
+    Ext('display-hint', 'ARI'),
     Ext('cddl', 'string'),
     Ext('int-labels', None,
         subs=[
@@ -449,11 +456,13 @@ MODULE_EXTENSIONS = (
             OBJ_SUBS_PRE
             +[
                 ((MODULE_NAME, 'parameter'), '*'),
+                ((MODULE_NAME, 'abstract'), '*'),
                 ((MODULE_NAME, 'base'), '*'),
                 ('uses', '*'),
             ]
         ),
     ),
+    Ext('abstract', 'boolean'),
     Ext('base', 'ARI'),
 
     Ext('const', 'identifier',
@@ -537,9 +546,9 @@ MODULE_EXTENSIONS = (
             +[
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'condition'), '1'),
-                ((MODULE_NAME, 'min-interval'), '?'), 
-                ((MODULE_NAME, 'max-count'), '?'), 
-                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ((MODULE_NAME, 'min-interval'), '?'),
+                ((MODULE_NAME, 'max-count'), '?'),
+                ((MODULE_NAME, 'init-enabled'), '?'),
                 ('uses', '*'),
             ]
         ),
@@ -550,9 +559,9 @@ MODULE_EXTENSIONS = (
             +[
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'start'), '?'),
-                ((MODULE_NAME, 'period'), '1'), 
-                ((MODULE_NAME, 'max-count'), '?'), 
-                ((MODULE_NAME, 'init-enabled'), '?'), 
+                ((MODULE_NAME, 'period'), '1'),
+                ((MODULE_NAME, 'max-count'), '?'),
+                ((MODULE_NAME, 'init-enabled'), '?'),
                 ('uses', '*'),
             ]
         ),
