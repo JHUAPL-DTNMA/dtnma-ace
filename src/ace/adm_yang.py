@@ -295,8 +295,6 @@ class TypingDecoder:
                 name=col_stmt.arg,
                 base=self.decode(col_stmt)
             )
-            if isinstance(col.base, TableTemplate):
-                LOGGER.warn('A table column is typed to contain another table')
             if col.name in col_names:
                 LOGGER.warn('A duplicate column name is present: %s', col)
 
@@ -525,7 +523,7 @@ class Decoder:
               obj.min_interval_value = min_interval_stmt.arg
               obj.min_interval_ari = self._get_ari(min_interval_stmt.arg)
             else:
-              obj.min_interval_value = "/TD/PT0S" # 0 sec default
+              obj.min_interval_value = "/TD/PT0S"  # 0 sec default
               obj.min_interval_ari = self._get_ari(obj.min_interval_value)
 
             max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
@@ -560,7 +558,7 @@ class Decoder:
               obj.start_value = start_stmt.arg
               obj.start_ari = self._get_ari(start_stmt.arg)
             else:
-              obj.start_value = "/TD/PT0S" # 0 sec default
+              obj.start_value = "/TD/PT0S"  # 0 sec default
               obj.start_ari = self._get_ari(obj.start_value)
 
             max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))

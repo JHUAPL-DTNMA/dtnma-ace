@@ -30,7 +30,7 @@ from ace.ari import (
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
-from ace.typing import BUILTINS_BY_ENUM
+from ace.typing import BUILTINS_BY_ENUM, NONCE
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
@@ -85,23 +85,24 @@ def p_typedlit_am(p):
 
 
 def p_typedlit_tbl_empty(p):
-    '''typedlit : SLASH TBL structpair'''
-    ncol = int(p[3].get('c', 0))
+    '''typedlit : SLASH TBL structlist'''
+    try:
+        ncol = int(p[3]['c'].value)
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing column count: {p[3]}")
+
     table = Table((0, ncol))
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
 def p_typedlit_tbl_rows(p):
-    '''typedlit : SLASH TBL structpair rowlist'''
-    ncol = 0
+    '''typedlit : SLASH TBL structlist rowlist'''
     nrow = len(p[4])
-    col_count = p[3].get('c')
-    if isinstance(col_count, LiteralARI):
-        ncol = int(str(col_count.value))
-    elif isinstance(col_count, str):
-        ncol = int(col_count)
-    else:
-        raise ParseError(f"Unexpected type for column count: {type(col_count)}")
+    try:
+        ncol = int(p[3]['c'].value)
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing column count: {p[3]}")
+
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
         if len(row) != ncol:
@@ -123,10 +124,12 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
 
-    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        nonce = p[3].get('n', 'null')
-    else:
-        nonce = util.NONCE(p[3].get('n', 'null'))
+    try:
+        nonce = NONCE.get(p[3]['n'])
+        if nonce is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing EXECSET 'n' parameter: {p[3]}")
 
     value = ExecutionSet(
         nonce=nonce,
@@ -138,24 +141,20 @@ def p_typedlit_execset(p):
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
-    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        nonce = p[3].get('n', 'null')
-    elif((isinstance(p[3].get('n', 'null'), str))):
-        nonce = util.NONCE(p[3].get('n', 'null'))
-    else:
-        nonce = util.NONCE(p[3].get('n', 'null'))
+    try:
+        nonce = NONCE.get(p[3]['n'])
+        if nonce is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing RPTSET 'n' parameter: {p[3]}")
 
-    if(isinstance(p[3].get('r', 'null'), LiteralARI)):
-        ref_time = rawtime = p[3].get('r', 'null')
-    elif((isinstance(p[3].get('n', 'null'), str))):
-        rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
-        ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
+    try:
+        ref_time = BUILTINS_BY_ENUM[StructType.TP].get(p[3]['r'])
+        if ref_time is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing RPTSET 'r' parameter: {p[3]}")
 
-    else:
-        raise ParseError("Error: invalid rptset")
-    
-
-   
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time.value,
@@ -172,29 +171,32 @@ def p_reportlist_join(p):
 def p_reportlist_end(p):
     'reportlist : report'
     p[0] = [p[1]]
-    
-def p_report(p):
-    '''report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN 
-              | LPAREN VALSEG EQ typedlit SC VALSEG EQ ari SC acbracket RPAREN '''
-    
-    if(isinstance(p[4], LiteralARI)):
-        rel_time = rawtime = p[4]
-    elif((isinstance(p[4], str))):
-        rawtime = util.TYPEDLIT[StructType.TD](p[4])
-        rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
-    else:
-        raise ParseError("idk man")
 
-    
-    source = p[8]
-    p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
+
+def p_report(p):
+    '''report : LPAREN structlist acbracket RPAREN '''
+    try:
+        rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[2]['t'])
+        if rel_time is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing report 't' parameter: {p[2]}")
+
+    try:
+        source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[2]['s'])
+        if source is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
+
+    p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
 
 
 def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[2])
-    except Exception as err: 
+    except Exception as err:
         LOGGER.error('Literal value type invalid: %s', err)
         raise RuntimeError(err) from err
 
@@ -365,8 +367,7 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     # Keys are case-insensitive so get folded to lower case
-    '''structpair : VALSEG EQ VALSEG SC 
-                  | VALSEG EQ typedlit SC'''
+    '''structpair : VALSEG EQ ari SC '''
 
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
