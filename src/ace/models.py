@@ -30,7 +30,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import declarative_base, declarative_mixin, declared_attr
+from sqlalchemy.orm import declarative_mixin, declared_attr
 
 CURRENT_SCHEMA_VERSION = 19
 ''' Value of :attr:`SchemaVersion.version_num` '''
