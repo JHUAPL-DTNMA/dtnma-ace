@@ -195,15 +195,15 @@ class TestAriCbor(unittest.TestCase):
             self.assertEqual(
                 base64.b16encode(buf.getvalue()),
                 expect)
-            
+
     def test_ari_cbor_encode_objref_AM(self):
         TEST_CASE = [
             ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True, type_id=None): 
-                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                LiteralARI(value=True, type_id=None):
+                LiteralARI(value=True, type_id=StructType.BOOL)},
                 b'85676578616D706C656361646D23656D79454444A1F58201F5'),
             (65535, 18, StructType.IDENT, "34", {
-                LiteralARI(value=101, type_id=None): 
+                LiteralARI(value=101, type_id=None):
                 LiteralARI(value=11, type_id=StructType.IDENT)},
                 b'8519FFFF1220623334A1186582200B')
         ]
@@ -263,8 +263,7 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_decode_rptset(self):
         TEST_CASE = [
-            ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0,
-          1),
+            ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
           ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1)
         ]
 
@@ -275,7 +274,7 @@ class TestAriCbor(unittest.TestCase):
             LOGGER.info('Testing data: %s', to_diag(data))
             ari = dec.decode(io.BytesIO(data))
             self.assertEqual(ari.type_id, StructType.RPTSET)
-            self.assertEqual(ari.value.nonce, expect_nonce)
+            self.assertEqual(ari.value.nonce.value, expect_nonce)
             delta = (ari.value.ref_time - ari_cbor.DTN_EPOCH).total_seconds()
             sec = int(delta)
             nsec = round((delta % 1) * 1000000000)
@@ -527,7 +526,7 @@ class TestAriCbor(unittest.TestCase):
             ("82071864"),
             ("8212A303F50A626869626F6804"),
             ("85676578616D706C6564746573742A6474686174811822"),
-            ("85676578616D706C656361646D23656D79454444A1F58201F5"), # Ref with AM params
+            ("85676578616D706C656361646D23656D79454444A1F58201F5"),  # Ref with AM params
             ("F5"),
             ("F4"),
             ("1904D2"),
@@ -580,18 +579,19 @@ class TestAriCbor(unittest.TestCase):
         dec = ari_cbor.Decoder()
         enc = ari_cbor.Encoder()
         for data in TEST_CASE:
-            data = base64.b16decode(data)
-            LOGGER.info('Testing data: %s', to_diag(data))
+            with self.subTest(f'data {data}'):
+                data = base64.b16decode(data)
+                LOGGER.info('Testing data: %s', to_diag(data))
 
-            ari = dec.decode(io.BytesIO(data))
-            LOGGER.info('Got ARI %s', ari)
+                ari = dec.decode(io.BytesIO(data))
+                LOGGER.info('Got ARI %s', ari)
 
-            loop = io.BytesIO()
-            enc.encode(ari, loop)
-            LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
-            loop.seek(0)
-            LOGGER.info('Re-decode ARI %s', dec.decode(loop))
-            self.assertEqual(
-                base64.b16encode(loop.getvalue()),
-                base64.b16encode(data)
-            )
+                loop = io.BytesIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                loop.seek(0)
+                LOGGER.info('Re-decode ARI %s', dec.decode(loop))
+                self.assertEqual(
+                    base64.b16encode(loop.getvalue()),
+                    base64.b16encode(data)
+                )
