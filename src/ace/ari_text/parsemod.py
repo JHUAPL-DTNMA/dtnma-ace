@@ -282,35 +282,21 @@ def p_objpath_relative(p):
         mod = util.MODSEGMENT(p[got - 5])
         if not isinstance(mod, tuple):
             mod = (mod, None)
-        else:
-            mod = (None, None)
-        try:
-            typ = util.get_structtype(p[got - 3])
-        except Exception as err:
-            LOGGER.error('Object type invalid: %s', err)
-            raise RuntimeError(err) from err
-        
-        # Reference are only allowed with AMM types
-        if typ >= 0 or typ == StructType.OBJECT:
-            raise RuntimeError("Invalid AMM type")
-        
-        obj = util.IDSEGMENT(p[got - 1])
-        p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)
-    elif got == 3:  # Handle relative path without 'ari://' prefix
-        # Extract segments after './' or '../'
-        segments = p[1].split('/')
-        if len(segments) < 2:
-            raise ari_text.ParseError(f"Invalid relative path format: {p[1]}")
-            
-        typ = util.get_structtype(segments[-2])
-        obj = util.IDSEGMENT(segments[-1])
-        
-        # Reference are only allowed with AMM types
-        if typ >= 0 or typ == StructType.OBJECT:
-            raise ari_text.ParseError("Invalid AMM type")
-            
-        p[0] = Identity(org_id=None, model_id=None, model_rev=None, 
-                        type_id=typ, obj_id=obj)
+    else:
+        mod = (None, None)
+
+    try:
+        typ = util.get_structtype(p[got - 3])
+    except Exception as err:
+        LOGGER.error('Object type invalid: %s', err)
+        raise RuntimeError(err) from err
+    # Reference are only allowed with AMM types
+    if typ >= 0 or typ == StructType.OBJECT:
+        raise RuntimeError("Invalid AMM type")
+
+    obj = util.IDSEGMENT(p[got - 1])
+
+    p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)
 
 def p_acbracket(p):
     '''acbracket : LPAREN RPAREN

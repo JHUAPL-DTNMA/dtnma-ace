@@ -1362,15 +1362,15 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=5;(1,2)"),
             ("ari:/TBL/(1,2,3)"),
             # Madeline - fix these 5 FIXME testcases for ACE #22
-            ("ari:/TBL/c=aaa;c=2;(1,2)"),
-            # FIXME: ("ari:/TBL/c=2;c=2;(1,2)"),
+            ("ari:/TBL/c=aaa;c=2;(1,2)"), # Fixed
+            ("ari:/TBL/c=2;c=2;(1,2)"), # Fixed
             ("ari:/EXECSET/()"),
-            # FIXME: ("ari:/EXECSET/g=null;()"),
+            # ("ari:/EXECSET/g=null;()"), # invalid format for nonce
             ("ari:/EXECSET/n=undefined;()"),
             ("ari:/EXECSET/n=1;"),
-            # FIXME: ("ari:/EXECSET/n=1;n=2;()"),
+            # FIXME: ("ari:/EXECSET/n=1;n=2;()"), # multiple definitions for nonce
             ("ari://./object/hi"),
-            # FIXME: ("./object/hi"),
+            ("./object/hi"), # missing "ari://"
         ]
 
         dec = ari_text.Decoder()
