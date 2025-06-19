@@ -125,6 +125,17 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
 
+    #LOGGER.error('p[3] = ')
+    #LOGGER.error(p[3])
+    #key = next(iter(p[3]))
+    #LOGGER.error("key is ")
+    #LOGGER.error(key)
+
+    nonce_key = next(iter(p[3])) # key for p[3] nonce dict
+    if nonce_key != 'n':
+        LOGGER.error('Invalid format for nonce: ', nonce_key)
+        raise RuntimeError()
+
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
         nonce = p[3].get('n', 'null')
     else:
@@ -135,7 +146,7 @@ def p_typedlit_execset(p):
         targets=p[4],
     )
     p[0] = LiteralARI(type_id=StructType.EXECSET, value=value)
-
+    
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'

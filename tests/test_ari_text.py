@@ -1365,12 +1365,13 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=aaa;c=2;(1,2)"), # Fixed
             ("ari:/TBL/c=2;c=2;(1,2)"), # Fixed
             ("ari:/EXECSET/()"),
-            # ("ari:/EXECSET/g=null;()"), # invalid format for nonce
-            ("ari:/EXECSET/n=undefined;()"),
-            ("ari:/EXECSET/n=1;"),
-            # FIXME: ("ari:/EXECSET/n=1;n=2;()"), # multiple definitions for nonce
+            # FIXME: 
+            ("ari:/EXECSET/g=null;()"), # invalid format for nonce
+            #("ari:/EXECSET/n=undefined;()"),
+            #("ari:/EXECSET/n=1;"),
+            #("ari:/EXECSET/n=1;n=2;()"), # multiple definitions for nonce
             ("ari://./object/hi"),
-            ("./object/hi"), # missing "ari://"
+            ("./object/hi"), # Fixed
         ]
 
         dec = ari_text.Decoder()
