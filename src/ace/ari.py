@@ -124,6 +124,7 @@ class StructType(enum.IntEnum):
     RPTSET = 21
 
     OBJECT = -256
+    NAMESPACE = -255
     # AMM object types
     TYPEDEF = -12
     IDENT = -1
