@@ -22,10 +22,10 @@
 #
 ''' CODEC for converting ARI to and from text URI form.
 '''
-import base64
 from dataclasses import dataclass
 import logging
-from typing import TextIO, Union
+import math
+from typing import TextIO
 import urllib.parse
 import cbor2
 from ace.ari import (
@@ -110,7 +110,7 @@ class EncodeOptions:
     int_base:int = 10
     ''' One of 2, 10, or 16 '''
     float_form:str = 'g'
-    ''' One of 'f' or 'g' for standard format, or 'x' for raw hex'''
+    ''' One of 'f', 'e', 'g', or 'a' for standard format'''
     text_identity:bool = True
     ''' True if specific text can be left unquoted. '''
     time_text:bool = True
@@ -177,14 +177,14 @@ class Encoder:
                 buf.write(obj.value.name)
             elif isinstance(obj.value, ExecutionSet):
                 params = {
-                    'n': to_diag(obj.value.nonce),
+                    'n': obj.value.nonce,
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.targets)
             elif isinstance(obj.value, ReportSet):
                 params = {
-                    'n': to_diag(obj.value.nonce),
-                    'r': encode_datetime(obj.value.ref_time),
+                    'n': obj.value.nonce,
+                    'r': LiteralARI(obj.value.ref_time, StructType.TP),
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)
@@ -201,17 +201,20 @@ class Encoder:
                     buf.write(fmt.format(abs(obj.value)))
                     return
                 elif isinstance(obj.value, float):
-                    if self._options.float_form == 'x':
-                        # CBOR efficient length encoding
-                        sign = "-" if obj.value < 0 else ""
-                        data = cbor2.dumps(abs(obj.value), canonical=True)
-                        buf.write(sign)
-                        buf.write('0fx')
-                        buf.write(base64.b16encode(data[1:]).decode('ascii').casefold())
+                    if not math.isfinite(obj.value):
+                        buf.write(to_diag(obj.value))
                         return
-                    elif self._options.float_form in {'f', 'e'}:
-                        buf.write(f'{{0:{self._options.float_form}}}'.format(obj.value))
+                    elif self._options.float_form == 'a':
+                        buf.write(obj.value.hex())
                         return
+                    elif self._options.float_form in {'f', 'e', 'g'}:
+                        text = f'{{0:{self._options.float_form}}}'.format(obj.value)
+                        if self._options.float_form == 'g' and '.' not in text and 'e' not  in text:
+                            text += '.0'
+                        buf.write(text)
+                        return
+                    else:
+                        raise ValueError(f'Invalid float form: {self._options.float_form}')
                 elif isinstance(obj.value, str):
                     if can_unquote(obj.value) and self._options.text_identity:
                         # Shortcut for identity text
@@ -248,10 +251,9 @@ class Encoder:
                 elif isinstance(obj.params, dict):
                     self._encode_map(buf, obj.params)
 
-        # FIXME: special cases for recursion
         elif isinstance(obj, Report):
             params = {
-                't': encode_timedelta(obj.rel_time),
+                't': LiteralARI(obj.rel_time, StructType.TD),
                 's': obj.source,
             }
             self._encode_struct(buf, params)
@@ -291,18 +293,15 @@ class Encoder:
 
     def _encode_tbl(self, buf, array:'numpy.ndarray'):
         params = {
-            'c': str(array.shape[1]),
+            'c': LiteralARI(array.shape[1]),
         }
         self._encode_struct(buf, params)
         for row_ix in range(array.shape[0]):
             self._encode_list(buf, array[row_ix,:].flat)
 
-    def _encode_struct(self, buf, obj:Union[ARI, str]):
+    def _encode_struct(self, buf, obj:ARI):
         for key, val in obj.items():
             buf.write(key)
             buf.write('=')
-            if isinstance(val, ARI):
-                self._encode_obj(buf, val, False)
-            else:
-                buf.write(quote(val))
+            self._encode_obj(buf, val, False)
             buf.write(';')

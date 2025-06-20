@@ -37,9 +37,9 @@ from .ari import (
 LOGGER = logging.getLogger(__name__)
 
 
-def get_amm_ident(obj_id:str) -> Identity:
+def get_amm_ident(model_id:str, obj_id:str) -> Identity:
     ''' Get an IDENT in the ietf-amm model. '''
-    return Identity(org_id='ietf', model_id='amm', type_id=StructType.IDENT, obj_id=obj_id)
+    return Identity(org_id='ietf', model_id=model_id, type_id=StructType.IDENT, obj_id=obj_id)
 
 
 class Constraint:
@@ -520,7 +520,7 @@ class TypeUse(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-use'),
+            get_amm_ident('amm-semtype', 'use'),
             params={
                 LiteralARI('name'): self.type_ari,
             }
@@ -580,7 +580,7 @@ class TypeUnion(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-union'),
+            get_amm_ident('amm-semtype', 'union'),
             params={
                 LiteralARI('choices'): LiteralARI([choice.ari_name() for choice in self.types], StructType.AC),
             }
@@ -638,7 +638,7 @@ class UniformList(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-ulist'),
+            get_amm_ident('amm-semtype', 'ulist'),
             params={
                 LiteralARI('item-type'): self.base.ari_name(),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -719,7 +719,7 @@ class Sequence(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-seq'),
+            get_amm_ident('amm-semtype', 'seq'),
             params={
                 LiteralARI('item-type'): self.base.ari_name(),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -780,7 +780,7 @@ class DiverseList(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-dlist'),
+            get_amm_ident('amm-semtype', 'dlist'),
             params={
                 LiteralARI('item-types'): LiteralARI([part.ari_name() for part in self.parts], StructType.AC),
             }
@@ -868,7 +868,7 @@ class UniformMap(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-umap'),
+            get_amm_ident('amm-semtype', 'umap'),
             params={
                 LiteralARI('key-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
                 LiteralARI('value-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
@@ -929,7 +929,7 @@ class TableColumn:
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-tblt-col'),
+            get_amm_ident('amm-semtype', 'tblt-col'),
             params={
                 LiteralARI('name'): LiteralARI('name'),
                 LiteralARI('datatype'): self.base.ari_name(),
@@ -962,7 +962,7 @@ class TableTemplate(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-tblt'),
+            get_amm_ident('amm-semtype', 'tblt'),
             params={
                 LiteralARI('columns'): LiteralARI([col.ari_name() for col in self.columns], StructType.AC),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -1064,3 +1064,11 @@ def type_walk(root:BaseType) -> Iterator:
             yield from walk(child)
 
     yield from walk(root)
+
+
+NONCE = TypeUnion(types=[
+    BUILTINS_BY_ENUM[StructType.BYTESTR],
+    BUILTINS_BY_ENUM[StructType.UVAST],
+    BUILTINS_BY_ENUM[StructType.NULL],
+])
+''' Union defined in the AMM '''
