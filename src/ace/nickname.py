@@ -67,10 +67,11 @@ class Converter:
         return ari
 
     def _convert_ref(self, ari:ReferenceARI) -> ReferenceARI:
-        obj = dereference(ari, self._db_sess)
-        if obj:
+        if ari.ident.type_id is not None:
+            obj = dereference(ari, self._db_sess)
             adm = obj.module
         else:
+            obj = None
             adm = find_adm(ari.ident.org_id, ari.ident.model_id, ari.ident.model_rev, self._db_sess)
         LOGGER.debug('ARI for %s resolved to ADM %s, obj %s',
                      ari.ident, adm, obj)
