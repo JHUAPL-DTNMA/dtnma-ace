@@ -415,7 +415,8 @@ class AnyType(BuiltInType):
             return False
 
         if typ is ReferenceARI:
-            if obj.ident.org_id is None or obj.ident.model_id is None:
+            # either relative or absolute reference is valid
+            if obj.ident.org_id is not None and obj.ident.model_id is None:
                 return False
 
             if self.type_id == StructType.OBJECT:
