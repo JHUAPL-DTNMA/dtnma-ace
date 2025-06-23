@@ -23,11 +23,10 @@
 ''' Plugin to display the contents of an ADM module as an object tree.
 '''
 
-from dataclasses import dataclass, field
 import optparse
 import io
 import logging
-from typing import List, Tuple
+from typing import List
 import pyang
 from pyang.context import Context
 from pyang.statements import Statement

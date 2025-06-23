@@ -24,8 +24,6 @@
 '''
 import logging
 import string
-import sqlalchemy.orm
-from . import ari
 
 LOGGER = logging.getLogger(__name__)
 
