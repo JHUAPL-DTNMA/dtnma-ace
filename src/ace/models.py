@@ -32,7 +32,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import declarative_mixin, declared_attr
 
-CURRENT_SCHEMA_VERSION = 19
+CURRENT_SCHEMA_VERSION = 20
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -383,6 +383,9 @@ class Ident(Base, AdmObjMixin, ParamMixin):
     module = relationship("AdmModule", back_populates="ident")
     ''' Relationship to the :class:`AdmModule` '''
 
+    abstract = Column(Boolean)
+    ''' Explicit abstract marking '''
+
     bases = relationship(
         "IdentBase",
         order_by="IdentBase.position",
@@ -497,6 +500,7 @@ class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     init_ari = Column(PickleType)
     ''' Resolved and decoded ARI for ivar:`init_value`. '''
 
+
 class Sbr(Base, AdmObjMixin):
     ''' State Based Rule '''
     __tablename__ = "sbr"
@@ -526,6 +530,7 @@ class Sbr(Base, AdmObjMixin):
 
     max_count = Column(Integer)
     init_enabled = Column(Boolean)
+
 
 class Tbr(Base, AdmObjMixin):
     ''' Time Based Rule '''

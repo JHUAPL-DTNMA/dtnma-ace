@@ -483,11 +483,13 @@ module example-empty {
     amm:enum 2;
     description
       "";
+    amm:abstract true;
   }
   amm:ident name2 {
     amm:enum 3;
     description
       "";
+    amm:abstract false;
     amm:base "./IDENT/name1";
   }
 ''',
@@ -496,11 +498,13 @@ module example-empty {
     amm:enum 1;
     description
       "one base";
+    amm:abstract true;
   }
   amm:ident base2 {
     amm:enum 2;
     description
       "other base";
+    amm:abstract true;
   }
   amm:ident derived {
     amm:enum 3;

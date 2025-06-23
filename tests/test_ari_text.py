@@ -1381,7 +1381,6 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     ari = dec.decode(io.StringIO(text))
-                    LOGGER.info('Got ARI %s', ari)
 
     def test_ari_text_decode_invalid(self):
         TEST_CASE = [
