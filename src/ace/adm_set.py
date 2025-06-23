@@ -420,7 +420,7 @@ class AdmSet:
     def get_child(self, adm:models.AdmModule, cls:type, norm_name:str=None, enum:int=None):
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.
         '''
-        query = self._db_sess.query(cls).filter(cls.module == adm)
+        query = self._db_sess.query(cls).filter(cls.admfile == adm)
         if norm_name is not None:
             query = query.filter(cls.norm_name == norm_name.casefold())
         if enum is not None:
