@@ -61,7 +61,7 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TBL/c=3;',
         'ari:/TBL/c=3;(1,2,3)(a,b,c)',
         'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
-        'ari:/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//example/adm/CTRL/name;(null))',
+        'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
         # Reference
         'ari://65536/65536/VAR/0',
         'ari://4294967296/4294967296/VAR/2',
@@ -81,30 +81,31 @@ class TestAriRoundtrip(unittest.TestCase):
         cbor_enc = ari_cbor.Encoder()
 
         for text in self.CANONICAL_TEXTS:
-            LOGGER.info('Testing text: %s', text)
+            with self.subTest(text):
+                LOGGER.info('Testing text: %s', text)
 
-            ari_dn = text_dec.decode(io.StringIO(text))
-            LOGGER.info('Got ARI %s', ari_dn)
-            self.assertIsInstance(ari_dn, ARI)
-            if isinstance(ari_dn, ReferenceARI):
-                self.assertIsNotNone(ari_dn.ident.type_id)
-                self.assertIsNotNone(ari_dn.ident.obj_id)
+                ari_dn = text_dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari_dn)
+                self.assertIsInstance(ari_dn, ARI)
+                if isinstance(ari_dn, ReferenceARI):
+                    self.assertIsNotNone(ari_dn.ident.type_id)
+                    self.assertIsNotNone(ari_dn.ident.obj_id)
 
-            cbor_loop = io.BytesIO()
-            cbor_enc.encode(ari_dn, cbor_loop)
-            self.assertLess(0, cbor_loop.tell())
-            LOGGER.info('Intermediate binary: %s', to_diag(cbor_loop.getvalue()))
+                cbor_loop = io.BytesIO()
+                cbor_enc.encode(ari_dn, cbor_loop)
+                self.assertLess(0, cbor_loop.tell())
+                LOGGER.info('Intermediate binary: %s', to_diag(cbor_loop.getvalue()))
 
-            cbor_loop.seek(0)
-            ari_up = cbor_dec.decode(cbor_loop)
-            LOGGER.info('Intermediate ARI %s', ari_up)
-            self.assertEqual(ari_up, ari_dn)
+                cbor_loop.seek(0)
+                ari_up = cbor_dec.decode(cbor_loop)
+                LOGGER.info('Intermediate ARI %s', ari_up)
+                self.assertEqual(ari_up, ari_dn)
 
-            text_loop = io.StringIO()
-            text_enc.encode(ari_up, text_loop)
-            LOGGER.info('Got text: %s', text_loop.getvalue())
-            self.assertLess(0, text_loop.tell())
-            self.assertEqual(text_loop.getvalue(), text)
+                text_loop = io.StringIO()
+                text_enc.encode(ari_up, text_loop)
+                LOGGER.info('Got text: %s', text_loop.getvalue())
+                self.assertLess(0, text_loop.tell())
+                self.assertEqual(text_loop.getvalue(), text)
 
     CANONICAL_DATAS = (
         # 'c115410a05062420201625120b493030313030313030310001183c8187182d41006b54425220437573746f6479',
@@ -118,30 +119,31 @@ class TestAriRoundtrip(unittest.TestCase):
         cbor_enc = ari_cbor.Encoder()
 
         for data16 in self.CANONICAL_DATAS:
-            data = base64.b16decode(data16, casefold=True)
-            LOGGER.info('Testing data: %s', to_diag(data))
+            with self.subTest(f'data {data16}'):
+                data = base64.b16decode(data16, casefold=True)
+                LOGGER.info('Testing data: %s', to_diag(data))
 
-            ari_dn = cbor_dec.decode(io.BytesIO(data))
-            LOGGER.info('Got ARI %s', ari_dn)
-            self.assertIsInstance(ari_dn, ARI)
-            if isinstance(ari_dn, ReferenceARI):
-                self.assertIsNotNone(ari_dn.ident.type_id)
-                self.assertIsNotNone(ari_dn.ident.obj_id)
+                ari_dn = cbor_dec.decode(io.BytesIO(data))
+                LOGGER.info('Got ARI %s', ari_dn)
+                self.assertIsInstance(ari_dn, ARI)
+                if isinstance(ari_dn, ReferenceARI):
+                    self.assertIsNotNone(ari_dn.ident.type_id)
+                    self.assertIsNotNone(ari_dn.ident.obj_id)
 
-            text_loop = io.StringIO()
-            text_enc.encode(ari_dn, text_loop)
-            self.assertLess(0, text_loop.tell())
-            LOGGER.info('Intermediate: %s', text_loop.getvalue())
+                text_loop = io.StringIO()
+                text_enc.encode(ari_dn, text_loop)
+                self.assertLess(0, text_loop.tell())
+                LOGGER.info('Intermediate: %s', text_loop.getvalue())
 
-            text_loop.seek(0)
-            ari_up = text_dec.decode(text_loop)
-            self.assertEqual(ari_up, ari_dn)
+                text_loop.seek(0)
+                ari_up = text_dec.decode(text_loop)
+                self.assertEqual(ari_up, ari_dn)
 
-            cbor_loop = io.BytesIO()
-            cbor_enc.encode(ari_up, cbor_loop)
-            LOGGER.info('Got data: %s', to_diag(cbor_loop.getvalue()))
-            self.assertLess(0, cbor_loop.tell())
-            self.assertEqual(
-                base64.b16encode(cbor_loop.getvalue()),
-                base64.b16encode(data)
-            )
+                cbor_loop = io.BytesIO()
+                cbor_enc.encode(ari_up, cbor_loop)
+                LOGGER.info('Got data: %s', to_diag(cbor_loop.getvalue()))
+                self.assertLess(0, cbor_loop.tell())
+                self.assertEqual(
+                    base64.b16encode(cbor_loop.getvalue()),
+                    base64.b16encode(data)
+                )

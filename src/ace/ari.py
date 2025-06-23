@@ -84,7 +84,7 @@ class Report:
 @dataclass
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
-    nonce:Union[bytes, int, None]
+    nonce:'LiteralARI'
     ''' Optional nonce value '''
     ref_time:datetime.datetime
     ''' The reference time for all contained Report relative-times. '''

@@ -94,28 +94,10 @@ def t_float(found):
     return float(found[0])
 
 
-FLOAT_FORM = {
-    2: '!e',
-    4: '!f',
-    8: '!d',
-}
-''' Map from IEEE-754 encoded size and `struct` format char. '''
-
-
 # float as hex-encoded IEEE-754 binary
-@TypeMatch.apply(r'(?P<sign>[+-])?0fx(?P<raw>[0-9a-fA-F]+)')
-def t_floatraw(found):
-    neg = found.group('sign') == '-'
-    data = base64.b16decode(found['raw'], casefold=True)
-
-    try:
-        form = FLOAT_FORM[len(data)]
-    except KeyError:
-        raise ValueError('Raw floating point is not sized to 2, 4, or 8 bytes')
-    val = struct.unpack(form, data)[0]
-    if neg:
-        val = -val
-    return val
+@TypeMatch.apply(r'[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-][0-9a-fA-F]+)')
+def t_floathex(found):
+    return float.fromhex(found[0])
 
 
 # int is decimal, binary, or hexadecimal
@@ -294,7 +276,7 @@ PRIMITIVE = TypeSeq([
     t_undefined,
     t_null,
     t_bool,
-    t_float, t_floatraw,
+    t_float, t_floathex,
     t_int,
     t_identity, t_tstr,
     t_bstr
@@ -309,8 +291,8 @@ TYPEDLIT = {
     StructType.UINT: TypeSeq([t_int]),
     StructType.VAST: TypeSeq([t_int]),
     StructType.UVAST: TypeSeq([t_int]),
-    StructType.REAL32: TypeSeq([t_float, t_floatraw]),
-    StructType.REAL64: TypeSeq([t_float, t_floatraw]),
+    StructType.REAL32: TypeSeq([t_float, t_floathex]),
+    StructType.REAL64: TypeSeq([t_float, t_floathex]),
     StructType.TEXTSTR: TypeSeq([t_identity, t_tstr]),
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
@@ -325,5 +307,4 @@ AMKEY = TypeSeq([t_int, t_identity, t_tstr])
 ''' Allowed AM key literals. '''
 
 STRUCTKEY = TypeSeq([t_identity])
-
-NONCE = TypeSeq([t_null, t_int, t_bstr])
+''' Keys of struct parameters '''
