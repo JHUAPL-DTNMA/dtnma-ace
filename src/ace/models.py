@@ -48,6 +48,7 @@ class SchemaVersion(Base):
 # These first classes are containers and are not explicitly bound to a
 # parent ADM object.
 
+
 @declarative_mixin
 class CommonMixin:
     ''' Common module substatements. '''
@@ -265,10 +266,12 @@ class AdmRevision(Base, CommonMixin):
     ''' Each "revision" of an ADM '''
     __tablename__ = "adm_revision"
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="revisions")
     # ordinal of this item in the list
@@ -284,10 +287,12 @@ class AdmImport(Base, CommonMixin):
     ''' Each "import" of an ADM '''
     __tablename__ = "adm_import"
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="imports")
     # ordinal of this item in the list
@@ -304,10 +309,12 @@ class Feature(Base, CommonMixin):
     __tablename__ = "feature"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="feature")
     # ordinal of this item in the module
@@ -315,6 +322,7 @@ class Feature(Base, CommonMixin):
 
     # Unique name
     name = Column(String, nullable=False, index=True)
+
 
 @declarative_mixin
 class AdmObjMixin(CommonMixin):
@@ -338,11 +346,11 @@ class AdmObjMixin(CommonMixin):
 
 class ParamMixin:
     ''' Attributes for formal parameters of an object. '''
+
     # Parameters of this object
     @declared_attr
-    def parameters_id(cls):
+    def parameters_id(self):
         return Column(Integer, ForeignKey('typename_list.id'))
-     
 
     # Relationship to the :class:`TypeNameList`
     @declared_attr
@@ -361,10 +369,12 @@ class Typedef(Base, AdmObjMixin, TypeUseMixin):
     __tablename__ = "typedef"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="typedef")
 
@@ -374,12 +384,13 @@ class Ident(Base, AdmObjMixin, ParamMixin):
     __tablename__ = "ident"
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
-    
+
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     ''' ID of the file from which this came '''
-    
+
     module = relationship("AdmModule", back_populates="ident")
     ''' Relationship to the :class:`AdmModule` '''
 
@@ -399,9 +410,11 @@ class IdentBase(Base):
     __tablename__ = "ident_base"
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
+
     @declared_attr
-    def ident_id(cls): 
+    def ident_id(self):
         return Column(Integer, ForeignKey('ident.id'))
+
     ''' ID of the file from which this came '''
     ident = relationship("Ident", back_populates="bases")
     ''' Relationship to the :class:`AdmModule` '''
@@ -419,10 +432,12 @@ class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     __tablename__ = "edd"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="edd")
 
@@ -432,10 +447,12 @@ class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     __tablename__ = "const"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="const")
 
@@ -450,10 +467,12 @@ class Ctrl(Base, AdmObjMixin, ParamMixin):
     __tablename__ = "ctrl"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="ctrl")
 
@@ -467,10 +486,12 @@ class Oper(Base, AdmObjMixin, ParamMixin):
     __tablename__ = "oper"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="oper")
 
@@ -488,10 +509,12 @@ class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     __tablename__ = "var"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="var")
 
@@ -506,10 +529,12 @@ class Sbr(Base, AdmObjMixin):
     __tablename__ = "sbr"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="sbr")
 
@@ -537,10 +562,12 @@ class Tbr(Base, AdmObjMixin):
     __tablename__ = "tbr"
     # Unique ID of the row
     id = Column(Integer, primary_key=True)
+
     # ID of the file from which this came
     @declared_attr
-    def module_id(cls):
+    def module_id(self):
         return Column(Integer, ForeignKey('adm_module.id'))
+
     # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="tbr")
 
