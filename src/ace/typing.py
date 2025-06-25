@@ -244,7 +244,7 @@ class StringType(BuiltInType):
     VALUE_CLS = {
         StructType.TEXTSTR: str,
         StructType.BYTESTR: bytes,
-        StructType.LABEL: str,
+        StructType.LABEL: (str, int),
         StructType.CBOR: bytes,
         StructType.ARITYPE: (str, int),
     }

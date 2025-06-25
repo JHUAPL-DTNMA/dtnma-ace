@@ -297,7 +297,7 @@ TYPEDLIT = {
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
-    StructType.LABEL: TypeSeq([t_identity]),
+    StructType.LABEL: TypeSeq([t_identity, t_int]),
     StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
     StructType.ARITYPE: get_structtype,
 }

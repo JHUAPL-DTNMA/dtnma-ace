@@ -54,9 +54,11 @@ class Decoder:
             item = cbordec.decode()
         except Exception as err:
             raise ParseError(f'Failed to decode CBOR: {err}') from err
-        if buf.tell() != len(buf.getbuffer()):
-            LOGGER.warning('ARI decoder handled only the first %d octets of %s',
-                           buf.tell(), to_diag(buf.getvalue()))
+
+        if hasattr(buf, 'tell') and hasattr(buf, 'getbuffer'):
+            if buf.tell() != len(buf.getbuffer()):
+                LOGGER.warning('ARI decoder handled only the first %d octets of %s',
+                               buf.tell(), to_diag(buf.getvalue()))
 
         try:
             res = self._item_to_ari(item)

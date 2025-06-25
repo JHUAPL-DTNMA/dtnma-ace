@@ -52,7 +52,7 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TD/PT3H2M10.001S',
         # others
         'ari:/LABEL/test',
-        'ari:/CBOR/h%27a164746573748203f94480%27',
+        'ari:/CBOR/h\'a164746573748203f94480\'',
         # Containers
         'ari:/AC/()',
         'ari:/AC/(1,2)',
