@@ -33,6 +33,7 @@ from ace.ari import (
 from ace.typing import BUILTINS_BY_ENUM
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
+from ace import ari_text
 
 # make linters happy
 __all__ = [
@@ -99,9 +100,8 @@ def p_typedlit_tbl_rows(p):
     
     # Check for duplicate c parameters
     if len(c_params) > 1:
-        raise ParseError("Multiple 'c=' parameters specified")
+        raise ari_text.ParseError("Multiple 'c=' parameters specified")
     
-    #ncol = int(p[3].get('c', 0))
     ncol = int(c_params[0]) if c_params else 0
     nrow = len(p[4])
     table = Table((nrow, ncol))
@@ -125,17 +125,19 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
 
-    #LOGGER.error('p[3] = ')
-    #LOGGER.error(p[3])
-    #key = next(iter(p[3]))
-    #LOGGER.error("key is ")
-    #LOGGER.error(key)
-
-    nonce_key = next(iter(p[3])) # key for p[3] nonce dict
+    # key for p[3] nonce dict
+    nonce_key = next(iter(p[3]))
     if nonce_key != 'n':
         LOGGER.error('Invalid format for nonce: ', nonce_key)
         raise RuntimeError()
 
+    # Extract n parameter values
+    n_params = [part.split('=')[1] for part in p[3].split(';') if part.startswith('n=')]
+    
+    # Check for duplicate n parameters
+    if len(n_params) > 1:
+        raise ari_text.ParseError("Multiple nonce definitions specified")
+    
     if(isinstance(p[3].get('n', 'null'), LiteralARI)):
         nonce = p[3].get('n', 'null')
     else:

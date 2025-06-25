@@ -1361,15 +1361,13 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=hi;"),
             ("ari:/TBL/c=5;(1,2)"),
             ("ari:/TBL/(1,2,3)"),
-            # Madeline - fix these 5 FIXME testcases for ACE #22
             ("ari:/TBL/c=aaa;c=2;(1,2)"), # Fixed
             ("ari:/TBL/c=2;c=2;(1,2)"), # Fixed
             ("ari:/EXECSET/()"),
-            # FIXME: 
-            ("ari:/EXECSET/g=null;()"), # invalid format for nonce
-            #("ari:/EXECSET/n=undefined;()"),
-            #("ari:/EXECSET/n=1;"),
-            #("ari:/EXECSET/n=1;n=2;()"), # multiple definitions for nonce
+            ("ari:/EXECSET/g=null;()"), # Fixed
+            ("ari:/EXECSET/n=undefined;()"),
+            ("ari:/EXECSET/n=1;"),
+            ("ari:/EXECSET/n=1;n=2;()"), # Fixed
             ("ari://./object/hi"),
             ("./object/hi"), # Fixed
         ]
