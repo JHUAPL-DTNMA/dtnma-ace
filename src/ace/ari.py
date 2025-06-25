@@ -26,6 +26,7 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 import datetime
 from dataclasses import dataclass
 import enum
+import math
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
@@ -171,7 +172,10 @@ class LiteralARI(ARI):
         return (
             isinstance(other, LiteralARI)
             and self.type_id == other.type_id
-            and self.value == other.value
+            and (
+                (self.value == other.value)
+                or (math.isnan(self.value) and math.isnan(other.value))
+            )
         )
 
     def visit(self, visitor:Callable[['ARI'], None]) -> None:

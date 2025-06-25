@@ -47,12 +47,12 @@ class TestAriCbor(unittest.TestCase):
         (base64.b16decode('0A'), 10),
         (base64.b16decode('29'), -10),
         # FLOAT
-        (cbor2.dumps(0.01), 0.01),
-        (cbor2.dumps(1e2), 1e2),
-        (cbor2.dumps(1e-2), 1e-2),
-        (cbor2.dumps(-1e2), -1e2),
-        (cbor2.dumps(1.25e2), 1.25e2),
-        (cbor2.dumps(1e25), 1e25),
+        (cbor2.dumps(0.01, canonical=True), 0.01),
+        (cbor2.dumps(1e2, canonical=True), 1e2),
+        (cbor2.dumps(1e-2, canonical=True), 1e-2),
+        (cbor2.dumps(-1e2, canonical=True), -1e2),
+        (cbor2.dumps(1.25e2, canonical=True), 1.25e2),
+        (cbor2.dumps(1e25, canonical=True), 1e25),
         # TEXTSTR
         (cbor2.dumps("hi"), 'hi'),
         # BYTESTR
@@ -73,20 +73,19 @@ class TestAriCbor(unittest.TestCase):
                 exp_loop = data
             elif len(row) == 3:
                 data, val, exp_loop = row
-            LOGGER.info('Testing data: %s', to_diag(data))
+            with self.subTest(f'Testing data: {to_diag(data)}'):
+                ari = dec.decode(io.BytesIO(data))
+                LOGGER.info('Got ARI %s', ari)
+                self.assertIsInstance(ari, LiteralARI)
+                self.assertEqual(ari.value, val)
 
-            ari = dec.decode(io.BytesIO(data))
-            LOGGER.info('Got ARI %s', ari)
-            self.assertIsInstance(ari, LiteralARI)
-            self.assertEqual(ari.value, val)
-
-            loop = io.BytesIO()
-            enc.encode(ari, loop)
-            LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
-            self.assertEqual(
-                base64.b16encode(loop.getvalue()),
-                base64.b16encode(exp_loop)
-            )
+                loop = io.BytesIO()
+                enc.encode(ari, loop)
+                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                self.assertEqual(
+                    base64.b16encode(loop.getvalue()),
+                    base64.b16encode(exp_loop)
+                )
 
     REFERENCE_DATAS = [
         # from `ari://65535/1/`

@@ -216,7 +216,7 @@ class Encoder:
         :param ari: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
-        cborenc = cbor2.CBOREncoder(buf)
+        cborenc = cbor2.CBOREncoder(buf, canonical=True)
         item = self._ari_to_item(ari)
         LOGGER.debug('ARI to item %s', item)
         cborenc.encode(item)
