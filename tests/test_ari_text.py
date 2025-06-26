@@ -110,7 +110,6 @@ class TestAriText(unittest.TestCase):
         ('ari:/BYTESTR/\'hi\'', b'hi', 'ari:/BYTESTR/h\'6869\''),
         # RFC 4648 test vectors
         ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
-        ('ari:b32\'MZXW6YTBOI\'', b'foobar', 'ari:h\'666F6F626172\''),  # FIXME: remove this b32 form
         ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
         # Times
         ('ari:/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
