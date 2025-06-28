@@ -25,7 +25,7 @@
 from dataclasses import dataclass
 import logging
 import math
-from typing import TextIO
+from typing import List, Dict, TextIO
 import urllib.parse
 import cbor2
 from ace.ari import (
@@ -38,13 +38,13 @@ from .util import t_identity, SINGLETONS
 LOGGER = logging.getLogger(__name__)
 
 
-def quote(text):
+def percent_encode(text):
     ''' URL-escape each ID and value segment
 
     :param text: The text to escape.
     :return: The percent-encoded text.
     '''
-    return urllib.parse.quote(text, safe='.+')
+    return urllib.parse.quote(text, safe="'")
 
 
 def encode_datetime(value):
@@ -152,29 +152,34 @@ class Encoder:
             elif obj.type_id is StructType.TP:
                 if self._options.time_text:
                     text = encode_datetime(obj.value)
-                    buf.write(quote(text))
+                    buf.write(percent_encode(text))
                 else:
                     diff = (obj.value - DTN_EPOCH).total_seconds()
                     buf.write(f'{diff:.6f}')
             elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
-                    buf.write(quote(text))
+                    buf.write(percent_encode(text))
                 else:
                     diff = obj.value.total_seconds()
                     buf.write(f'{diff:.6f}')
             elif obj.type_id is StructType.LABEL:
-                # no need to quote identity
-                buf.write(obj.value)
+                # no need to percent_encode identity
+                buf.write(str(obj.value))
             elif obj.type_id is StructType.CBOR:
                 if self._options.cbor_diag:
-                    buf.write(quote('<<'))
-                    buf.write(quote(to_diag(cbor2.loads(obj.value))))
-                    buf.write(quote('>>'))
+                    buf.write(percent_encode('<<'))
+                    buf.write(percent_encode(to_diag(cbor2.loads(obj.value))))
+                    buf.write(percent_encode('>>'))
                 else:
-                    buf.write(quote(to_diag(obj.value)))
+                    self._encode_bytes(buf, obj.value)
             elif obj.type_id is StructType.ARITYPE:
-                buf.write(obj.value.name)
+                # could be int or :py:cls:`StructType`
+                try:
+                    buf.write(StructType(obj.value).name)
+                except ValueError:
+                    # unknown type
+                    buf.write(str(int(obj.value)))
             elif isinstance(obj.value, ExecutionSet):
                 params = {
                     'n': obj.value.nonce,
@@ -186,8 +191,19 @@ class Encoder:
                     'n': obj.value.nonce,
                     'r': LiteralARI(obj.value.ref_time, StructType.TP),
                 }
+
                 self._encode_struct(buf, params)
-                self._encode_list(buf, obj.value.reports)
+
+                first = True
+                for part in obj.value.reports:
+                    if not first:
+                        pass  # buf.write(',')
+                    first = False
+                    buf.write('(')
+                    self._encode_obj(buf, part)
+                    buf.write(')')
+
+                # self._encode_list(buf, obj.value.reports)
             else:
                 if isinstance(obj.value, int) and not isinstance(obj.value, bool):
                     sign = "-" if obj.value < 0 else ""
@@ -220,8 +236,11 @@ class Encoder:
                         # Shortcut for identity text
                         buf.write(obj.value)
                         return
+                elif isinstance(obj.value, bytes):
+                    self._encode_bytes(buf, obj.value)
+                    return
 
-                buf.write(quote(to_diag(obj.value)))
+                buf.write(percent_encode(to_diag(obj.value)))
 
         elif isinstance(obj, ReferenceARI):
             if prefix:
@@ -262,7 +281,11 @@ class Encoder:
         else:
             raise TypeError(f'Unhandled object type {type(obj)} instance: {obj}')
 
-    def _encode_list(self, buf, items):
+    def _encode_bytes(self, buf: TextIO, value: bytes):
+        # already guaranteed URL safe
+        buf.write(f"h'{value.hex().upper()}'")
+
+    def _encode_list(self, buf: TextIO, items: List):
         buf.write('(')
 
         first = True
@@ -275,7 +298,7 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_map(self, buf, mapobj):
+    def _encode_map(self, buf: TextIO, mapobj: Dict):
         buf.write('(')
 
         first = True
@@ -291,7 +314,7 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_tbl(self, buf, array:'numpy.ndarray'):
+    def _encode_tbl(self, buf: TextIO, array:'numpy.ndarray'):
         params = {
             'c': LiteralARI(array.shape[1]),
         }

@@ -26,7 +26,6 @@ import datetime
 import logging
 import os
 from typing import TextIO
-from urllib.parse import quote
 import xdg_base_dirs
 from ace.ari import (
     StructType, ARI, LiteralARI, ReferenceARI
@@ -34,10 +33,10 @@ from ace.ari import (
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
 from .parsemod import new_parser
-from .encode import Encoder, EncodeOptions, quote
+from .encode import Encoder, EncodeOptions, percent_encode
 
 __all__ = (
-    'Encoder', 'EncodeOptions', 'quote',
+    'Encoder', 'EncodeOptions', 'percent_encode',
     'Decoder',
 )
 
