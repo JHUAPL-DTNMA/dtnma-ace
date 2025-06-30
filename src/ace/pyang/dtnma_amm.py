@@ -455,10 +455,12 @@ MODULE_EXTENSIONS = (
         subs=(
             OBJ_SUBS_PRE
             +[
-                ((MODULE_NAME, 'parameter'), '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
                 ((MODULE_NAME, 'abstract'), '*'),
                 ((MODULE_NAME, 'base'), '*'),
-                ('uses', '*'),
             ]
         ),
     ),
@@ -469,9 +471,11 @@ MODULE_EXTENSIONS = (
         subs=(
             OBJ_SUBS_PRE
             +[
-                ((MODULE_NAME, 'parameter'), '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
                 ((MODULE_NAME, 'init-value'), '1'),
-                ('uses', '*'),
             ]
             +type_use('const')
         ),
@@ -482,8 +486,10 @@ MODULE_EXTENSIONS = (
         subs=(
             OBJ_SUBS_PRE
             +[
-                ((MODULE_NAME, 'parameter'), '*'),
-                ('uses', '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
             ]
             +type_use('edd')
         ),
@@ -494,9 +500,11 @@ MODULE_EXTENSIONS = (
             OBJ_SUBS_PRE
             +type_use('var')
             +[
-                ((MODULE_NAME, 'parameter'), '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
                 ((MODULE_NAME, 'init-value'), '?'),
-                ('uses', '*'),
             ]
         ),
     ),
@@ -504,9 +512,11 @@ MODULE_EXTENSIONS = (
     Ext('ctrl', 'identifier',
         subs=(
             OBJ_SUBS_PRE + [
-                ((MODULE_NAME, 'parameter'), '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
                 ((MODULE_NAME, 'result'), '?'),
-                ('uses', '*'),
             ]
         ),
     ),
@@ -524,10 +534,15 @@ MODULE_EXTENSIONS = (
         subs=(
             OBJ_SUBS_PRE
             +[
-                ((MODULE_NAME, 'parameter'), '*'),
-                ((MODULE_NAME, 'operand'), '*'),
+                ('$interleave', [
+                    ((MODULE_NAME, 'parameter'), '*'),
+                    ('uses', '*'),
+                ]),
+                ('$interleave', [
+                    ((MODULE_NAME, 'operand'), '*'),
+                    ('uses', '*'),
+                ]),
                 ((MODULE_NAME, 'result'), '?'),  # can be provided via uses
-                ('uses', '*'),
             ]
         ),
     ),
@@ -549,7 +564,6 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'min-interval'), '?'),
                 ((MODULE_NAME, 'max-count'), '?'),
                 ((MODULE_NAME, 'init-enabled'), '?'),
-                ('uses', '*'),
             ]
         ),
     ),
@@ -562,7 +576,6 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'period'), '1'),
                 ((MODULE_NAME, 'max-count'), '?'),
                 ((MODULE_NAME, 'init-enabled'), '?'),
-                ('uses', '*'),
             ]
         ),
     ),

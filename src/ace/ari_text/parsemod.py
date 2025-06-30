@@ -164,8 +164,8 @@ def p_typedlit_rptset(p):
 
 
 def p_reportlist_join(p):
-    'reportlist : reportlist SC report'
-    p[0] = p[1] + [p[3]]
+    'reportlist : reportlist report'
+    p[0] = p[1] + [p[2]]
 
 
 def p_reportlist_end(p):
@@ -204,7 +204,7 @@ def p_typedlit_single(p):
     try:
         value = util.TYPEDLIT[typ](p[4])
     except Exception as err:
-        LOGGER.error('Literal value failure: %s', err)
+        LOGGER.error('Literal %s value failure: %s', typ, err)
         raise RuntimeError(err) from err
 
     try:
@@ -247,6 +247,7 @@ def p_params_amlist(p):
     'params : LPAREN amlist RPAREN'
     p[0] = p[2]
 
+
 def p_objpath_only_ns(p):
     '''objpath : SLASH SLASH VALSEG SLASH VALSEG
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
@@ -271,7 +272,7 @@ def p_objpath_with_ns(p):
 
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
-    
+
     if not isinstance(mod, tuple):
         mod = (mod, None)
 

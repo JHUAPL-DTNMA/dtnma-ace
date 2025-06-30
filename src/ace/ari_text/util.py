@@ -26,7 +26,6 @@ import base64
 import datetime
 import logging
 import re
-import struct
 from typing import List
 import cbor_diag
 from ace.ari import UNDEFINED, StructType
@@ -137,30 +136,30 @@ def unescape(esc:str) -> str:
         if char == '\\':
             char = next(esc_it)
             if char == 'b':
-              char = "\b"
+                char = "\b"
             elif char == 'f':
-              char = "\f"
+                char = "\f"
             elif char == 'n':
-              char = "\n"
+                char = "\n"
             elif char == 'r':
-              char = "\r"
+                char = "\r"
             elif char == 't':
-              char = "\t"
+                char = "\t"
             elif char == 'u':
-              buf = ''
-              while len(buf) < 4:
-                try:
-                  buf += next(esc_it)
-                except StopIteration:
-                  break
-              char = decode_unicode(buf)
+                buf = ''
+                while len(buf) < 4:
+                    try:
+                        buf += next(esc_it)
+                    except StopIteration:
+                        break
+                char = decode_unicode(buf)
         txt += char
     return txt
 
 
 def decode_unicode(hex_str):
-  code_point = int(hex_str, 16)
-  return chr(code_point)
+    code_point = int(hex_str, 16)
+    return chr(code_point)
 
 
 @TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
@@ -168,19 +167,12 @@ def t_tstr(found):
     return unescape(found['val'])
 
 
-@TypeMatch.apply(r'(?P<enc>h|b32|h32|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
+@TypeMatch.apply(r'(?P<enc>h|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
 def t_bstr(found):
     enc = found['enc']
     val = found['val']
     if enc == 'h':
         return base64.b16decode(val, casefold=True)
-    elif enc == 'b32':
-        rem = len(val) % 8
-        if rem in {2, 4, 5, 7}:
-            val += '=' * (8 - rem)
-        return base64.b32decode(val, casefold=True)
-    elif enc == 'h32':
-        raise NotImplementedError
     elif enc == 'b64':
         rem = len(val) % 4
         if rem in {2, 3}:
@@ -297,7 +289,7 @@ TYPEDLIT = {
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
-    StructType.LABEL: TypeSeq([t_identity]),
+    StructType.LABEL: TypeSeq([t_identity, t_int]),
     StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
     StructType.ARITYPE: get_structtype,
 }
