@@ -215,6 +215,156 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(ValueError):
             typ.convert(ref)
 
+    def test_literal_get(self):
+        typ = BUILTINS['literal']
+
+        self.assertEqual(NULL, typ.get(NULL))
+        self.assertEqual(TRUE, typ.get(TRUE))
+        self.assertEqual(FALSE, typ.get(FALSE))
+        self.assertEqual(LiteralARI('hi'), typ.get(LiteralARI('hi')))
+        self.assertEqual(LiteralARI(10, StructType.INT), typ.get(LiteralARI(10, StructType.INT)))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        self.assertIsNone(typ.get(ref))
+
+    def test_literal_convert(self):
+        typ = BUILTINS['literal']
+
+        self.assertEqual(NULL, typ.convert(NULL))
+        self.assertEqual(TRUE, typ.convert(TRUE))
+        self.assertEqual(FALSE, typ.convert(FALSE))
+        self.assertEqual(LiteralARI('hi'), typ.convert(LiteralARI('hi')))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+
+    def test_object_get(self):
+        typ = BUILTINS['object']
+
+        self.assertIsNone(typ.get(NULL))
+        self.assertIsNone(typ.get(TRUE))
+        self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(10, StructType.INT)))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.get(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.get(ref))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.get(ref))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        self.assertIsNone(typ.get(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod'))
+        self.assertIsNone(typ.get(ref))
+        ref = ReferenceARI(Identity())
+        self.assertIsNone(typ.get(ref))
+
+    def test_object_convert(self):
+        typ = BUILTINS['object']
+
+        with self.assertRaises(TypeError):
+            typ.convert(NULL)
+        with self.assertRaises(TypeError):
+            typ.convert(TRUE)
+        with self.assertRaises(TypeError):
+            typ.convert(FALSE)
+        with self.assertRaises(TypeError):
+            typ.convert(LiteralARI('hi'))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.convert(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.convert(ref))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        self.assertEqual(ref, typ.convert(ref))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+        ref = ReferenceARI(Identity())
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+
+    def test_namespace_get(self):
+        typ = BUILTINS['namespace']
+
+        self.assertIsNone(typ.get(NULL))
+        self.assertIsNone(typ.get(TRUE))
+        self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI(10, StructType.INT)))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        self.assertIsNone(typ.get(ref))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        self.assertEqual(ref, typ.get(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod'))
+        self.assertEqual(ref, typ.get(ref))
+        ref = ReferenceARI(Identity())
+        self.assertEqual(ref, typ.get(ref))
+
+    def test_namespace_convert(self):
+        typ = BUILTINS['namespace']
+
+        with self.assertRaises(TypeError):
+            typ.convert(NULL)
+        with self.assertRaises(TypeError):
+            typ.convert(TRUE)
+        with self.assertRaises(TypeError):
+            typ.convert(FALSE)
+        with self.assertRaises(TypeError):
+            typ.convert(LiteralARI('hi'))
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        with self.assertRaises(TypeError):
+            typ.convert(ref)
+
+        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        self.assertEqual(ref, typ.convert(ref))
+        # relative
+        ref = ReferenceARI(Identity(model_id='mod'))
+        self.assertEqual(ref, typ.convert(ref))
+        ref = ReferenceARI(Identity())
+        self.assertEqual(ref, typ.convert(ref))
+
     def test_typeuse_int_range_get(self):
         typ = TypeUse(
             base=BUILTINS['int'],

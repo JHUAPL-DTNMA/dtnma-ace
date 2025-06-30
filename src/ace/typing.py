@@ -391,24 +391,44 @@ class AnyType(BuiltInType):
     VALUE_CLS = {
         StructType.LITERAL: LiteralARI,
         StructType.OBJECT: ReferenceARI,
+        StructType.NAMESPACE: ReferenceARI,
     }
     ''' Required value type for target time type. '''
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
-        typ = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj, typ):
+        if not self._match(obj):
             return None
         return obj
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        typ = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj, typ):
+        if not self._match(obj):
             raise TypeError(f'Cannot convert type: {obj}')
         return obj
+
+    def _match(self, obj:ARI) -> bool:
+        typ = self.VALUE_CLS[self.type_id]
+        if not isinstance(obj, typ):
+            return False
+
+        if typ is ReferenceARI:
+            # either relative or absolute reference is valid
+            if obj.ident.org_id is not None and obj.ident.model_id is None:
+                return False
+
+            if self.type_id == StructType.OBJECT:
+                # must have object parts
+                if obj.ident.type_id is None or obj.ident.obj_id is None:
+                    return False
+            elif self.type_id == StructType.NAMESPACE:
+                # must not have object parts
+                if obj.ident.type_id is not None or obj.ident.obj_id is not None:
+                    return False
+
+        return True
 
 
 LITERALS = {
@@ -454,6 +474,7 @@ OBJREFS = {
 ANY = {
     'literal': AnyType(StructType.LITERAL),
     'object': AnyType(StructType.OBJECT),
+    'namespace': AnyType(StructType.NAMESPACE),
 }
 ''' Special reserved types and behavior. '''
 BUILTINS = LITERALS | OBJREFS | ANY
