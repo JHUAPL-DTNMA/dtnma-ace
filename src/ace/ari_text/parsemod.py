@@ -95,19 +95,13 @@ def p_typedlit_tbl_empty(p):
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
 
-    # Extract c parameter values
-    c_params = [part.split('=')[1] for part in p[3].split(';') if part.startswith('c=')]
-    
-    # Check for duplicate c parameters
-    if len(c_params) > 1:
-        raise ari_text.ParseError("Multiple 'c=' parameters specified")
-    
-    ncol = int(c_params[0]) if c_params else 0
+    ncol = int(p[3].get('c', 0))
     nrow = len(p[4])
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
         if len(row) != ncol:
-            raise RuntimeError('Table column count is mismatched')
+            LOGGER.error('Table column count is mismatched') 
+            raise ari_text.ParseError()
         table[row_ix,:] = row
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
@@ -125,24 +119,17 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
 
-    # key for p[3] nonce dict
     nonce_key = next(iter(p[3]))
     if nonce_key != 'n':
-        LOGGER.error('Invalid format for nonce: ', nonce_key)
-        raise RuntimeError()
-
-    # Extract n parameter values
-    n_params = [part.split('=')[1] for part in p[3].split(';') if part.startswith('n=')]
+        LOGGER.error('Invalid format for nonce')
+        raise ari_text.ParseError()
     
-    # Check for duplicate n parameters
-    if len(n_params) > 1:
-        raise ari_text.ParseError("Multiple nonce definitions specified")
-    
-    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        nonce = p[3].get('n', 'null')
+    nonce = p[3].get('n', 'null')
+    if isinstance(nonce, LiteralARI):
+        nonce = nonce
     else:
-        nonce = util.NONCE(p[3].get('n', 'null'))
-
+        nonce = util.NONCE(nonce)
+    
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
