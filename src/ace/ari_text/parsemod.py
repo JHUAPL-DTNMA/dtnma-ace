@@ -347,12 +347,26 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     # Keys are case-insensitive so get folded to lower case
-    '''structpair : VALSEG EQ VALSEG SC 
+    '''structpair : VALSEG EQ VALSEG SC
                   | VALSEG EQ typedlit SC'''
-
+    
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
-
+    # Convert key to lowercase for case-insensitive comparison
+    key = util.STRUCTKEY(p[1]).casefold()
+    
+    # Create dictionary if it doesn't exist
+    if not hasattr(p.parser, '_dict'):
+        p.parser._dict = {}
+    
+    # Check for duplicate key
+    if key in p.parser._dict:
+        LOGGER.error("Parameter list has duplicate key")
+        raise ari_text.ParseError()
+    
+    # Store the key-value pair
+    p.parser._dict[key] = p[3]
+    p[0] = p.parser._dict
 
 def p_error(p):
     # Error rule for syntax errors
