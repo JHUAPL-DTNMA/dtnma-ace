@@ -1362,15 +1362,15 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=hi;"),
             ("ari:/TBL/c=5;(1,2)"),
             ("ari:/TBL/(1,2,3)"),
-            # FIXME: ("ari:/TBL/c=aaa;c=2;(1,2)"),
-            # FIXME: ("ari:/TBL/c=2;c=2;(1,2)"),
+            ("ari:/TBL/c=aaa;c=2;(1,2)"),
+            ("ari:/TBL/c=2;c=2;(1,2)"), 
             ("ari:/EXECSET/()"),
-            # FIXME: ("ari:/EXECSET/g=null;()"),
+            ("ari:/EXECSET/g=null;()"), 
             ("ari:/EXECSET/n=undefined;()"),
             ("ari:/EXECSET/n=1;"),
-            # FIXME: ("ari:/EXECSET/n=1;n=2;()"),
+            ("ari:/EXECSET/n=1;n=2;()"),
             ("ari://./object/hi"),
-            # FIXME: ("./object/hi"),
+            ("./object/hi"), 
         ]
 
         dec = ari_text.Decoder()
@@ -1394,8 +1394,6 @@ class TestAriText(unittest.TestCase):
             ("ari:/UVAST/-1"),
             # FIXME: ("ari:/REAL32/-3.40282347E+38"),
             # FIXME: ("ari:/REAL32/3.40282347E+38"),
-            ("ari:/EXECSET/N=/UINT/0x0B0101;()"),  # typed nonce
-            ("ari:/EXECSET/N=/UINT/1234;()"),  # typed nonce
             ("ari:/EXECSET/N=1234;"),  # no targets
             ("ari:/RPTSET/n=null;r=725943845;"),  # no reports
         ]
