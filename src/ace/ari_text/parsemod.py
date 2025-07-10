@@ -99,7 +99,7 @@ def p_typedlit_tbl_empty(p):
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
     
-    ncol = int(p[3].get('c', 0))
+    ncol = p[3].get('c', 0).value
     nrow = len(p[4])
 
     table = Table((nrow, ncol))
@@ -366,7 +366,7 @@ def p_structlist_join(p):
     # Check for duplicates while merging dicts
     for key, value in p[2].items():
         if key in merged:
-            LOGGER.error("Multiple nonce definitions found")
+            LOGGER.error("Parameter list has duplicate key")
             raise ari_text.ParseError()
         merged[key] = value
         
@@ -380,8 +380,8 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     # Keys are case-insensitive so get folded to lower case
-    '''structpair : VALSEG EQ VALSEG SC
-                  | VALSEG EQ typedlit SC'''
+    '''structpair : VALSEG EQ ari SC'''
+
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
 

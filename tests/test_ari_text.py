@@ -1368,7 +1368,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/EXECSET/g=null;()"), 
             ("ari:/EXECSET/n=undefined;()"),
             ("ari:/EXECSET/n=1;"),
-            ("ari:/EXECSET/n=1;n=2()"),
+            ("ari:/EXECSET/n=1;n=2();"),
             ("ari://./object/hi"),
             ("./object/hi"), 
         ]
