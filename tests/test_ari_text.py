@@ -31,7 +31,7 @@ import unittest
 import numpy
 from ace.ari import (
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report
+    ExecutionSet, ReportSet, Report, NULL
 )
 from ace import ari_text
 
@@ -76,11 +76,11 @@ class TestAriText(unittest.TestCase):
         # FLOAT
         ('ari:0.0', 0.0),
         ('ari:1e3', 1000.0, 'ari:1000.0'),
-        ('ari:0fx63d0', 1000.0, 'ari:1000.0'),
-        ('ari:+0fx63d0', 1000.0, 'ari:1000.0'),
-        ('ari:-0fx63d0', -1000.0, 'ari:-1000.0'),
-        ('ari:0fx447a0000', 1000.0, 'ari:1000.0'),
-        ('ari:0fx408f400000000000', 1000.0, 'ari:1000.0'),
+        # ('ari:0fx63d0', 1000.0, 'ari:1000.0'),
+        # ('ari:+0fx63d0', 1000.0, 'ari:1000.0'),
+        # ('ari:-0fx63d0', -1000.0, 'ari:-1000.0'),
+        # ('ari:0fx447a0000', 1000.0, 'ari:1000.0'),
+        # ('ari:0fx408f400000000000', 1000.0, 'ari:1000.0'),
         ('ari:/REAL32/0.0', 0.0),
         ('ari:/REAL64/NaN', float('NaN')),
         ('ari:/REAL64/Infinity', float('Infinity')),
@@ -103,15 +103,14 @@ class TestAriText(unittest.TestCase):
         ('ari:/TEXTSTR/hi', 'hi'),
         ('ari:/TEXTSTR/%22hi%20there%22', 'hi there'),
         # BYTESTR
-        ('ari:%27hi%27', b'hi', 'ari:h%276869%27'),
-        ('ari:%27hi%5C%22oh%27', b'hi"oh', 'ari:h%276869226f68%27'),
-        ('ari:%27hi%5C%27oh%27', b'hi\'oh', 'ari:h%276869276f68%27'),
-        ('ari:/BYTESTR/%27hi%27', b'hi', 'ari:/BYTESTR/h%276869%27'),
+        ('ari:\'hi\'', b'hi', 'ari:h\'6869\''),
+        ('ari:%27hi%27', b'hi', 'ari:h\'6869\''),
+        ('ari:\'hi%5C%22oh\'', b'hi"oh', 'ari:h\'6869226F68\''),
+        ('ari:\'hi%5C\'oh\'', b'hi\'oh', 'ari:h\'6869276F68\''),
+        ('ari:/BYTESTR/\'hi\'', b'hi', 'ari:/BYTESTR/h\'6869\''),
         # RFC 4648 test vectors
-        ('ari:h%27666F6F626172%27', b'foobar', 'ari:h%27666f6f626172%27'),
-        ('ari:b32%27MZXW6YTBOI%27', b'foobar', 'ari:h%27666f6f626172%27'),
-        # not working ('ari:h32%27CPNMUOJ1%27', b'foobar', 'ari:h%27666f6f626172%27'),
-        ('ari:b64%27Zm9vYmFy%27', b'foobar', 'ari:h%27666f6f626172%27'),
+        ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
+        ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
         # Times
         ('ari:/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
         ('ari:/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), 'ari:/TP/20230102T030405Z'),  # with formatting
@@ -130,7 +129,7 @@ class TestAriText(unittest.TestCase):
         ('ari:/LABEL/test', 'test'),
         ('ari:/LABEL/null', 'null'),
         ('ari:/LABEL/undefined', 'undefined'),
-        ('ari:/CBOR/h%27a164746573748203f94480%27', base64.b16decode('A164746573748203F94480')),
+        ('ari:/CBOR/h\'A164746573748203F94480\'', base64.b16decode('A164746573748203F94480')),
         # Containers
         ('ari:/AC/()', []),
         ('ari:/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
@@ -158,26 +157,26 @@ class TestAriText(unittest.TestCase):
         ),
         (
             'ari:/EXECSET/n=null;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=None, targets=[
+            ExecutionSet(nonce=LiteralARI(None), targets=[
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
             'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=1234, targets=[
+            ExecutionSet(nonce=LiteralARI(1234), targets=[
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            'ari:/EXECSET/n=h%276869%27;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=b'hi', targets=[
+            'ari:/EXECSET/n=h\'6869\';(//example/adm/CTRL/name)',
+            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
             ])
         ),
         (
-            'ari:/RPTSET/n=null;r=20240102T030405Z;(t=PT;s=//example/adm/CTRL/name;(null))',
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
             ReportSet(
-                nonce=None,
+                nonce=LiteralARI(None),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
@@ -191,9 +190,9 @@ class TestAriText(unittest.TestCase):
             )
         ),
         (
-            'ari:/RPTSET/n=1234;r=20240102T030405Z;(t=PT;s=//example/adm/CTRL/other;(null))',
+            'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/other;(null))',
             ReportSet(
-                nonce=1234,
+                nonce=LiteralARI(1234),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
                 reports=[
                     Report(
@@ -241,9 +240,9 @@ class TestAriText(unittest.TestCase):
         ('1e3', dict(float_form='g'), 'ari:1000.0'),
         ('1e3', dict(float_form='f'), 'ari:1000.000000'),
         ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
-        ('1e3', dict(float_form='x'), 'ari:0fx63d0'),
+        ('1e3', dict(float_form='a'), 'ari:0x1.f400000000000p+9'),
         ('hi', dict(text_identity=False), 'ari:%22hi%22'),
-        ('/CBOR/h%27a164746573748203f94480%27', dict(cbor_diag=True), 'ari:/CBOR/' + ari_text.quote('<<{"test":[3,4.5]}>>')),
+        ('/CBOR/h\'a164746573748203f94480\'', dict(cbor_diag=True), 'ari:/CBOR/' + ari_text.percent_encode('<<{"test":[3,4.5]}>>')),
     )
 
     def test_literal_text_options(self):
@@ -310,14 +309,19 @@ class TestAriText(unittest.TestCase):
         ('ari:hello', 'ari:hello there'),
         ('/BOOL/true', '/BOOL/10'),
         ('/INT/3', '/INT/%22hi%22'),
+        ('ari:/REAL32/0.0', 'ari:/REAL32/0'),
+        ('ari:/REAL64/0.0', 'ari:/REAL64/0'),
         ('/TEXTSTR/hi', '/TEXTSTR/3'),
         ('/BYTESTR/\'hi\'', '/BYTESTR/3', '/BYTESTR/hi'),
         ('/AC/()', '/AC/', '/AC/3'),
         ('/AM/()', '/AM/' '/AM/3'),
         ('/TBL/c=1;', '/TBL/' '/TBL/c=1;(1,2)'),
-        ('/LABEL/hi', '/LABEL/3', '/LABEL/%22hi%22'),
+        ('/LABEL/hi', '/LABEL/\'hi\'', '/LABEL/%22hi%22'),
         ('ari://example/ns/EDD/hello', 'ari://example/ns/EDD/hello(('),
         ('ari:./EDD/hello', 'ari://./EDD/hello', 'ari:/./EDD/hello'),
+        ('ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
+         'ari:/RPTSET/n=null;r=20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
+         'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=PT;s=//example/adm/CTRL/name;(null))'),
     ]
     ''' Valid ARI followed by invalid variations '''
 
@@ -400,10 +404,10 @@ class TestAriText(unittest.TestCase):
             (1.1, 'f', "ari:1.100000"),
             (1.1, 'g', "ari:1.1"),
             (1.1e2, 'g', "ari:110.0"),
-            # (1.1e2, 'a', "ari:0x1.b8p+6"), # FIXME: %a not supported by ACE
-            # FIXME: (1.1e+10, 'g', "ari:1.1e+10"),
+            (1.1e2, 'a', "ari:0x1.b800000000000p+6"),
+            (1.1e+10, 'e', "ari:1.100000e+10"),
             (10.0, 'e', "ari:1.000000e+01"),
-            # (10, 'a', "ari:0x1.4p+3"), # FIXME: %a not supported by ACE
+            (10.0, 'a', "ari:0x1.4000000000000p+3"),
             (float('nan'), ' ', "ari:NaN"),
             (float('infinity'), ' ', "ari:Infinity"),
             (float('-infinity'), ' ', "ari:-Infinity"),
@@ -411,7 +415,7 @@ class TestAriText(unittest.TestCase):
 
         for row in TEST_CASE:
             value, base, expect = row
-            with self.subTest(value):
+            with self.subTest(expect):
                 enc = ari_text.Encoder(float_form=base)
                 ari = LiteralARI(value)
                 loop = io.StringIO()
@@ -424,8 +428,8 @@ class TestAriText(unittest.TestCase):
             ("test", False, True, "ari:test"),
             ("test", False, False, "ari:%22test%22"),
             ("test", True, True, "ari:test"),
-            ("\\'\'", True, True, "ari:%22%5C%27%27%22"),
-            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22%27%3A%21%40%24%25%5E%26%2A%28%29-+%5B%5D%7B%7D%2C.%2F%3F%22"),
+            ("\\'\'", True, True, "ari:%22%5C\'\'%22"),
+            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22\'%3A%21%40%24%25%5E%26%2A%28%29-%2B%5B%5D%7B%7D%2C.%2F%3F%22"),
             ("_-~The quick brown fox", True, True, "ari:%22_-~The%20quick%20brown%20fox%22"),
             ("hi\u1234", False, False, "ari:%22hi%E1%88%B4%22"),
             ("hi\u0001D11E", False, False, "ari:%22hi%01D11E%22")
@@ -443,12 +447,12 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_encode_lit_prim_bstr(self):
         TEST_CASE = [
-            (b"", 0, "ari:h%27%27"),
-            (b"test", 4, "ari:h%2774657374%27"),
-            (b"hi\\u1234", 5, "ari:h%2768695c7531323334%27"),
-            (b"hi\\U0001D11E", 6, "ari:h%2768695c553030303144313145%27"),
-            (b"\x68\x00\x69", 3, "ari:h%27680069%27"),
-            (b"foobar", 6, "ari:h%27666f6f626172%27"),
+            (b"", 0, "ari:h\'\'"),
+            (b"test", 4, "ari:h\'74657374\'"),
+            (b"hi\\u1234", 5, "ari:h\'68695C7531323334\'"),
+            (b"hi\\U0001D11E", 6, "ari:h\'68695C553030303144313145\'"),
+            (b"\x68\x00\x69", 3, "ari:h\'680069\'"),
+            (b"foobar", 6, "ari:h\'666F6F626172\'"),
         ]
 
         for row in TEST_CASE:
@@ -484,11 +488,11 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
             ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True): 
-                LiteralARI(value=True, type_id=StructType.BOOL)}, 
+                LiteralARI(value=True):
+                LiteralARI(value=True, type_id=StructType.BOOL)},
                 "ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
             (65535, 18, StructType.INT, "34", {
-                LiteralARI(value=101): 
+                LiteralARI(value=101):
                 ReferenceARI(
                     ident=Identity(type_id=StructType.INT, obj_id="11")
                 )},
@@ -733,7 +737,7 @@ class TestAriText(unittest.TestCase):
             ("1.1", 1.1),
             ("1.1e2", 1.1e2),
             ("1.1e+10", 1.1e+10),
-            # FIXME: ("0x1.4p+3", 10),
+            ("0x1.4p+3", 10),
             ("NaN", float('NaN')),
             ("nan", float('NaN')),
             ("infinity", float('Infinity')),
@@ -995,11 +999,12 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_tbl(self):
         TEST_CASE = [
-            ("ari:/TBL/c=003;(1,2,3)(4,5,6)", 3, 6),
+            ("ari:/TBL/c=3;(1,2,3)(4,5,6)", 3, 6),
             ("ari:/TBL/c=0;()()()", 0, 0),
             ("ari:/TBL/c=2;(1,2)", 2, 2),
             ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
-            ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3), #FIXME
+            ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3),
+            ("ari:/TBL/c=/INT/1;(/INT/4)(/TBL/c=0;)(20)", 1, 3)
         ]
 
         dec = ari_text.Decoder()
@@ -1012,7 +1017,7 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari.value.shape[1], expect_cols)
                 count = 0
                 for row in ari.value:
-                  count += len(row)
+                    count += len(row)
                 self.assertEqual(count, expect_items)
 
     def test_ari_text_decode_lit_typed_execset(self):
@@ -1020,8 +1025,6 @@ class TestAriText(unittest.TestCase):
             ("ari:/EXECSET/n=null;()", 0),
             ("ari:/EXECSET/N=null;()", 0),
             ("ari:/EXECSET/N=0xabcd;()", 0),
-            ("ari:/EXECSET/N=/UINT/0x0B0101;()", 0),
-            ("ari:/EXECSET/N=/UINT/1234;()", 0),
             ("ari:/EXECSET/n=1234;(//example/test/CTRL/hi)", 1),
             ("ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)", 2),
         ]
@@ -1037,9 +1040,9 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_rptset(self):
         TEST_CASE = [
-            # FIXME: ("ari:/RPTSET/n=null;r=725943845;", 0), #ARI_PRIM_NULL, 0),
             ("ari:/RPTSET/n=1234;r=725943845;(t=0;s=//example/test/CTRL/hi;())", 1),  # ARI_PRIM_INT64, 1),
             ("ari:/RPTSET/n=1234;r=725943845;(t=0.0;s=//example/test/CTRL/hi;())", 1),  # ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", 1),
             # FIXME: ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
             # FIXME: ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
             # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
@@ -1154,10 +1157,10 @@ class TestAriText(unittest.TestCase):
         TEST_CASE = [
             ("ari://example/adm"),
             ("ari://example/adm/"),
-            ("ari://65535/18"),
-            # ("ari://65535/18/"),
-            ("ari://65535/-20/"),
-            # ("ari://-10/20/"),
+            ("ari://65535/22"),
+            ("ari://65535/22/"),
+            ("ari://65535/-22/"),
+            ("ari://-10/22/"),
             ("ari://example/adm-a@2024-06-25/"),
             ("ari://example/adm-a/"),
             ("ari://example/!odm-b/"),
@@ -1207,21 +1210,20 @@ class TestAriText(unittest.TestCase):
             ("ari:1234"),
             ("ari:hi"),
             ("ari:%22hi%20there%22"),
-            # FIXME: ("ari:h'6869'"),
+            ("ari:h'6869'"),
             ("ari:/NULL/null"),
             ("ari:/BOOL/false"),
             ("ari:/BOOL/true"),
             ("ari:/INT/10"),
             ("ari:/INT/-10"),
-            # FIXME: ("ari:/REAL32/10"),
             ("ari:/REAL32/10.1"),
             ("ari:/REAL32/0.1"),
             ("ari:/REAL32/NaN"),
             ("ari:/REAL64/Infinity"),
             ("ari:/REAL64/-Infinity"),
-            # FIXME: ("ari:/BYTESTR/h'6869'"),
             ("ari:/TEXTSTR/hi"),
             ("ari:/TEXTSTR/%22hi%20there%22"),
+            ("ari:/BYTESTR/h'6869'"),
             ("ari:/LABEL/hi"),
             ("ari:/TP/20230102T030405Z"),
             ("ari:/AC/()"),
@@ -1242,13 +1244,13 @@ class TestAriText(unittest.TestCase):
             # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
             # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
             ("ari://example/test/CONST/that"),
-            # FIXME: ("ari://example/test@1234/CONST/that"),
+            ("ari://example/test@2025-01-01/CONST/that"),
             ("ari://example/!test/CONST/that"),
             ("ari://example/test/CTRL/that(34)"),
             ("ari://65535/2/CTRL/4(hi)"),
             # FIXME: ("./CTRL/do_thing"),
-            # FIXME: ("ari:/CBOR/h'0A'"),
-            # FIXME: ("ari:/CBOR/h'A164746573748203F94480'"),
+            ("ari:/CBOR/h'0A'"),
+            ("ari:/CBOR/h'A164746573748203F94480'"),
         ]
 
         dec = ari_text.Decoder()
@@ -1262,7 +1264,6 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got text: %s', loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
-
 
     def test_ari_AM_loopback(self):
         TEST_CASE = [
@@ -1378,7 +1379,6 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     ari = dec.decode(io.StringIO(text))
-                    LOGGER.info('Got ARI %s', ari)
 
     def test_ari_text_decode_invalid(self):
         TEST_CASE = [
@@ -1394,12 +1394,15 @@ class TestAriText(unittest.TestCase):
             ("ari:/UVAST/-1"),
             # FIXME: ("ari:/REAL32/-3.40282347E+38"),
             # FIXME: ("ari:/REAL32/3.40282347E+38"),
-            # FIXME: ("ari:/AM/(/INT/10=true)"),
+            ("ari:/EXECSET/N=/UINT/0x0B0101;()"),  # typed nonce
+            ("ari:/EXECSET/N=/UINT/1234;()"),  # typed nonce
+            ("ari:/EXECSET/N=1234;"),  # no targets
+            ("ari:/RPTSET/n=null;r=725943845;"),  # no reports
         ]
 
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text = row
             with self.subTest(text):
-                self.assertRaises(ari_text.ParseError, lambda: dec.decode(io.StringIO(text)))
-
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(io.StringIO(text))

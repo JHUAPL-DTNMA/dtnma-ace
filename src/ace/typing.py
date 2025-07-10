@@ -37,9 +37,9 @@ from .ari import (
 LOGGER = logging.getLogger(__name__)
 
 
-def get_amm_ident(obj_id:str) -> Identity:
+def get_amm_ident(model_id:str, obj_id:str) -> Identity:
     ''' Get an IDENT in the ietf-amm model. '''
-    return Identity(org_id='ietf', model_id='amm', type_id=StructType.IDENT, obj_id=obj_id)
+    return Identity(org_id='ietf', model_id=model_id, type_id=StructType.IDENT, obj_id=obj_id)
 
 
 class Constraint:
@@ -244,7 +244,7 @@ class StringType(BuiltInType):
     VALUE_CLS = {
         StructType.TEXTSTR: str,
         StructType.BYTESTR: bytes,
-        StructType.LABEL: str,
+        StructType.LABEL: (str, int),
         StructType.CBOR: bytes,
         StructType.ARITYPE: (str, int),
     }
@@ -391,24 +391,44 @@ class AnyType(BuiltInType):
     VALUE_CLS = {
         StructType.LITERAL: LiteralARI,
         StructType.OBJECT: ReferenceARI,
+        StructType.NAMESPACE: ReferenceARI,
     }
     ''' Required value type for target time type. '''
 
     def get(self, obj:ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
-        typ = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj, typ):
+        if not self._match(obj):
             return None
         return obj
 
     def convert(self, obj:ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        typ = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj, typ):
+        if not self._match(obj):
             raise TypeError(f'Cannot convert type: {obj}')
         return obj
+
+    def _match(self, obj:ARI) -> bool:
+        typ = self.VALUE_CLS[self.type_id]
+        if not isinstance(obj, typ):
+            return False
+
+        if typ is ReferenceARI:
+            # either relative or absolute reference is valid
+            if obj.ident.org_id is not None and obj.ident.model_id is None:
+                return False
+
+            if self.type_id == StructType.OBJECT:
+                # must have object parts
+                if obj.ident.type_id is None or obj.ident.obj_id is None:
+                    return False
+            elif self.type_id == StructType.NAMESPACE:
+                # must not have object parts
+                if obj.ident.type_id is not None or obj.ident.obj_id is not None:
+                    return False
+
+        return True
 
 
 LITERALS = {
@@ -454,6 +474,7 @@ OBJREFS = {
 ANY = {
     'literal': AnyType(StructType.LITERAL),
     'object': AnyType(StructType.OBJECT),
+    'namespace': AnyType(StructType.NAMESPACE),
 }
 ''' Special reserved types and behavior. '''
 BUILTINS = LITERALS | OBJREFS | ANY
@@ -500,7 +521,7 @@ class TypeUse(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-use'),
+            get_amm_ident('amm-semtype', 'use'),
             params={
                 LiteralARI('name'): self.type_ari,
             }
@@ -560,7 +581,7 @@ class TypeUnion(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-union'),
+            get_amm_ident('amm-semtype', 'union'),
             params={
                 LiteralARI('choices'): LiteralARI([choice.ari_name() for choice in self.types], StructType.AC),
             }
@@ -618,7 +639,7 @@ class UniformList(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-ulist'),
+            get_amm_ident('amm-semtype', 'ulist'),
             params={
                 LiteralARI('item-type'): self.base.ari_name(),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -699,7 +720,7 @@ class Sequence(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-seq'),
+            get_amm_ident('amm-semtype', 'seq'),
             params={
                 LiteralARI('item-type'): self.base.ari_name(),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -760,7 +781,7 @@ class DiverseList(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-dlist'),
+            get_amm_ident('amm-semtype', 'dlist'),
             params={
                 LiteralARI('item-types'): LiteralARI([part.ari_name() for part in self.parts], StructType.AC),
             }
@@ -848,7 +869,7 @@ class UniformMap(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-umap'),
+            get_amm_ident('amm-semtype', 'umap'),
             params={
                 LiteralARI('key-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
                 LiteralARI('value-type'): self.kbase.ari_name() if self.kbase is not None else NULL,
@@ -909,7 +930,7 @@ class TableColumn:
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-tblt-col'),
+            get_amm_ident('amm-semtype', 'tblt-col'),
             params={
                 LiteralARI('name'): LiteralARI('name'),
                 LiteralARI('datatype'): self.base.ari_name(),
@@ -942,7 +963,7 @@ class TableTemplate(SemType):
 
     def ari_name(self) -> ARI:
         return ReferenceARI(
-            get_amm_ident('semtype-tblt'),
+            get_amm_ident('amm-semtype', 'tblt'),
             params={
                 LiteralARI('columns'): LiteralARI([col.ari_name() for col in self.columns], StructType.AC),
                 LiteralARI('min-elements'): LiteralARI(self.min_elements),
@@ -1044,3 +1065,11 @@ def type_walk(root:BaseType) -> Iterator:
             yield from walk(child)
 
     yield from walk(root)
+
+
+NONCE = TypeUnion(types=[
+    BUILTINS_BY_ENUM[StructType.BYTESTR],
+    BUILTINS_BY_ENUM[StructType.UVAST],
+    BUILTINS_BY_ENUM[StructType.NULL],
+])
+''' Union defined in the AMM '''

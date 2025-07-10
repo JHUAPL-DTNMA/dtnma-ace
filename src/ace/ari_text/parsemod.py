@@ -30,7 +30,7 @@ from ace.ari import (
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
-from ace.typing import BUILTINS_BY_ENUM
+from ace.typing import BUILTINS_BY_ENUM, NONCE
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 from ace import ari_text
@@ -87,16 +87,21 @@ def p_typedlit_am(p):
 
 def p_typedlit_tbl_empty(p):
     '''typedlit : SLASH TBL structlist'''
-    ncol = int(p[3].get('c', 0))
+    try:
+        ncol = int(p[3]['c'].value)
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing column count: {p[3]}")
+
     table = Table((0, ncol))
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
-
+    
     ncol = int(p[3].get('c', 0))
     nrow = len(p[4])
+
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
         if len(row) != ncol:
@@ -138,14 +143,20 @@ def p_typedlit_execset(p):
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
 
-    if(isinstance(p[3].get('n', 'null'), LiteralARI)):
-        nonce = p[3].get('n', 'null')
-    else:
-        nonce = util.NONCE(p[3].get('n', 'null'))
+    try:
+        nonce = NONCE.get(p[3]['n'])
+        if nonce is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing RPTSET 'n' parameter: {p[3]}")
 
-    rawtime = util.TYPEDLIT[StructType.TP](p[3]['r'])
+    try:
+        ref_time = BUILTINS_BY_ENUM[StructType.TP].get(p[3]['r'])
+        if ref_time is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing RPTSET 'r' parameter: {p[3]}")
 
-    ref_time = BUILTINS_BY_ENUM[StructType.TP].convert(LiteralARI(rawtime, StructType.TP))
     value = ReportSet(
         nonce=nonce,
         ref_time=ref_time.value,
@@ -155,8 +166,8 @@ def p_typedlit_rptset(p):
 
 
 def p_reportlist_join(p):
-    'reportlist : reportlist SC report'
-    p[0] = p[1] + [p[3]]
+    'reportlist : reportlist report'
+    p[0] = p[1] + [p[2]]
 
 
 def p_reportlist_end(p):
@@ -165,11 +176,22 @@ def p_reportlist_end(p):
 
 
 def p_report(p):
-    'report : LPAREN VALSEG EQ VALSEG SC VALSEG EQ ari SC acbracket RPAREN'
-    rawtime = util.TYPEDLIT[StructType.TD](p[4])
-    rel_time = BUILTINS_BY_ENUM[StructType.TD].convert(LiteralARI(rawtime, StructType.TD))
-    source = p[8]
-    p[0] = Report(rel_time=rel_time.value, source=source, items=p[10])
+    '''report : LPAREN structlist acbracket RPAREN '''
+    try:
+        rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[2]['t'])
+        if rel_time is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing report 't' parameter: {p[2]}")
+
+    try:
+        source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[2]['s'])
+        if source is None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
+
+    p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
 
 
 def p_typedlit_single(p):
@@ -184,7 +206,7 @@ def p_typedlit_single(p):
     try:
         value = util.TYPEDLIT[typ](p[4])
     except Exception as err:
-        LOGGER.error('Literal value failure: %s', err)
+        LOGGER.error('Literal %s value failure: %s', typ, err)
         raise RuntimeError(err) from err
 
     try:
@@ -231,8 +253,10 @@ def p_params_amlist(p):
 def p_objpath_only_ns(p):
     '''objpath : SLASH SLASH VALSEG SLASH VALSEG
                | SLASH SLASH VALSEG SLASH VALSEG SLASH'''
+
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
+
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -247,8 +271,10 @@ def p_objpath_only_ns(p):
 
 def p_objpath_with_ns(p):
     'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
+
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
+
     if not isinstance(mod, tuple):
         mod = (mod, None)
 
@@ -356,7 +382,6 @@ def p_structpair(p):
     # Keys are case-insensitive so get folded to lower case
     '''structpair : VALSEG EQ VALSEG SC
                   | VALSEG EQ typedlit SC'''
-    
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
 

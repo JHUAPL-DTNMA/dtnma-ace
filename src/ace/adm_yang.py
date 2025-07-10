@@ -295,8 +295,6 @@ class TypingDecoder:
                 name=col_stmt.arg,
                 base=self.decode(col_stmt)
             )
-            if isinstance(col.base, TableTemplate):
-                LOGGER.warn('A table column is typed to contain another table')
             if col.name in col_names:
                 LOGGER.warn('A duplicate column name is present: %s', col)
 
@@ -483,6 +481,10 @@ class Decoder:
             obj.typeobj = self._get_typeobj(stmt)
 
         if issubclass(cls, Ident):
+            abs_stmt = stmt.search_one((AMM_MOD, 'abstract'))
+            if abs_stmt:
+                obj.abstract = (abs_stmt.arg == 'true')
+
             for base_stmt in stmt.search((AMM_MOD, 'base')):
                 base = IdentBase()
                 base.base_text = base_stmt.arg
@@ -508,72 +510,72 @@ class Decoder:
         elif issubclass(cls, Sbr):
             action_stmt = stmt.search_one((AMM_MOD, 'action'))
             if action_stmt:
-              obj.action_value = action_stmt.arg
-              obj.action_ari = self._get_ari(action_stmt.arg)
+                obj.action_value = action_stmt.arg
+                obj.action_ari = self._get_ari(action_stmt.arg)
             else:
-              LOGGER.warning('sbr "%s" is missing action substatement', stmt.arg)
+                LOGGER.warning('sbr "%s" is missing action substatement', stmt.arg)
 
             condition_stmt = stmt.search_one((AMM_MOD, 'condition'))
             if condition_stmt:
-              obj.condition_value = condition_stmt.arg
-              obj.condition_ari = self._get_ari(condition_stmt.arg)
+                obj.condition_value = condition_stmt.arg
+                obj.condition_ari = self._get_ari(condition_stmt.arg)
             else:
-              LOGGER.warning('sbr "%s" is missing condition substatement', stmt.arg)
+                LOGGER.warning('sbr "%s" is missing condition substatement', stmt.arg)
 
             min_interval_stmt = stmt.search_one((AMM_MOD, 'min-interval'))
             if min_interval_stmt:
-              obj.min_interval_value = min_interval_stmt.arg
-              obj.min_interval_ari = self._get_ari(min_interval_stmt.arg)
+                obj.min_interval_value = min_interval_stmt.arg
+                obj.min_interval_ari = self._get_ari(min_interval_stmt.arg)
             else:
-              obj.min_interval_value = "/TD/PT0S" # 0 sec default
-              obj.min_interval_ari = self._get_ari(obj.min_interval_value)
+                obj.min_interval_value = "/TD/PT0S"  # 0 sec default
+                obj.min_interval_ari = self._get_ari(obj.min_interval_value)
 
             max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
             if max_count_stmt:
-              obj.max_count = int(max_count_stmt.arg)
+                obj.max_count = int(max_count_stmt.arg)
             else:
-              obj.max_count = 0
+                obj.max_count = 0
 
             enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
             if enabled_stmt:
-              obj.init_enabled = (enabled_stmt.arg == 'true')
+                obj.init_enabled = (enabled_stmt.arg == 'true')
             else:
-              obj.init_enabled = True
+                obj.init_enabled = True
 
         elif issubclass(cls, Tbr):
             action_stmt = stmt.search_one((AMM_MOD, 'action'))
             if action_stmt:
-              obj.action_value = action_stmt.arg
-              obj.action_ari = self._get_ari(action_stmt.arg)
+                obj.action_value = action_stmt.arg
+                obj.action_ari = self._get_ari(action_stmt.arg)
             else:
-              LOGGER.warning('tbr "%s" is missing action substatement', stmt.arg)
+                LOGGER.warning('tbr "%s" is missing action substatement', stmt.arg)
 
             period_stmt = stmt.search_one((AMM_MOD, 'period'))
             if period_stmt:
-              obj.period_value = period_stmt.arg
-              obj.period_ari = self._get_ari(period_stmt.arg)
+                obj.period_value = period_stmt.arg
+                obj.period_ari = self._get_ari(period_stmt.arg)
             else:
-              LOGGER.warning('tbr "%s" is missing period substatement', stmt.arg)
+                LOGGER.warning('tbr "%s" is missing period substatement', stmt.arg)
 
             start_stmt = stmt.search_one((AMM_MOD, 'start'))
             if start_stmt:
-              obj.start_value = start_stmt.arg
-              obj.start_ari = self._get_ari(start_stmt.arg)
+                obj.start_value = start_stmt.arg
+                obj.start_ari = self._get_ari(start_stmt.arg)
             else:
-              obj.start_value = "/TD/PT0S" # 0 sec default
-              obj.start_ari = self._get_ari(obj.start_value)
+                obj.start_value = "/TD/PT0S"  # 0 sec default
+                obj.start_ari = self._get_ari(obj.start_value)
 
             max_count_stmt = stmt.search_one((AMM_MOD, 'max-count'))
             if max_count_stmt:
-              obj.max_count = int(max_count_stmt.arg)
+                obj.max_count = int(max_count_stmt.arg)
             else:
-              obj.max_count = 0
+                obj.max_count = 0
 
             enabled_stmt = stmt.search_one((AMM_MOD, 'init-enabled'))
             if enabled_stmt:
-              obj.init_enabled = (enabled_stmt.arg == 'true')
+                obj.init_enabled = (enabled_stmt.arg == 'true')
             else:
-              obj.init_enabled = True
+                obj.init_enabled = True
 
         elif issubclass(cls, Ctrl):
             result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
@@ -652,7 +654,7 @@ class Decoder:
         for mod in tuple(self._ctx.modules.values()):
             self._ctx.del_module(mod)
 
-        module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True)
+        module = self._ctx.add_module(file_path or '<text>', file_text, primary_module=True, in_format='yang')
         LOGGER.debug('Loaded %s', module)
         if module is None:
             raise RuntimeError(f'Failed to load module: {self._ctx.errors}')
@@ -687,8 +689,11 @@ class Decoder:
             emsg = pyang.error.err_to_str(etag, eargs)
             if isinstance(epos.ref, tuple):
                 epos.ref = epos.ref[1]
-            LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
-
+            try:
+                LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
+            except Exception as e: 
+                LOGGER.error('Error %s, while printing msg %s .', e, emsg)
+                
         src = AdmSource()
         src.file_text = file_text
         if file_path:
@@ -916,6 +921,9 @@ class Encoder:
             self._put_typeobj(obj.typeobj, obj_stmt)
 
         if issubclass(cls, Ident):
+            if obj.abstract is not None:
+                self._add_substmt(obj_stmt, (AMM_MOD, 'abstract'), 'true' if obj.abstract else 'false')
+
             for base in obj.bases:
                 self._add_substmt(obj_stmt, (AMM_MOD, 'base'), base.base_text)
 

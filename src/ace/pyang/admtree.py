@@ -23,24 +23,23 @@
 ''' Plugin to display the contents of an ADM module as an object tree.
 '''
 
-from dataclasses import dataclass, field
 import optparse
 import io
 import logging
-from typing import List, Tuple
+from typing import List
 import pyang
 from pyang.context import Context
 from pyang.statements import Statement
 from pyang.error import err_add
 try:
     from ace.adm_yang import AriTextDecoder, TypingDecoder
-    from ace.typing import TypeUse
     from ace.ari_text import Encoder as AriEncoder
+    import ace.typing
 except ImportError:
     AriTextDecoder = None
     TypingDecoder = None
-    TypeUse = None
     AriEncoder = None
+    ace.typing = None
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +99,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
         self._prefix = ''
 
         for module in modules:
-            base_ari = f'ari://{module.arg}/'
+            base_ari = module.search_one('namespace').arg
             self._emit_line(outfile, base_ari, status=self._get_status_str(module))
             self._indent()
 
@@ -111,17 +110,14 @@ class AdmTree(pyang.plugin.PyangPlugin):
 
                 outfile.write('\n')
                 if ctx.opts.full_ari:
-                    objtype_ari = f'{base_ari}{obj_kwd[1].upper()}/'
+                    objbase_ari = f'{base_ari}{obj_kwd[1]}/'
                 else:
-                    objtype_ari = f'./{obj_kwd[1].upper()}/'
-                self._emit_line(outfile, objtype_ari)
+                    objbase_ari = f'./{obj_kwd[1]}/'
+                self._emit_line(outfile, f'{obj_kwd[1].upper()} Objects')
                 self._indent()
 
                 for obj in objlist:
-                    if ctx.opts.full_ari:
-                        obj_ari = f'{objtype_ari}{obj.arg}'
-                    else:
-                        obj_ari = f'./{obj.arg}'
+                    obj_ari = f'{objbase_ari}{obj.arg}'
 
                     if obj.keyword in TYPED_OBJS:
                         valtype = self._get_type(ctx, obj)
@@ -136,15 +132,27 @@ class AdmTree(pyang.plugin.PyangPlugin):
                     )
                     self._indent()
 
-                    paramlist = obj.search((MODULE_NAME, 'parameter'), children=obj.i_children)
-                    for param in paramlist:
-                        typename = self._get_type(ctx, param)
-                        self._emit_line(outfile, f'Param {param.arg}', typestr=typename)
+                    if obj_kwd[1] == 'ident':
+                        baselist = obj.search((MODULE_NAME, 'base'), children=obj.i_children)
+                        for base in baselist:
+                            self._emit_line(outfile, f'Base {base.arg}')
+                        if not baselist:
+                            self._emit_line(outfile, f'No base objects')
 
-                    operandlist = obj.search((MODULE_NAME, 'operand'), children=obj.i_children)
-                    for operand in operandlist:
-                        typename = self._get_type(ctx, operand)
-                        self._emit_line(outfile, f'Operand {operand.arg}', typestr=typename)
+                        absstmt = obj.search((MODULE_NAME, 'abstract'), children=obj.i_children)
+                        is_abstract = bool(absstmt.arg) if absstmt else False
+                        self._emit_line(outfile, f'Is abstract: {is_abstract}')
+
+                    paramlist = obj.search((MODULE_NAME, 'parameter'), children=obj.i_children)
+                    for idx, param in enumerate(paramlist):
+                        typename = self._get_type(ctx, param)
+                        self._emit_line(outfile, f'Param {idx} "{param.arg}"', typestr=typename)
+
+                    if obj_kwd[1] == 'oper':
+                        operandlist = obj.search((MODULE_NAME, 'operand'), children=obj.i_children)
+                        for idx, operand in enumerate(operandlist):
+                            typename = self._get_type(ctx, operand)
+                            self._emit_line(outfile, f'Operand {idx} "{operand.arg}"', typestr=typename)
 
                     resultlist = obj.search((MODULE_NAME, 'result'), children=obj.i_children)
                     for result in resultlist:
@@ -195,8 +203,10 @@ class AdmTree(pyang.plugin.PyangPlugin):
             show = get_text(typeobj.ari_name())
         else:
             # summary text only
-            if isinstance(typeobj, TypeUse):
-                show = 'use of ' + get_text(typeobj.type_ari)
+            if isinstance(typeobj, ace.typing.TypeUse):
+                show = f'use of {get_text(typeobj.type_ari)}'
+            elif isinstance(typeobj, ace.typing.TableTemplate):
+                show = f'tblt with {len(typeobj.columns)} columns'
             else:
                 show = typeobj.ari_name().ident.obj_id
 
