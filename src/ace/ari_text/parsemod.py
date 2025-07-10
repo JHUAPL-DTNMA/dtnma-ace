@@ -86,25 +86,19 @@ def p_typedlit_am(p):
     p[0] = LiteralARI(type_id=StructType.AM, value=p[3])
 
 
-def p_typedlit_tbl_empty(p):
-    '''typedlit : SLASH TBL structlist'''
+def p_typedlit_tbl_rows(p):
+    '''typedlit : SLASH TBL structlist
+                | SLASH TBL structlist rowlist'''
     try:
         ncol = int(p[3]['c'].value)
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing column count: {p[3]}")
 
-    table = Table((0, ncol))
-    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
-
-
-def p_typedlit_tbl_rows(p):
-    '''typedlit : SLASH TBL structlist rowlist'''
-
-    ncol = p[3].get('c', 0).value
-    nrow = len(p[4])
+    rows = p[4] if len(p) == 5 else []
+    nrow = len(rows)
 
     table = Table((nrow, ncol))
-    for row_ix, row in enumerate(p[4]):
+    for row_ix, row in enumerate(rows):
         if len(row) != ncol:
             raise RuntimeError('Table column count is mismatched')
         table[row_ix,:] = row
