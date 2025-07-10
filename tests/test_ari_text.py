@@ -999,7 +999,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=0;()()()", 0, 0),
             ("ari:/TBL/c=2;(1,2)", 2, 2),
             ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
-            #("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3), #FIXME
+            ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3), #FIXME
         ]
 
         dec = ari_text.Decoder()
