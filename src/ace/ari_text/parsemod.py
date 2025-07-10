@@ -119,13 +119,11 @@ def p_rowlist_end(p):
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
 
-    nonce_key = next(iter(p[3]))
-    if nonce_key != 'n':
+    nonce = p[3].get('n')
+    if nonce is None:
         LOGGER.error('Invalid format for nonce')
         raise ari_text.ParseError()
-    
-    nonce = p[3].get('n', 'null')
-    if isinstance(nonce, LiteralARI):
+    elif isinstance(nonce, LiteralARI):
         nonce = nonce
     else:
         nonce = util.NONCE(nonce)
