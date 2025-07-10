@@ -72,8 +72,12 @@ class DbRepository(Repository):
                     models.AdmSource.file_text
                 )
                     .filter(models.AdmSource.id == handle[1])
-                    .one()
+                    .one_or_none()
             )
+            if found is None:
+                raise Repository.ReadError(
+                    f'No ADM found with DB ID {handle[1]}'
+                )
             file_text = found.file_text
             return (found.abs_file_path, 'yang', file_text)
         elif isinstance(handle[1], str):
