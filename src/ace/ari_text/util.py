@@ -26,7 +26,6 @@ import base64
 import datetime
 import logging
 import re
-import struct
 from typing import List
 import cbor_diag
 from ace.ari import UNDEFINED, StructType
@@ -94,28 +93,10 @@ def t_float(found):
     return float(found[0])
 
 
-FLOAT_FORM = {
-    2: '!e',
-    4: '!f',
-    8: '!d',
-}
-''' Map from IEEE-754 encoded size and `struct` format char. '''
-
-
 # float as hex-encoded IEEE-754 binary
-@TypeMatch.apply(r'(?P<sign>[+-])?0fx(?P<raw>[0-9a-fA-F]+)')
-def t_floatraw(found):
-    neg = found.group('sign') == '-'
-    data = base64.b16decode(found['raw'], casefold=True)
-
-    try:
-        form = FLOAT_FORM[len(data)]
-    except KeyError:
-        raise ValueError('Raw floating point is not sized to 2, 4, or 8 bytes')
-    val = struct.unpack(form, data)[0]
-    if neg:
-        val = -val
-    return val
+@TypeMatch.apply(r'[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-][0-9a-fA-F]+)')
+def t_floathex(found):
+    return float.fromhex(found[0])
 
 
 # int is decimal, binary, or hexadecimal
@@ -155,30 +136,30 @@ def unescape(esc:str) -> str:
         if char == '\\':
             char = next(esc_it)
             if char == 'b':
-              char = "\b"
+                char = "\b"
             elif char == 'f':
-              char = "\f"
+                char = "\f"
             elif char == 'n':
-              char = "\n"
+                char = "\n"
             elif char == 'r':
-              char = "\r"
+                char = "\r"
             elif char == 't':
-              char = "\t"
+                char = "\t"
             elif char == 'u':
-              buf = ''
-              while len(buf) < 4:
-                try:
-                  buf += next(esc_it)
-                except StopIteration:
-                  break
-              char = decode_unicode(buf)
+                buf = ''
+                while len(buf) < 4:
+                    try:
+                        buf += next(esc_it)
+                    except StopIteration:
+                        break
+                char = decode_unicode(buf)
         txt += char
     return txt
 
 
 def decode_unicode(hex_str):
-  code_point = int(hex_str, 16)
-  return chr(code_point)
+    code_point = int(hex_str, 16)
+    return chr(code_point)
 
 
 @TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
@@ -186,19 +167,12 @@ def t_tstr(found):
     return unescape(found['val'])
 
 
-@TypeMatch.apply(r'(?P<enc>h|b32|h32|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
+@TypeMatch.apply(r'(?P<enc>h|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
 def t_bstr(found):
     enc = found['enc']
     val = found['val']
     if enc == 'h':
         return base64.b16decode(val, casefold=True)
-    elif enc == 'b32':
-        rem = len(val) % 8
-        if rem in {2, 4, 5, 7}:
-            val += '=' * (8 - rem)
-        return base64.b32decode(val, casefold=True)
-    elif enc == 'h32':
-        raise NotImplementedError
     elif enc == 'b64':
         rem = len(val) % 4
         if rem in {2, 3}:
@@ -294,7 +268,7 @@ PRIMITIVE = TypeSeq([
     t_undefined,
     t_null,
     t_bool,
-    t_float, t_floatraw,
+    t_float, t_floathex,
     t_int,
     t_identity, t_tstr,
     t_bstr
@@ -309,13 +283,13 @@ TYPEDLIT = {
     StructType.UINT: TypeSeq([t_int]),
     StructType.VAST: TypeSeq([t_int]),
     StructType.UVAST: TypeSeq([t_int]),
-    StructType.REAL32: TypeSeq([t_float, t_floatraw]),
-    StructType.REAL64: TypeSeq([t_float, t_floatraw]),
+    StructType.REAL32: TypeSeq([t_float, t_floathex]),
+    StructType.REAL64: TypeSeq([t_float, t_floathex]),
     StructType.TEXTSTR: TypeSeq([t_identity, t_tstr]),
     StructType.BYTESTR: TypeSeq([t_bstr]),
     StructType.TP: TypeSeq([t_timepoint, t_decfrac, t_int]),
     StructType.TD: TypeSeq([t_timeperiod, t_decfrac, t_int]),
-    StructType.LABEL: TypeSeq([t_identity]),
+    StructType.LABEL: TypeSeq([t_identity, t_int]),
     StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
     StructType.ARITYPE: get_structtype,
 }
@@ -325,5 +299,4 @@ AMKEY = TypeSeq([t_int, t_identity, t_tstr])
 ''' Allowed AM key literals. '''
 
 STRUCTKEY = TypeSeq([t_identity])
-
-NONCE = TypeSeq([t_null, t_int, t_bstr])
+''' Keys of struct parameters '''

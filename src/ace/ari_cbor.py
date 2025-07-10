@@ -24,12 +24,13 @@
 '''
 import datetime
 import logging
-from typing import BinaryIO, Optional
+from typing import BinaryIO
 import cbor2
 from ace.ari import (
     DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
+from ace.typing import BUILTINS_BY_ENUM, NONCE
 from ace.cborutil import to_diag
 
 LOGGER = logging.getLogger(__name__)
@@ -53,9 +54,11 @@ class Decoder:
             item = cbordec.decode()
         except Exception as err:
             raise ParseError(f'Failed to decode CBOR: {err}') from err
-        if buf.tell() != len(buf.getbuffer()):
-            LOGGER.warning('ARI decoder handled only the first %d octets of %s',
-                           buf.tell(), to_diag(buf.getvalue()))
+
+        if hasattr(buf, 'tell') and hasattr(buf, 'getbuffer'):
+            if buf.tell() != len(buf.getbuffer()):
+                LOGGER.warning('ARI decoder handled only the first %d octets of %s',
+                               buf.tell(), to_diag(buf.getvalue()))
 
         try:
             res = self._item_to_ari(item)
@@ -108,7 +111,7 @@ class Decoder:
                         ]
                     elif isinstance(item[4], dict):
                         mapobj = {}
-                        for key,val in item[4].items():
+                        for key, val in item[4].items():
                           k = self._item_to_ari(key)
                           v = self._item_to_ari(val)
                           mapobj[k] = v
@@ -158,11 +161,20 @@ class Decoder:
         elif type_id == StructType.TD:
             value = self._item_to_timeval(item)
         elif type_id == StructType.EXECSET:
+            nonce = NONCE.get(LiteralARI(item[0]))
+            if nonce is None:
+                raise ValueError(f'invalid nonce: {item[0]}')
             value = ExecutionSet(
-                nonce=item[0],
+                nonce=nonce,
                 targets=[self._item_to_ari(sub) for sub in item[1:]]
             )
         elif type_id == StructType.RPTSET:
+            nonce = NONCE.get(LiteralARI(item[0]))
+            if nonce is None:
+                raise ValueError(f'invalid nonce: {item[0]}')
+
+            ref_time = (DTN_EPOCH + self._item_to_timeval(item[1]))
+
             rpts = []
             for rpt_item in item[2:]:
                 rpt = Report(
@@ -173,8 +185,8 @@ class Decoder:
                 rpts.append(rpt)
 
             value = ReportSet(
-                nonce=item[0],
-                ref_time=(DTN_EPOCH + self._item_to_timeval(item[1])),
+                nonce=nonce,
+                ref_time=ref_time,
                 reports=rpts
             )
         else:
@@ -204,7 +216,7 @@ class Encoder:
         :param ari: The ARI object to encode.
         :param buf: The buffer to write into.
         '''
-        cborenc = cbor2.CBOREncoder(buf)
+        cborenc = cbor2.CBOREncoder(buf, canonical=True)
         item = self._ari_to_item(ari)
         LOGGER.debug('ARI to item %s', item)
         cborenc.encode(item)
@@ -233,7 +245,7 @@ class Encoder:
                 ])
             elif isinstance(obj.params, dict):
                 mapobj = {}
-                for key,val in obj.params.items():
+                for key, val in obj.params.items():
                   k = self._ari_to_item(key)
                   v = self._ari_to_item(val)
                   mapobj[k] = v
@@ -265,7 +277,7 @@ class Encoder:
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
-                value.nonce
+                self._ari_to_item(value.nonce)
             ] + list(map(self._ari_to_item, value.targets))
         elif isinstance(value, ReportSet):
             rpts_item = []
@@ -276,7 +288,7 @@ class Encoder:
                 ] + list(map(self._ari_to_item, rpt.items))
                 rpts_item.append(rpt_item)
             item = [
-                value.nonce,
+                self._ari_to_item(value.nonce),
                 self._val_to_item(value.ref_time)
             ] + rpts_item
         else:
