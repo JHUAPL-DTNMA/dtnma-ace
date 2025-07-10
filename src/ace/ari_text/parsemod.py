@@ -27,6 +27,7 @@
 import logging
 from ply import yacc
 from ace.ari import (
+    is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
@@ -98,15 +99,14 @@ def p_typedlit_tbl_empty(p):
 
 def p_typedlit_tbl_rows(p):
     '''typedlit : SLASH TBL structlist rowlist'''
-    
+
     ncol = p[3].get('c', 0).value
     nrow = len(p[4])
 
     table = Table((nrow, ncol))
     for row_ix, row in enumerate(p[4]):
         if len(row) != ncol:
-            LOGGER.error('Table column count is mismatched') 
-            raise ari_text.ParseError()
+            raise RuntimeError('Table column count is mismatched')
         table[row_ix,:] = row
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
@@ -123,36 +123,32 @@ def p_rowlist_end(p):
 
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
+    try:
+        nonce = NONCE.get(p[3]['n'])
+        if nonce is None or is_undefined(nonce) or nonce.type_id is not None:
+            raise ValueError
+    except (KeyError, TypeError, ValueError):
+        raise RuntimeError(f"Invalid or missing EXECSET 'n' parameter: {p[3]}")
 
-    nonce = p[3].get('n')
-    if nonce is None:
-        LOGGER.error('Invalid format for nonce')
-        raise ari_text.ParseError()
-    elif isinstance(nonce, LiteralARI):
-        nonce = nonce
-    else:
-        nonce = util.NONCE(nonce)
-    
     value = ExecutionSet(
         nonce=nonce,
         targets=p[4],
     )
     p[0] = LiteralARI(type_id=StructType.EXECSET, value=value)
-    
+
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
-
     try:
         nonce = NONCE.get(p[3]['n'])
-        if nonce is None:
+        if nonce is None or is_undefined(nonce) or nonce.type_id is not None:
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing RPTSET 'n' parameter: {p[3]}")
 
     try:
         ref_time = BUILTINS_BY_ENUM[StructType.TP].get(p[3]['r'])
-        if ref_time is None:
+        if ref_time is None or is_undefined(ref_time):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing RPTSET 'r' parameter: {p[3]}")
@@ -179,14 +175,14 @@ def p_report(p):
     '''report : LPAREN structlist acbracket RPAREN '''
     try:
         rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[2]['t'])
-        if rel_time is None:
+        if rel_time is None or is_undefined(rel_time):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing report 't' parameter: {p[2]}")
 
     try:
         source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[2]['s'])
-        if source is None:
+        if source is None or is_undefined(source):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
@@ -322,6 +318,7 @@ def p_objpath_relative(p):
 
     p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)
 
+
 def p_acbracket(p):
     '''acbracket : LPAREN RPAREN
                  | LPAREN aclist RPAREN'''
@@ -362,14 +359,13 @@ def p_ampair(p):
 def p_structlist_join(p):
     'structlist : structlist structpair'
     merged = p[1].copy()  # Start with left side
-    
+
     # Check for duplicates while merging dicts
     for key, value in p[2].items():
         if key in merged:
-            LOGGER.error("Parameter list has duplicate key")
-            raise ari_text.ParseError()
+            raise RuntimeError("Parameter list has duplicate key")
         merged[key] = value
-        
+
     p[0] = merged
 
 
@@ -384,6 +380,7 @@ def p_structpair(p):
 
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}
+
 
 def p_error(p):
     # Error rule for syntax errors
