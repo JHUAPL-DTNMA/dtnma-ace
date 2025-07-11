@@ -27,7 +27,7 @@
 # Requires installation of:
 #  pip3 install licenseheaders
 # Run as:
-#  ./apply_license.sh {--dry} {-vv}
+#  ./apply_license.sh {specific dir}
 #
 set -e
 
