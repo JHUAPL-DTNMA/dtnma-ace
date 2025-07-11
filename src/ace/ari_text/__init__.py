@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,24 +15,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' CODEC for converting ARI to and from text URI form.
 '''
+import datetime
 import logging
 import os
 from typing import TextIO
-import xdg
+import xdg_base_dirs
 from ace.ari import (
-    ARI, AC, EXPR, LiteralARI, ReferenceARI, LITERAL_LABEL_TYPES
+    StructType, ARI, LiteralARI, ReferenceARI
 )
 from ace.cborutil import to_diag
 from .lexmod import new_lexer
 from .parsemod import new_parser
+from .encode import Encoder, EncodeOptions, percent_encode
 
+__all__ = (
+    'Encoder', 'EncodeOptions', 'percent_encode',
+    'Decoder',
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,7 +51,7 @@ class Decoder:
     ''' The decoder portion of this CODEC. '''
 
     def __init__(self):
-        self._cache_path = os.path.join(xdg.xdg_cache_home(), 'ace', 'ply')
+        self._cache_path = os.path.join(xdg_base_dirs.xdg_cache_home(), 'ace', 'ply')
         if not os.path.exists(self._cache_path):
             os.makedirs(self._cache_path)
         LOGGER.debug('cache at %s', self._cache_path)
@@ -76,55 +83,10 @@ class Decoder:
         )
         try:
             res = parser.parse(text, lexer=lexer)
-        except RuntimeError as err:
-            raise ParseError(f'Failed to parse "{text}": {err}') from err
+        except Exception as err:
+            msg = f'Failed to parse "{text}": {err}'
+            LOGGER.error('%s', msg)
+            raise ParseError(msg) from err
 
         return res
 
-
-class Encoder:
-    ''' The encoder portion of this CODEC. '''
-
-    def _encode_list(self, buf, items, begin, end):
-        buf.write(begin)
-        first = True
-        for part in items:
-            if not first:
-                buf.write(',')
-            first = False
-            self.encode(part, buf)
-        buf.write(end)
-
-    def encode(self, obj, buf: TextIO):
-        ''' Encode an ARI into UTF8 text.
-
-        :param obj: The ARI object to encode.
-        :param buf: The buffer to write into.
-        '''
-        if isinstance(obj, AC):
-            self._encode_list(buf, obj.items, '[', ']')
-
-        elif isinstance(obj, EXPR):
-            buf.write(f'({obj.type_enum.name})')
-            self._encode_list(buf, obj.items, '[', ']')
-
-        elif isinstance(obj, LiteralARI):
-            LOGGER.debug('Encode literal %s', obj)
-            if obj.type_enum in LITERAL_LABEL_TYPES:
-                buf.write(obj.type_enum.name + '.')
-            buf.write(to_diag(obj.value))
-
-        elif isinstance(obj, ReferenceARI):
-            buf.write('ari:')
-            if obj.ident.namespace:
-                buf.write(f'/{obj.ident.namespace}')
-            if obj.ident.name:
-                name = obj.ident.name
-                if isinstance(name, bytes):
-                    name = to_diag(name)
-                buf.write(f'/{obj.ident.type_enum.name}.{name}')
-            if obj.params is not None:
-                self._encode_list(buf, obj.params, '(', ')')
-
-        else:
-            raise TypeError(f'Unhandled object type {type(obj)} for: {obj}')

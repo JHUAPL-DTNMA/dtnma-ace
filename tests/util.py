@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' Shared test fixture utilities.
@@ -39,3 +40,24 @@ class TmpDir:
 
     def __del__(self):
         self._dir.cleanup()
+
+
+from dataclasses import dataclass
+from ace import typing
+
+
+@dataclass
+class TypeSummary:
+
+    type:type
+    detail:object = None
+
+    @staticmethod
+    def from_type(obj:typing.BaseType):
+        summary = TypeSummary(type=type(obj))
+        if isinstance(obj, typing.BuiltInType):
+            summary.detail = obj.type_id
+        elif isinstance(obj, typing.TypeUse):
+            summary.detail = obj.type_text
+
+        return summary

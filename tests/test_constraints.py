@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,20 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' Test the adm_set module and AdmSet class.
 '''
+import io
 import logging
 import os
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace import models, constraints
-
+from ace import ari, ari_text, models, typing, constraints
 
 SELFDIR = os.path.dirname(__file__)
 LOGGER = logging.getLogger(__name__)
@@ -40,171 +41,206 @@ class BaseTest(unittest.TestCase):
         logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
         self._db_eng = create_engine("sqlite:///:memory:")
         models.Base.metadata.create_all(self._db_eng)
-        self._db_sess = Session(self._db_eng)
+        self._db_sess = Session(self._db_eng, autoflush=False)
+
+        self._ari_dec = ari_text.Decoder()
 
     def tearDown(self):
+        self._ari_dec = None
+
         self._db_sess.close()
         self._db_sess = None
         models.Base.metadata.drop_all(self._db_eng)
         self._db_eng = None
 
-    def assertIssuePattern(self, issue: constraints.Issue, adm_name, check_name, obj_ref, detail_re):
-        self.assertEqual(adm_name, issue.adm_name)
+    def assertIssuePattern(self, issue: constraints.Issue, module_name, check_name, obj_ref, detail_re):
+        self.assertEqual(module_name, issue.module_name)
         self.assertEqual(check_name, issue.check_name)
         self.assertEqual(obj_ref, issue.obj)
         self.assertRegex(issue.detail, detail_re)
 
+    def _from_text(self, text:str) -> ari.ARI:
+        return self._ari_dec.decode(io.StringIO(text))
+
+    def _add_mod(self, abs_file_path, org_name, org_enum, model_name, model_enum):
+        src = models.AdmSource(
+            abs_file_path=abs_file_path,
+            file_text='',
+        )
+        adm = models.AdmModule(
+            source=src,
+            module_name=f'{org_name}-{model_name}',
+            norm_name=f'{org_name}-{model_name}',
+            ns_org_name=org_name,
+            ns_org_enum=org_enum,
+            ns_model_name=model_name,
+            ns_model_enum=model_enum,
+            metadata_list=models.MetadataList(),
+        )
+        adm.revisions = [
+            models.AdmRevision(
+                name='2023-01-02',
+            )
+        ]
+        self._db_sess.add_all([src, adm])
+        return adm
+
 
 class TestConstraintsBasic(BaseTest):
 
-    def _add_mdat(self, adm):
-        adm.mdat.append(models.Mdat(name='name', value=adm.norm_name))
-        adm.mdat.append(models.Mdat(name='namespace', value=adm.norm_namespace))
-        adm.mdat.append(models.Mdat(name='enum', value=str(adm.enum)))
-        adm.mdat.append(models.Mdat(name='version', value='v0'))
-
     def test_file_name(self):
-        adm = models.AdmFile(
-            abs_file_path='othername.json',
-            norm_name='myadm',
-            norm_namespace='myns',
-            enum=200,
+        adm = self._add_mod(
+            abs_file_path='othername.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='myadm',
+            model_enum=200,
         )
-        self._add_mdat(adm)
-        self._db_sess.add(adm)
+        self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
         issues = eng.check(adm)
         LOGGER.warning(issues)
-        self.assertEqual(1, len(issues))
+        self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            adm_name='myadm',
+            module_name='example-myadm',
             check_name='ace.constraints.basic.same_file_name',
             obj_ref=adm,
             detail_re=r'different',
         )
 
     def test_duplicate_adm_names(self):
-        adm_a = models.AdmFile(
-            norm_name='myadm',
-            norm_namespace='myns',
-            enum=200,
+        adm_a = self._add_mod(
+            abs_file_path='dir-a/example-myadm.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='myadm',
+            model_enum=200,
         )
-        self._add_mdat(adm_a)
-        self._db_sess.add(adm_a)
 
-        adm_b = models.AdmFile(
-            norm_name='myadm',
-            norm_namespace='otherns',
-            enum=201,
+        adm_b = self._add_mod(
+            abs_file_path='dir-b/example-myadm.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='myadm',
+            model_enum=201,
         )
-        self._add_mdat(adm_b)
-        self._db_sess.add(adm_b)
+        self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
         issues = eng.check()
         LOGGER.warning(issues)
-        self.assertEqual(2, len(issues))
+        self.assertEqual(2, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            adm_name='myadm',
+            module_name='example-myadm',
             check_name='ace.constraints.basic.unique_adm_names',
             obj_ref=adm_a,
-            detail_re=r'Multiple ADMs with metadata "norm_name" of "myadm"',
+            detail_re=r'Multiple ADMs with metadata "norm_name" of "example-myadm"',
         )
 
     def test_duplicate_object_names(self):
-        adm = models.AdmFile(
-            abs_file_path='myadm.json',
-            norm_name='myadm',
-            norm_namespace='myns',
-            enum=200,
+        adm = self._add_mod(
+            abs_file_path='example-myadm.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='myadm',
+            model_enum=200,
         )
-        self._add_mdat(adm)
-        adm.mdat.append(models.Mdat(name='name', value='bar'))
-        self._db_sess.add(adm)
+        adm.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
+        adm.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
+        self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
         issues = eng.check(adm)
         LOGGER.warning(issues)
-        self.assertEqual(1, len(issues))
+        self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            adm_name='myadm',
+            module_name='example-myadm',
             check_name='ace.constraints.basic.unique_object_names',
-            obj_ref=adm.mdat[-1],
+            obj_ref=adm.ctrl[-1],
             detail_re=r'duplicate',
         )
 
     def test_valid_type_name(self):
-        adm = models.AdmFile(
-            abs_file_path='myadm.json',
-            norm_name='myadm',
-            norm_namespace='myns',
-            enum=200,
+        adm = self._add_mod(
+            abs_file_path='example-myadm.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='myadm',
+            model_enum=200,
         )
-        self._add_mdat(adm)
-        adm.var.append(models.Var(name='organization', type='foo'))
-        self._db_sess.add(adm)
+        val = 'ari:/INT/10'
+        adm.var.append(models.Var(
+            name='someval',
+            typeobj=typing.TypeUse(type_ari='asdf'),
+            init_value=val,
+            init_ari=self._from_text(val)
+        ))
+        self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
         issues = eng.check(adm)
         LOGGER.warning(issues)
-        self.assertEqual(1, len(issues))
+        self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            adm_name='myadm',
+            module_name='example-myadm',
             check_name='ace.constraints.basic.valid_type_name',
             obj_ref=adm.var[0],
-            detail_re=r'the type name "foo" is not known',
+            detail_re=r'Within the object named "someval" the type names are not known',
         )
 
     def test_valid_reference_ari(self):
-        adm_a = models.AdmFile(
-            abs_file_path='adm_a.json',
-            norm_name='adm_a',
-            norm_namespace='adm_a',
-            enum=200,
+        adm_a = self._add_mod(
+            abs_file_path='example-adm-a.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='adm-a',
+            model_enum=200,
         )
-        self._add_mdat(adm_a)
-        adm_a.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
-        self._db_sess.add(adm_a)
 
-        adm_b = models.AdmFile(
-            abs_file_path='adm_b.json',
-            norm_name='adm_b',
-            norm_namespace='adm_b',
-            enum=201,
+        adm_a.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
+
+        adm_b = self._add_mod(
+            abs_file_path='example-adm-b.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='adm-b',
+            model_enum=201,
         )
-        self._add_mdat(adm_b)
-        adm_b.mac.append(models.Mac(name='macro', action=models.AC(items=[
-            models.ARI(ns='adm_a', nm='ctrl.control_a'),
-            models.ARI(ns='adm_a', nm='ctrl.control_c'),
-            models.ARI(ns='adm_c', nm='ctrl.control_a'),
-        ])))
-        self._db_sess.add(adm_b)
+
+        val = 'ari:/AC/(//example/adm-a/CTRL/control_a,//example/adm-a/CTRL/control_c,//example/adm-c/CTRL/control_a)'
+        adm_b.const.append(models.Const(
+            name='macro',
+            typeobj=typing.TypeUse(type_ari=ari.LiteralARI(ari.StructType.AC, ari.StructType.ARITYPE)),
+            init_value=val,
+            init_ari=self._from_text(val),
+        ))
+
         self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
         issues = eng.check(adm_a)
         LOGGER.warning(issues)
-        self.assertEqual(0, len(issues))
+        self.assertEqual(0, len(issues), msg=issues)
 
         issues = eng.check(adm_b)
         LOGGER.warning(issues)
-        self.assertEqual(2, len(issues))
+        self.assertEqual(2, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            adm_name='adm_b',
+            module_name='example-adm-b',
             check_name='ace.constraints.basic.valid_reference_ari',
-            obj_ref=adm_b.mac[0],
+            obj_ref=adm_b.const[0],
             detail_re=r'Within the object named "macro" the reference ARI for .*\bcontrol_c\b.* is not resolvable',
         )
         self.assertIssuePattern(
             issues[1],
-            adm_name='adm_b',
+            module_name='example-adm-b',
             check_name='ace.constraints.basic.valid_reference_ari',
-            obj_ref=adm_b.mac[0],
+            obj_ref=adm_b.const[0],
             detail_re=r'Within the object named "macro" the reference ARI for .*\bcontrol_a\b.* is not resolvable',
         )

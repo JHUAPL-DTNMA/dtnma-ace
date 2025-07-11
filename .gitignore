@@ -1,6 +1,8 @@
 # Editor files
 *~
 *.bak
+.project
+.pydevproject
 
 # Python intermediates
 __pycache__
@@ -8,8 +10,10 @@ __pycache__
 requirements.txt
 build
 dist
+.venv*/
 
 # Test outputs
 testresults.xml
 .coverage
 coverage.xml
+/.pytest_cache/

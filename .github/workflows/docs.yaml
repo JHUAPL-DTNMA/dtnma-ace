@@ -1,8 +1,9 @@
 ##
-## Copyright (c) 2023 The Johns Hopkins University Applied Physics
+## Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
 ##
-## This file is part of the Asynchronous Network Managment System (ANMS).
+## This file is part of the AMM CODEC Engine (ACE) under the
+## DTN Management Architecture (DTNMA) reference implementaton set from APL.
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -14,28 +15,43 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-## This work was performed for the Jet Propulsion Laboratory, California
-## Institute of Technology, sponsored by the United States Government under
-## the prime contract 80NM0018D0004 between the Caltech and NASA under
+## Portions of this work were performed for the Jet Propulsion Laboratory,
+## California Institute of Technology, sponsored by the United States Government
+## under the prime contract 80NM0018D0004 between the Caltech and NASA under
 ## subcontract 1658085.
 ##
 
 name: API documentation
 
 on:
-  schedule:
-    - cron: '0 0 * * 0'
   push:
     branches:
-      - 'main'
-      - 'apl-*'
+      - main
+      - 'apl-fy[0-9][0-9]'
   pull_request: {} # any target
+  schedule:
+    - cron: '0 0 * * 0'
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  apidoc:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y python3-pip
@@ -43,7 +59,35 @@ jobs:
           pip3 install .[docs]
       - name: build
         run: ./build_docs.sh
-      - uses: actions/upload-artifact@v3
+      - name: Compress
+        run: cd docs/_build && tar -cf html.tar html
+      - name: Archive
+        uses: actions/upload-artifact@v4
         with:
           name: docs
-          path: docs/_build
+          path: docs/_build/html.tar
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: apidoc
+    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apl-fy24' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docs
+          path: docs/_build/
+      - name: Decompress
+        run: cd docs/_build && tar -xf html.tar
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Just the HTML
+          path: docs/_build/html/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

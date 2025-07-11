@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' Lexer configuration for ARI text decoding.
 '''
-import base64
 import logging
 import re
+from urllib.parse import unquote
 from ply import lex
-from ace.ari import StructType, LITERAL_TYPES
-
 
 # make linters happy
 __all__ = [
@@ -34,26 +33,24 @@ __all__ = [
     'new_lexer',
 ]
 
-
 LOGGER = logging.getLogger(__name__)
 
 # List of token names.   This is always required
 tokens = (
     'ARI_PREFIX',
     'SLASH',
+    'DOT',
     'COMMA',
+    'SC',
     'LPAREN',
     'RPAREN',
-    'LSQRB',
-    'RSQRB',
-    'TYPENAME',
-    'TYPEDOT',
-    'BOOL',
-    'INT',
-    'FLOAT',
-    'NAME',
-    'TSTR',
-    'BSTR',
+    'EQ',
+    'AC',
+    'AM',
+    'TBL',
+    'EXECSET',
+    'RPTSET',
+    'VALSEG',
 )
 
 # Function tokens are searched in declaration order
@@ -65,77 +62,51 @@ def t_ARI_PREFIX(tok):
     return tok
 
 
-@lex.TOKEN(r'\((' + r'|'.join(re.escape(item.name) for item in StructType) + r')\)')
-def t_TYPENAME(tok):
-    name = tok.value[1:-1]
-    tok.value = StructType[name.upper()]
+def t_AC(tok):
+    r'(AC|17)/'
     return tok
 
 
-@lex.TOKEN(r'(' + r'|'.join(re.escape(item.name) for item in StructType) + r')\.')
-def t_TYPEDOT(tok):
-    name = tok.value[:-1]
-    tok.value = StructType[name.upper()]
+def t_AM(tok):
+    r'(AM|18)/'
     return tok
 
 
-def t_BOOL(tok):
-    r'true|false'
-    tok.value = (tok.value == 'true')
+def t_TBL(tok):
+    r'(TBL|19)/'
     return tok
 
 
-def t_FLOAT(tok):
-    r'[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN'
-    # float either contains a decimal point or exponent or both
-    tok.value = float(tok.lexer.lexmatch[0])
+def t_EXECSET(tok):
+    r'(EXECSET|20)/'
     return tok
 
 
-def t_INT(tok):
-    r'[+-]?(0b[01]+|0x[0-9a-fA-F]+|\d+)'
-    tok.value = int(tok.lexer.lexmatch[0], 0)
+def t_RPTSET(tok):
+    r'(RPTSET|21)/'
     return tok
 
 
-def t_TSTR(tok):
-    r'"(?P<val>[^\"]*)"'
-    tok.value = tok.lexer.lexmatch['val']
+def t_DOT(tok):
+    r'\.'
     return tok
 
 
-def t_BSTR(tok):
-    r'(?P<enc>h|b32|h32|b64)?\'(?P<val>[^\']*)\''
-    enc = tok.lexer.lexmatch['enc']
-    val = tok.lexer.lexmatch['val']
-    if enc == 'h':
-        tok.value = base64.b16decode(val, casefold=True)
-    elif enc == 'b32':
-        rem = len(val) % 8
-        if rem in {2, 4, 5, 7}:
-            val += '=' * (8 - rem)
-        tok.value = base64.b32decode(val, casefold=True)
-    elif enc == 'h32':
-        raise NotImplementedError
-    elif enc == 'b64':
-        rem = len(val) % 4
-        if rem in {2, 3}:
-            val += '=' * (4 - rem)
-        tok.value = base64.b64decode(val)
-    else:
-        tok.value = bytes(val, 'ascii')
+# This is the same as RFC 3986 'segment-nz' production with some excluded
+# for AC/AM recursion: "(" ")" ";" "="
+def t_VALSEG(tok):
+    r'([a-zA-Z0-9\-\._~\!\'\*\+\:@]|%[0-9a-fA-F]{2})+'
+    tok.value = unquote(tok.value)
     return tok
 
 
 # Regular expression rules for simple tokens
 t_SLASH = r'/'
 t_COMMA = r','
+t_SC = r';'
 t_LPAREN = r'\('
 t_RPAREN = r'\)'
-t_LSQRB = r'\['
-t_RSQRB = r'\]'
-# alternate t_NAME = r'[a-zA-Z0-9_\.:]+'
-t_NAME = r'[a-zA-Z][^/\(\)\[\],\s]+'  # more permissive name
+t_EQ = r'='
 
 # All space is ignored for lexing purposes
 t_ignore = ' \t\n'

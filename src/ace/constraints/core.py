@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,9 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' An interface and runner of model consistency constraints.
@@ -25,24 +26,23 @@ from dataclasses import dataclass
 import logging
 from ace import models
 
-
 LOGGER = logging.getLogger(__name__)
-#: Accumulated list of all constraints to check
 CONSTRAINTS = {}
+''' Accumulated list of all constraints to check '''
 
 
 @dataclass
 class Issue:
     ''' An issue resulting from a failed constraint.
     '''
-    #: The name of the constraint noting the issue, which will be set automatically
     check_name: str = None
-    #: The name of the ADM containing the issue, which will be set automatically
-    adm_name: str = None
-    #: The object containing the issue
+    ''' The name of the constraint noting the issue, which will be set automatically '''
+    module_name: str = None
+    ''' The name of the ADM module containing the issue, which will be set automatically '''
     obj: object = None
-    #: Any specific detail about the issue
+    ''' The object containing the issue '''
     detail: str = None
+    ''' Any specific detail about the issue '''
 
 
 def register(obj):
@@ -50,7 +50,7 @@ def register(obj):
 
     All constraint functions must take arguments of:
       - issuelist: a list of aggregated :class:`Issue` objects
-      - obj: The object being checked, starting at the :class:`AdmFile`
+      - obj: The object being checked, starting at the :class:`AdmModule`
       - db_sess: The database session being run under.
     '''
     if isinstance(obj, type):
@@ -73,7 +73,7 @@ class Checker:
     def __init__(self, db_sess):
         self._db_sess = db_sess
 
-    def check(self, src: models.AdmFile = None):
+    def check(self, src: models.AdmModule=None):
         ''' Check a specific ADM for issues.
 
         :param src: The ADM to check or None.
@@ -82,7 +82,7 @@ class Checker:
         if src is not None:
             adm_list = (src,)
         else:
-            adm_list = self._db_sess.query(models.AdmFile).all()
+            adm_list = self._db_sess.query(models.AdmModule).all()
 
         check_count = 0
         allissues = []
@@ -96,8 +96,8 @@ class Checker:
 
         # Run non-global constraints per each adm
         for adm in adm_list:
-            adm_name = adm.norm_name
-            LOGGER.debug('Checking ADM: %s', adm_name)
+            module_name = adm.norm_name
+            LOGGER.debug('Checking ADM: %s', module_name)
             for cst_name, cst in CONSTRAINTS.items():
                 if getattr(cst, 'is_global', False):
                     continue
@@ -116,11 +116,11 @@ class Checker:
         check_count += count
 
         for issue in issuelist:
-            if issue.adm_name is None:
+            if issue.module_name is None:
                 if adm is not None:
-                    issue.adm_name = adm.norm_name
-                elif isinstance(issue.obj, models.AdmFile):
-                    issue.adm_name = issue.obj.norm_name
+                    issue.module_name = adm.norm_name
+                elif isinstance(issue.obj, models.AdmModule):
+                    issue.module_name = issue.obj.norm_name
             if issue.check_name is None:
                 issue.check_name = cst_name
         LOGGER.debug(

@@ -1,8 +1,9 @@
 ##
-## Copyright (c) 2023 The Johns Hopkins University Applied Physics
+## Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
 ##
-## This file is part of the Asynchronous Network Managment System (ANMS).
+## This file is part of the AMM CODEC Engine (ACE) under the
+## DTN Management Architecture (DTNMA) reference implementaton set from APL.
 ##
 ## Licensed under the Apache License, Version 2.0 (the "License");
 ## you may not use this file except in compliance with the License.
@@ -14,14 +15,14 @@
 ## See the License for the specific language governing permissions and
 ## limitations under the License.
 ##
-## This work was performed for the Jet Propulsion Laboratory, California
-## Institute of Technology, sponsored by the United States Government under
-## the prime contract 80NM0018D0004 between the Caltech and NASA under
+## Portions of this work were performed for the Jet Propulsion Laboratory,
+## California Institute of Technology, sponsored by the United States Government
+## under the prime contract 80NM0018D0004 between the Caltech and NASA under
 ## subcontract 1658085.
 ##
 default:
   # All jobs run within a target-like environment
-  image: docker-remote.artifactory.jhuapl.edu/ubuntu:20.04
+  image: docker-remote.artifactory.jhuapl.edu/ubuntu:22.04
 
 include:
   # Run pipeline only on branches, not MRs
@@ -52,6 +53,7 @@ stages:
 cache:
   paths:
     - .cache/pip
+    - .cache/ccache
 
 .prep-repos: &prep-repos |
   # Use local repo mirrors
@@ -64,9 +66,10 @@ cache:
   curl -svL http://apllinuxdepot.jhuapl.edu/linux/APL-root-cert/JHUAPL-MS-Root-CA-05-21-2038-B64-text.cer -o /usr/local/share/ca-certificates/JHUAPL-MS-Root-CA-05-21-2038-B64-text.crt
   update-ca-certificates
 
+#     pip3 config --global set global.index-url https://artifactory.jhuapl.edu/artifactory/api/pypi/python-remote/simple
 .prep-install-pip: &prep-install-pip |
     apt-get update && apt-get install -y python3 python3-venv python3-pip python3-wheel
-    pip3 config --global set global.index-url https://artifactory.jhuapl.edu/artifactory/api/pypi/python-remote/simple
+    pip3 install --upgrade pip
     pip3 install pip-tools
 
 build:
@@ -92,7 +95,8 @@ unit-test:
     - pip-compile --extra test pyproject.toml
     - pip3 install -r requirements.txt
   script:
-    - PYTHONPATH=src python3 -m pytest --verbose --junitxml=testresults.xml --cov=ace tests
+    - PYTHONPATH=src:tests python3 -m pytest --verbose --junitxml=testresults.xml --cov=ace tests
+  after_script:
     - coverage xml
   coverage: /TOTAL\s+\d+\s+\d+\s+(\d+(?:.\d+)?)%/
   artifacts:

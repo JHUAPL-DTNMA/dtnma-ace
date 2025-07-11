@@ -1,8 +1,9 @@
 #
-# Copyright (c) 2023 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
-# This file is part of the Asynchronous Network Managment System (ANMS).
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,16 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# This work was performed for the Jet Propulsion Laboratory, California
-# Institute of Technology, sponsored by the United States Government under
-# the prime contract 80NM0018D0004 between the Caltech and NASA under
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
 ''' This tool converts ARIs between different encoding forms.
 
 It uses environment variables to control where ADMs are searched for and
 command options to control the ARI conversion.
-For ``text`` or ``cborhex`` forms of input or output, each line is handled 
+For ``text`` or ``cborhex`` forms of input or output, each line is handled
 as a separate ARI and converted independently until the input stream is ended.
 For ``cbor`` form of input or output, the stream is treated as a CBOR sequence
 and each item is handled as a separate ARI.
@@ -34,7 +35,6 @@ import logging
 import os
 import sys
 from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -141,8 +141,6 @@ def run(args: argparse.Namespace):
     '''
     adms = AdmSet()
     adms.load_default_dirs()
-    if 'ADM_PATH' in os.environ:
-        adms.load_from_dir(os.environ['ADM_PATH'])
     LOGGER.info('Loaded %d ADMs', len(adms))
 
     eng = Checker(adms.db_session())
@@ -152,12 +150,12 @@ def run(args: argparse.Namespace):
 
     # Text mode prefers non-nickname
     nn_mode = nickname.Mode.FROM_NN if args.outform == 'text' else nickname.Mode.TO_NN
-    nn_func = nickname.Converter(nn_mode, adms, args.must_nickname)
+    nn_func = nickname.Converter(nn_mode, adms.db_session(), args.must_nickname)
 
     # Handle ARIs iteratively
     for ari in decode(args):
         LOGGER.info('Decoded ARI as %s', ari)
-        nn_func(ari)
+        ari = nn_func(ari)
         LOGGER.info('Encoding ARI as %s', ari)
         encode(args, ari)
 
