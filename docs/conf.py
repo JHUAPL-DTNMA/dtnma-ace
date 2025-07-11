@@ -22,6 +22,7 @@
 #
 import os
 import sys
+from pkg_resources import get_distribution
 
 sys.path.insert(0, os.path.abspath('../src/'))
 
@@ -34,9 +35,9 @@ sys.path.insert(0, os.path.abspath('../src/'))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'ACE'
-copyright = '2022-2023, The Johns Hopkins University Applied Physics Laboratory'
+copyright = '2022-2024, The Johns Hopkins University Applied Physics Laboratory'
 author = 'JHU/APL'
-release = '1.0.0'
+release = get_distribution('dtnma-ace').version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

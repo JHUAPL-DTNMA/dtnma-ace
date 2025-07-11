@@ -32,9 +32,23 @@ It also includes an `ace_ari` command line interface (CLI) for translating betwe
 
 ## Development
 
-To install development and test dependencies for this project, run from the root directory (possibly under sudo if installing to the system path):
+It is advised to operate within a Python virtual environment, ideally Python 3.11, to help prevent dependency errors later on. You can run the following commands to create and activate your venv: 
+```
+python3.11 -m venv .venv
+source .venv/bin/activate
+```
+If you wish to deactivate your venv, simply run `deactivate`.
+
+To install development and test dependencies for this project, run from the root directory (possibly under `sudo` if installing to the system path):
 ```sh
 pip3 install -r <(python3 -m piptools compile --extra test pyproject.toml 2>&1)
+```
+
+If this command fails, you may have to install the `pip-tools` package first and then run two separate commands like so:
+```
+pip3 install pip-tools
+python3 -m piptools compile --extra test pyproject.toml
+pip3 install -r requirements.txt
 ```
 
 To install the project itself from source run:
@@ -42,13 +56,34 @@ To install the project itself from source run:
 pip3 install .
 ```
 
+If you are a developer seeking to do unit testing, you can run the following two commands to install the dependencies for unit tests and then run said unit tests to see if any are failing:
+```
+pip3 install -e '.[test]'
+python3 -m pytest -v --cov=ace tests
+```
+Likewise, if you wish to update our Sphinx documentation and then see your changes, you can run the following two commands to install and build the docs, and then open the generated html files in a web browser:
+```
+pip3 install .[docs]
+./build_docs.sh
+```
+
+If you are still encountering installation errors, you may need to update the submodules:
+```
+git submodule update --init --recursive
+```
+
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
 ```
-echo 'ari:/IANA:ion_admin/CTRL.node_contact_add(UVAST.1685728970,UVAST.1685729269,UINT.2,UINT.2,UVAST.25000,UVAST.1)' | PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex
+echo 'ari:/EXECSET/n=123;(//ietf/dtnma-agent/CTRL/inspect(//ietf/dtnma-agent/EDD/sw-version))' | PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex
 ```
 which will produce a hexadecimal output:
 ```
-0xC1188D410605061616141416161A647A2ECA1A647A2FF502041961A801
+0x821482187B8501012205818401012301
+```
+
+An example of using the ADM parser, from the source tree, to normalize and compare ADMs (with meld tool) is:
+```
+ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
 ```
 
 An example of using the ADM parser, from the soruce tree, to normalize and compare ADMs (with meld tool) is:

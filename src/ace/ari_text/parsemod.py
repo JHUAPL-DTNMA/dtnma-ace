@@ -27,12 +27,14 @@
 import logging
 from ply import yacc
 from ace.ari import (
+    is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
 from ace.typing import BUILTINS_BY_ENUM, NONCE
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
+from ace import ari_text
 
 # make linters happy
 __all__ = [
@@ -84,27 +86,19 @@ def p_typedlit_am(p):
     p[0] = LiteralARI(type_id=StructType.AM, value=p[3])
 
 
-def p_typedlit_tbl_empty(p):
-    '''typedlit : SLASH TBL structlist'''
-    try:
-        ncol = int(p[3]['c'].value)
-    except (KeyError, TypeError, ValueError):
-        raise RuntimeError(f"Invalid or missing column count: {p[3]}")
-
-    table = Table((0, ncol))
-    p[0] = LiteralARI(type_id=StructType.TBL, value=table)
-
-
 def p_typedlit_tbl_rows(p):
-    '''typedlit : SLASH TBL structlist rowlist'''
-    nrow = len(p[4])
+    '''typedlit : SLASH TBL structlist
+                | SLASH TBL structlist rowlist'''
     try:
         ncol = int(p[3]['c'].value)
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing column count: {p[3]}")
+
+    rows = p[4] if len(p) == 5 else []
+    nrow = len(rows)
 
     table = Table((nrow, ncol))
-    for row_ix, row in enumerate(p[4]):
+    for row_ix, row in enumerate(rows):
         if len(row) != ncol:
             raise RuntimeError('Table column count is mismatched')
         table[row_ix,:] = row
@@ -123,10 +117,9 @@ def p_rowlist_end(p):
 
 def p_typedlit_execset(p):
     'typedlit : SLASH EXECSET structlist acbracket'
-
     try:
         nonce = NONCE.get(p[3]['n'])
-        if nonce is None:
+        if nonce is None or is_undefined(nonce) or nonce.type_id is not None:
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing EXECSET 'n' parameter: {p[3]}")
@@ -140,17 +133,16 @@ def p_typedlit_execset(p):
 
 def p_typedlit_rptset(p):
     'typedlit : SLASH RPTSET structlist reportlist'
-
     try:
         nonce = NONCE.get(p[3]['n'])
-        if nonce is None:
+        if nonce is None or is_undefined(nonce) or nonce.type_id is not None:
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing RPTSET 'n' parameter: {p[3]}")
 
     try:
         ref_time = BUILTINS_BY_ENUM[StructType.TP].get(p[3]['r'])
-        if ref_time is None:
+        if ref_time is None or is_undefined(ref_time):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing RPTSET 'r' parameter: {p[3]}")
@@ -177,14 +169,14 @@ def p_report(p):
     '''report : LPAREN structlist acbracket RPAREN '''
     try:
         rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[2]['t'])
-        if rel_time is None:
+        if rel_time is None or is_undefined(rel_time):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing report 't' parameter: {p[2]}")
 
     try:
         source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[2]['s'])
-        if source is None:
+        if source is None or is_undefined(source):
             raise ValueError
     except (KeyError, TypeError, ValueError):
         raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
@@ -300,7 +292,6 @@ def p_objpath_relative(p):
     '''objpath : DOT SLASH VALSEG SLASH VALSEG
                | DOT DOT SLASH VALSEG SLASH VALSEG SLASH VALSEG'''
     got = len(p)
-
     if got > 6:
         mod = util.MODSEGMENT(p[got - 5])
         if not isinstance(mod, tuple):
@@ -361,7 +352,15 @@ def p_ampair(p):
 
 def p_structlist_join(p):
     'structlist : structlist structpair'
-    p[0] = p[1] | p[2]  # merge dicts
+    merged = p[1].copy()  # Start with left side
+
+    # Check for duplicates while merging dicts
+    for key, value in p[2].items():
+        if key in merged:
+            raise RuntimeError("Parameter list has duplicate key")
+        merged[key] = value
+
+    p[0] = merged
 
 
 def p_structlist_end(p):
@@ -371,7 +370,7 @@ def p_structlist_end(p):
 
 def p_structpair(p):
     # Keys are case-insensitive so get folded to lower case
-    '''structpair : VALSEG EQ ari SC '''
+    '''structpair : VALSEG EQ ari SC'''
 
     key = util.STRUCTKEY(p[1]).casefold()
     p[0] = {key: p[3]}

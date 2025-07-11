@@ -84,7 +84,9 @@ class Decoder:
         try:
             res = parser.parse(text, lexer=lexer)
         except Exception as err:
-            raise ParseError(f'Failed to parse "{text}": {err}') from err
+            msg = f'Failed to parse "{text}": {err}'
+            LOGGER.error('%s', msg)
+            raise ParseError(msg) from err
 
         return res
 
