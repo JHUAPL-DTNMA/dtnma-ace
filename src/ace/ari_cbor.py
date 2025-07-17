@@ -90,7 +90,7 @@ class Decoder:
                     org_id=item[0],
                     model_id=item[1],
                     model_rev=model_rev,
-                    type_id=item[idx],
+                    type_id=StructType(item[idx]) if item[idx] else None,
                     obj_id=item[idx+1],
                 )
                 idx += 2
