@@ -1,6 +1,6 @@
 #!/bin/bash
 ##
-## Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
+## Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
 ##
 ## This file is part of the AMM CODEC Engine (ACE) under the
@@ -27,7 +27,7 @@
 # Requires installation of:
 #  pip3 install licenseheaders
 # Run as:
-#  ./apply_license.sh {--dry} {-vv}
+#  ./apply_license.sh {specific dir}
 #
 set -e
 

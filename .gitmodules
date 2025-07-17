@@ -1,4 +1,0 @@
-[submodule "tests/adms"]
-	path = tests/adms
-	url = ../dtnma-adms.git
-	branch = apl-fy24

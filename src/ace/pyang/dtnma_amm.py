@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
 # This file is part of the AMM CODEC Engine (ACE) under the
@@ -21,7 +21,7 @@
 # subcontract 1658085.
 #
 ''' DTNMA-AMM Plugin
-Copyright (c) 2023-2024 The Johns Hopkins University Applied Physics
+Copyright (c) 2023-2025 The Johns Hopkins University Applied Physics
 Laboratory LLC.
 
 This plugin implements the DTNMA Application Management Model (AMM) from

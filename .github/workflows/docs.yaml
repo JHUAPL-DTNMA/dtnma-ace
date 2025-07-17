@@ -1,5 +1,5 @@
 ##
-## Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
+## Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
 ##
 ## This file is part of the AMM CODEC Engine (ACE) under the
@@ -72,7 +72,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: apidoc
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/apl-fy24' }}
+    if: ${{ github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/download-artifact@v4

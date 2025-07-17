@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-2024 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
 # This file is part of the AMM CODEC Engine (ACE) under the
@@ -84,7 +84,9 @@ class Decoder:
         try:
             res = parser.parse(text, lexer=lexer)
         except Exception as err:
-            raise ParseError(f'Failed to parse "{text}": {err}') from err
+            msg = f'Failed to parse "{text}": {err}'
+            LOGGER.error('%s', msg)
+            raise ParseError(msg) from err
 
         return res
 
