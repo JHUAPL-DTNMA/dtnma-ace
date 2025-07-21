@@ -440,7 +440,9 @@ LITERALS = {
     'vast': NumericType(StructType.VAST, -2 ** 63, 2 ** 63 - 1),
     'uvast': NumericType(StructType.UVAST, 0, 2 ** 64 - 1),
     # from: numpy.finfo(numpy.float32).max
-    'real32': NumericType(StructType.REAL32, -3.4028235e+38, 3.4028235e+38),
+    # TODO: slightly reduce the range that ACE is allowing to match that of the REFDA
+    #'real32': NumericType(StructType.REAL32, -3.4028235e+38, 3.4028235e+38),
+    'real32': NumericType(StructType.REAL32, -3.402823e+38, 3.402823e+38),
     # from: numpy.finfo(numpy.float32).max
     'real64': NumericType(StructType.REAL64,
                           -1.7976931348623157e+308, 1.7976931348623157e+308),
