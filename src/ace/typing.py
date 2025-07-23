@@ -444,7 +444,6 @@ LITERALS = {
                          struct.unpack('!f', bytes.fromhex('ff7fffff'))[0], 
                          struct.unpack('!f', bytes.fromhex('7f7fffff'))[0]),
     # from: numpy.finfo(numpy.float32).max
-    #TODO: update real64 too like real32?
     'real64': NumericType(StructType.REAL64,
                           struct.unpack('!d', bytes.fromhex('ffefffffffffffff'))[0], 
                           struct.unpack('!d', bytes.fromhex('7fefffffffffffff'))[0]),
