@@ -33,6 +33,7 @@ from .ari import (
     DTN_EPOCH, StructType, Table,
     ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
+import struct
 
 LOGGER = logging.getLogger(__name__)
 
@@ -430,7 +431,6 @@ class AnyType(BuiltInType):
 
         return True
 
-
 LITERALS = {
     'null': NullType(),
     'bool': BoolType(),
@@ -440,11 +440,14 @@ LITERALS = {
     'vast': NumericType(StructType.VAST, -2 ** 63, 2 ** 63 - 1),
     'uvast': NumericType(StructType.UVAST, 0, 2 ** 64 - 1),
     # from: numpy.finfo(numpy.float32).max
-    # Reduce range that ACE is allowing to match that of the REFDA
-    'real32': NumericType(StructType.REAL32, -3.402823e+38, 3.402823e+38),
+    'real32': NumericType(StructType.REAL32, 
+                         struct.unpack('!f', bytes.fromhex('ff7fffff'))[0], 
+                         struct.unpack('!f', bytes.fromhex('7f7fffff'))[0]),
     # from: numpy.finfo(numpy.float32).max
+    #TODO: update real64 too like real32?
     'real64': NumericType(StructType.REAL64,
-                          -1.7976931348623157e+308, 1.7976931348623157e+308),
+                          struct.unpack('!d', bytes.fromhex('ffefffffffffffff'))[0], 
+                          struct.unpack('!d', bytes.fromhex('7fefffffffffffff'))[0]),
     'textstr': StringType(StructType.TEXTSTR),
     'bytestr': StringType(StructType.BYTESTR),
 
