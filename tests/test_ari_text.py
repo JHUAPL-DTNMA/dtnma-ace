@@ -1392,8 +1392,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/VAST/-0x8FFFFFFFFFFFFFFF"),
             ("ari:/VAST/-0x1FFFFFFFFFFFFFFFF"),
             ("ari:/UVAST/-1"),
-            # FIXME: ("ari:/REAL32/-3.40282347E+38"),
-            # FIXME: ("ari:/REAL32/3.40282347E+38"),
+            ("ari:/REAL32/-3.40282347E+38"),
+            ("ari:/REAL32/3.40282347E+38"),
             ("ari:/EXECSET/N=1234;"),  # no targets
             ("ari:/RPTSET/n=null;r=725943845;"),  # no reports
         ]
