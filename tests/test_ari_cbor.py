@@ -262,7 +262,7 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_decode_rptset(self):
         TEST_CASE = [
-            ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
+          ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
           ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1),
         ]
 
@@ -284,7 +284,7 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_encode_rptset(self):
        TEST_CASE = [
-           (b"8215831904D282030180", 1234, 1000, 0)
+           (b"8215821904D2820301", 1234, 1000, 0)
        ]
 
        enc = ari_cbor.Encoder()

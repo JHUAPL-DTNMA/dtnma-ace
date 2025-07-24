@@ -301,9 +301,8 @@ class Encoder:
                 rpts_item.append(rpt_item)
             item = [
                 self._val_to_item(value.nonce),
-                self._val_to_item(value.ref_time),
-                rpts_item
-            ]
+                self._val_to_item(value.ref_time)
+            ] + rpts_item
         elif isinstance(value, LiteralARI):
             item = value.value
         else:
