@@ -263,7 +263,7 @@ class TestAriCbor(unittest.TestCase):
     def test_ari_cbor_decode_rptset(self):
         TEST_CASE = [
             ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
-          ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1)
+          ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1),
         ]
 
         dec = ari_cbor.Decoder()
@@ -281,27 +281,27 @@ class TestAriCbor(unittest.TestCase):
             self.assertEqual(nsec, expect_nsec)
             self.assertEqual(len(ari.value.reports), expect_reports)
 
-    # FIXME:
-    # def test_ari_cbor_encode_rptset(self):
-    #    TEST_CASE = [
-    #        ("82158282041904D21903E8", 1234, 1000, 0)
-    #    ]
 
-    #    enc = ari_cbor.Encoder()
-    #    for row  in TEST_CASE:
-    #        expect, nonce, sec, nsec = row
-    #        t = ari_cbor.DTN_EPOCH + datetime.timedelta(0, sec)
-    #        rptset = ReportSet(
-    #          nonce = nonce,
-    #          ref_time = t,
-    #          reports = [])
-    #        ari = LiteralARI(value = rptset, type_id = StructType.RPTSET)
-    #        loop = io.BytesIO()
-    #        enc.encode(ari, loop)
-    #        LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
-    #        self.assertEqual(
-    #            base64.b16encode(loop.getvalue()),
-    #            expect)
+    def test_ari_cbor_encode_rptset(self):
+       TEST_CASE = [
+           (b"8215831904D282030180", 1234, 1000, 0)
+       ]
+
+       enc = ari_cbor.Encoder()
+       for row  in TEST_CASE:
+           expect, nonce, sec, nsec = row
+           t = ari_cbor.DTN_EPOCH + datetime.timedelta(0, sec)
+           rptset = ReportSet(
+             nonce = nonce,
+             ref_time = t,
+             reports = [])
+           ari = LiteralARI(value = rptset, type_id = StructType.RPTSET)
+           loop = io.BytesIO()
+           enc.encode(ari, loop)
+           LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+           self.assertEqual(
+               base64.b16encode(loop.getvalue()),
+               expect)
 
     def test_ari_cbor_decode_lit_prim_bool(self):
         TEST_CASE = [
@@ -544,7 +544,7 @@ class TestAriCbor(unittest.TestCase):
             ("8201F5"),
             ("82040A"),
             ("820429"),
-            # ("8208F94900"),
+            ("8208F94900"),
             ("8208FB4024333333333333"),
             ("8208FB3FB999999999999A"),
             ("8208F97E00"),
@@ -565,13 +565,14 @@ class TestAriCbor(unittest.TestCase):
             ("8212A303F50A626869626F6804"),
             ("82138403010203"),
             ("82138703010203040506"),
-            # ("82138100"),
+            ("82138100"),
             ("82138101"),
             ("821481F6"),
             ("8214821904D28419FFFF647465737422626869"),
+            ("82148342686984676578616D706C6564746573742262686984676578616D706C65647465737422626568"), # ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)
+            ("84676578616D706C656474657374216474686174"), # ari://example/test/CONST/that
             ("8214834268698419FFFF6474657374226268698419FFFF647465737422626568"),
-            # ("8215831904D21903E8850083647465737422626869F603426869"),
-            # ("8215831904D21A2B450625850083647465737422626869F603426869"),
+            ("8214821904D284676578616D706C65647465737422626869"),
             ("8419FFFF6474657374216474686174"),
             ("8419FFFF69746573744031323334216474686174"),
             ("8419FFFF652174657374216474686174"),

@@ -147,11 +147,14 @@ class Decoder:
             item_it = iter(item)
 
             ncol = next(item_it, None)
-            if not ncol:
+            if ncol == None:
                 raise ParseError(f'No column number provided for TBL: {item}')
             elif not isinstance(ncol, int):
                 raise ParseError(f'Invalid column provided for TBL: {ncol}')
-            nrow = (len(item) - 1) // ncol
+            if ncol == 0:
+                nrow = 0
+            else:
+                nrow = (len(item) - 1) // ncol
             if len(item) != nrow*ncol+1:
                 raise ParseError(f'Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns')
             value = Table((nrow, ncol))
@@ -232,6 +235,7 @@ class Encoder:
     def _ari_to_item(self, obj:ARI) -> object:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
+        LOGGER.debug('ARI: %s', obj)
         if isinstance(obj, ReferenceARI):
             type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
@@ -285,7 +289,7 @@ class Encoder:
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
-                self._ari_to_item(value.nonce)
+                self._val_to_item(value.nonce)
             ] + list(map(self._ari_to_item, value.targets))
         elif isinstance(value, ReportSet):
             rpts_item = []
@@ -296,9 +300,12 @@ class Encoder:
                 ] + list(map(self._ari_to_item, rpt.items))
                 rpts_item.append(rpt_item)
             item = [
-                self._ari_to_item(value.nonce),
-                self._val_to_item(value.ref_time)
-            ] + rpts_item
+                self._val_to_item(value.nonce),
+                self._val_to_item(value.ref_time),
+                rpts_item
+            ]
+        elif isinstance(value, LiteralARI):
+            item = value.value
         else:
             item = value
         return item
