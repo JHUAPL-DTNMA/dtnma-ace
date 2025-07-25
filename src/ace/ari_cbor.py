@@ -72,52 +72,47 @@ class Decoder:
 
         if isinstance(item, list):
             if len(item) in {4, 5, 6}:
-                # Object reference
-                idx = 0
-                org_id = item[idx]
-                idx += 1
-                model_id = item[idx]
-                idx += 1
-
-                # cbor2 already handles date tags
+                idx = 2
                 if isinstance(item[idx], datetime.date):
+                    if len(item) < 5:
+                        raise ParseError(f'Invalid ARI CBOR item containing model revision, too few segments: {item}')
+
                     model_rev = item[idx]
                     idx += 1
                 else:
                     model_rev = None
-
-                if item[idx] is not None:
-                    type_id = StructType(item[idx])
-                else:
-                    type_id = None
-                idx += 1
-
-                obj_id = item[idx]
-                idx += 1
+            
+                for item_idx in (0,1,idx,idx+1):
+                    if not (item[item_idx] == None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
+                        raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
 
                 ident = Identity(
-                    org_id=org_id,
-                    model_id=model_id,
+                    org_id=item[0],
+                    model_id=item[1],
                     model_rev=model_rev,
-                    type_id=type_id,
-                    obj_id=obj_id,
+                    type_id=StructType(item[idx]) if item[idx] else None,
+                    obj_id=item[idx+1],
                 )
+                idx += 2
 
-                if len(item) > idx:
-                    if isinstance(item[4], list):
+                params = None
+                if len(item) == idx+1:
+                    if isinstance(item[idx], list):
                         params = [
                             self._item_to_ari(param_item)
-                            for param_item in item[4]
+                            for param_item in item[idx]
                         ]
-                    elif isinstance(item[4], dict):
+                    elif isinstance(item[idx], dict):
                         mapobj = {}
-                        for key, val in item[4].items():
+                        for key, val in item[idx].items():
                           k = self._item_to_ari(key)
                           v = self._item_to_ari(val)
                           mapobj[k] = v
                         params = mapobj
-                else:
-                    params = None
+                    else:
+                        raise ParseError(f'Invalid parameter format: {item} segment {idx} should be a list or dictionary')
+                elif len(item) > idx+1:
+                    raise ParseError(f'Invalid ARI CBOR item, too many segments: {item}')
 
                 res = ReferenceARI(ident=ident, params=params)
 
@@ -130,8 +125,11 @@ class Decoder:
                     value=value
                 )
             else:
-                raise ParseError(f'Invalid ARI CBOR item: {item}')
-
+                raise ParseError(f'Invalid ARI CBOR item, unexpected number of segments: {item}')
+        
+        elif isinstance(item, dict):
+            raise ParseError(f'Invalid ARI CBOR major type: {item}')
+        
         else:
             # Untyped literal
             value = self._item_to_val(item, None)
@@ -148,10 +146,19 @@ class Decoder:
         elif type_id == StructType.TBL:
             item_it = iter(item)
 
-            ncol = next(item_it)
-            nrow = (len(item) - 1) // ncol
+            ncol = next(item_it, None)
+            if ncol == None:
+                raise ParseError(f'No column number provided for TBL: {item}')
+            elif not isinstance(ncol, int):
+                raise ParseError(f'Invalid column provided for TBL: {ncol}')
+            if ncol == 0:
+                nrow = 0
+            else:
+                nrow = (len(item) - 1) // ncol
+            if len(item) != nrow*ncol+1:
+                raise ParseError(f'Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns')
             value = Table((nrow, ncol))
-
+            LOGGER.debug(f'Processing TBL with {nrow} rows and {ncol} columns...')
             for row_ix in range(nrow):
                 for col_ix in range(ncol):
                     value[row_ix, col_ix] = self._item_to_ari(next(item_it))
@@ -160,6 +167,10 @@ class Decoder:
             value = self._item_to_timeval(item) + DTN_EPOCH
         elif type_id == StructType.TD:
             value = self._item_to_timeval(item)
+        elif type_id == StructType.LABEL:
+            if not isinstance(item, str) and not isinstance(item, int):
+                raise TypeError(f'invalid label: {item} shoud be string or int')
+            value=item
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
@@ -204,7 +215,7 @@ class Decoder:
             total_usec = mant * 10 ** (exp + 6)
             return datetime.timedelta(microseconds=total_usec)
         else:
-            raise TypeError(f'Bad timeval type: {type(item)}')
+            raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
 
 
 class Encoder:
@@ -224,6 +235,7 @@ class Encoder:
     def _ari_to_item(self, obj:ARI) -> object:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
+        LOGGER.debug('ARI: %s', obj)
         if isinstance(obj, ReferenceARI):
             type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
