@@ -289,7 +289,7 @@ class Encoder:
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
-                self._val_to_item(value.nonce)
+                self._ari_to_item(value.nonce)
             ] + list(map(self._ari_to_item, value.targets))
         elif isinstance(value, ReportSet):
             rpts_item = []
@@ -300,13 +300,11 @@ class Encoder:
                 ] + list(map(self._ari_to_item, rpt.items))
                 rpts_item.append(rpt_item)
             item = [
-                self._val_to_item(value.nonce),
+                self._ari_to_item(value.nonce),
                 self._val_to_item(value.ref_time)
             ] + rpts_item
-        elif isinstance(value, LiteralARI):
-            item = value.value
         else:
-            raise TypeError(f'Value {value} is an unexpected type')
+            item = value
         return item
 
     def _timeval_to_item(self, diff):

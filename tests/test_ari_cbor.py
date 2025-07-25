@@ -292,7 +292,7 @@ class TestAriCbor(unittest.TestCase):
            expect, nonce, sec, nsec = row
            t = ari_cbor.DTN_EPOCH + datetime.timedelta(0, sec)
            rptset = ReportSet(
-             nonce = nonce,
+             nonce = LiteralARI(nonce),
              ref_time = t,
              reports = [])
            ari = LiteralARI(value = rptset, type_id = StructType.RPTSET)
