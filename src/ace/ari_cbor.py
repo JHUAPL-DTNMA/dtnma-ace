@@ -306,7 +306,7 @@ class Encoder:
         elif isinstance(value, LiteralARI):
             item = value.value
         else:
-            item = value
+            raise TypeError(f'Value {value} is an unexpected type')
         return item
 
     def _timeval_to_item(self, diff):
