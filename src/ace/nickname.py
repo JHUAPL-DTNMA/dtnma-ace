@@ -120,6 +120,7 @@ class Converter:
             new_ident = Identity(
                 org_id=org_id,
                 model_id=model_id,
+                model_rev=ari.ident.model_rev,
                 type_id=ari.ident.type_id,
                 obj_id=obj_id
             )
@@ -153,6 +154,7 @@ class Converter:
             new_ident = Identity(
                 org_id=org_id,
                 model_id=model_id,
+                model_rev=ari.ident.model_rev,
                 type_id=ari.ident.type_id,
                 obj_id=obj_id
             )

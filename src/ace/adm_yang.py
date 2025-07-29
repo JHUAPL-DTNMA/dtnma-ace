@@ -747,6 +747,10 @@ class Decoder:
                 date=date.fromisoformat(sub_stmt.arg),
                 description=pyang.statements.get_description(sub_stmt),
             ))
+        if adm.revisions:
+            adm.latest_revision_date = max(rev.date for rev in adm.revisions)
+        else:
+            adm.latest_revision_date = None
 
         for sub_stmt in module.search('feature'):
             adm.feature.append(Feature(
