@@ -178,6 +178,10 @@ class TypingDecoder:
         return ari
 
     def decode(self, parent: pyang.statements.Statement) -> SemType:
+        ''' Decode a single type-defining sub-statement.
+
+        :param parent: The parent to look for a single type under.
+        '''
         # Only one type statement is valid
         found_type_stmts = [
             type_stmt for type_stmt in parent.substmts
@@ -188,7 +192,11 @@ class TypingDecoder:
         elif len(found_type_stmts) > 1:
             raise RuntimeError('Too many types present where one required')
         type_stmt = found_type_stmts[0]
+        return self._handle_stmt(type_stmt)
 
+    def _handle_stmt(self, type_stmt: pyang.statements.Statement) -> SemType:
+        ''' Decode a type object from a single related statement.
+        '''
         typeobj = self._type_handlers[type_stmt.keyword](type_stmt)
         LOGGER.debug('Got type for %s: %s', type_stmt.keyword, typeobj)
         return typeobj
@@ -268,8 +276,17 @@ class TypingDecoder:
         return typeobj
 
     def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
+        found_type_stmts = [
+            type_stmt for type_stmt in stmt.substmts
+            if type_stmt.keyword in self._type_handlers
+        ]
+        # each type-defining substatement is part of the list
+        parts = []
+        for type_stmt in found_type_stmts:
+            parts.append(self._handle_stmt(type_stmt))
+
         typeobj = DiverseList(
-            parts=[],  # FIXME populate
+            parts=parts
         )
         return typeobj
 
@@ -691,9 +708,9 @@ class Decoder:
                 epos.ref = epos.ref[1]
             try:
                 LOGGER.log(kind, '%s: %s', epos.label(True), emsg)
-            except Exception as e: 
+            except Exception as e:
                 LOGGER.error('Error %s, while printing msg %s .', e, emsg)
-                
+
         src = AdmSource()
         src.file_text = file_text
         if file_path:

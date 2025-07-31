@@ -418,11 +418,45 @@ module example-empty {
   amm:typedef typeobj {
     amm:enum 2;
     description
-      "";
+      "something";
     amm:ulist {
+      min-elements 1;
+      max-elements 100;
       amm:type "/ARITYPE/TEXTSTR" {
         length "min..255";
       }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
+    description
+      "something";
+    amm:dlist {
+      amm:type "/aritype/bool";
+      amm:type "/aritype/textstr" {
+        length "min..255";
+      }
+    }
+  }
+''',
+        '''\
+  amm:typedef typeobj {
+    amm:enum 2;
+    description
+      "something";
+    amm:dlist {
+      amm:type "/ARITYPE/bool";
+      amm:seq {
+        min-elements 1;
+        max-elements 5;
+        amm:type "/ARITYPE/UINT" {
+          units "digits";
+          range "0..9";
+        }
+      }
+      amm:type "/ARITYPE/TEXTSTR";
     }
   }
 ''',
