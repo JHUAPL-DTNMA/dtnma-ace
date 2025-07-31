@@ -809,9 +809,10 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_prim_tstr(self):
         TEST_CASE = [
             ("label", "label"),
-            ("\"hi\"", "hi"),
-            ("\"%22h%20i%22\"", "h i"),
-            ("\"%22h%5c%22i%22\"", "h\"i"),
+            ("!name", "!name"),
+            ("%22hi%22", "hi"),
+            ("%22h%20i%22", "h i"),
+            ("%22h%5c%22i%22", "h\"i"),
         ]
 
         dec = ari_text.Decoder()
@@ -826,8 +827,8 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_typed_tstr(self):
         TEST_CASE = [
             ("ari:/TEXTSTR/label", "label", 6),
-            ("ari:/TEXTSTR/\"hi\"", "hi", 3),
-            ("ari:/TEXTSTR/\"%22h%20i%22\"", "h i", 4),
+            ("ari:/TEXTSTR/%22hi%22", "hi", 3),
+            ("ari:/TEXTSTR/%22h%20i%22", "h i", 4),
             ("ari:/TEXTSTR/%22h%5c%22i%22", "h\"i", 4),
             ("ari:/TEXTSTR/%22!@-+.:'%22", "!@-+.:'", 8),
             ("ari:/TEXTSTR/%22%5C%22'%22", "\"'", 3),
@@ -1363,14 +1364,14 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=5;(1,2)"),
             ("ari:/TBL/(1,2,3)"),
             ("ari:/TBL/c=aaa;c=2;(1,2)"),
-            ("ari:/TBL/c=2;c=2;(1,2)"), 
+            ("ari:/TBL/c=2;c=2;(1,2)"),
             ("ari:/EXECSET/()"),
-            ("ari:/EXECSET/g=null;()"), 
+            ("ari:/EXECSET/g=null;()"),
             ("ari:/EXECSET/n=undefined;()"),
             ("ari:/EXECSET/n=1;"),
             ("ari:/EXECSET/n=1;n=2;()"),
             ("ari://./object/hi"),
-            ("./object/hi"), 
+            ("./object/hi"),
         ]
 
         dec = ari_text.Decoder()
