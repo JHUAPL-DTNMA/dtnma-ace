@@ -114,8 +114,8 @@ t_ignore = ' \t\n'
 
 def t_error(t):
     # Error handling rule
-    LOGGER.error("Illegal character '%s'", t.value[0])
-    t.lexer.skip(1)
+    LOGGER.error("Illegal character '%s' at position %s", t.value[0], t.lexpos)
+    raise SyntaxError(f'Illegal character \'{t.value[0]}\' present')
 
 # pylint: enable=invalid-name
 
