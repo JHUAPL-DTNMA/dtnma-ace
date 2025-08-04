@@ -1215,21 +1215,18 @@ class TestAdmContents(BaseYang):
 
         self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[0].action_value)
         #TODO: madeline - extend to test decoded references
-        # Get decoded reference object
-        decoded_ref = adm.sbr[0].action_ari
-        
         # Basic existence checks
-        self.assertIsNotNone(decoded_ref, "Decoded reference should not be None")
+        self.assertIsNotNone(adm.sbr[0].action_ari, "Decoded reference should not be None")
         
         # Organization ID validation
-        '''org_id = decoded_ref.organization_id #TODO: how to access organization_id attribute for decoded_ref?
+        org_id = adm.ns_org_name 
         self.assertIsNotNone(org_id, "Organization ID should not be None") 
         
         # Model ID validation
-        model_id = decoded_ref.model_id #TODO: how to access model_id attribute?
+        model_id = adm.ns_model_enum #is this the model ID attribute?
         self.assertIsNotNone(model_id, "Model ID should not be None")
         
-        # Additional reference checks 
+        '''# Additional reference checks 
         self.assertTrue(len(decoded_ref.references) > 0, "Should have at least one reference") #TODO: how to access references attribute?
         
         # Verify individual references
