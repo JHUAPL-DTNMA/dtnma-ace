@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
 from typing import List
 from ace import adm_yang, ari, ari_text, models, lookup
+from ace.ari import ReferenceARI, LiteralARI, StructType, Identity
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
@@ -1215,24 +1216,36 @@ class TestAdmContents(BaseYang):
 
         self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[0].action_value)
         #TODO: madeline - extend to test decoded references
-        # Basic existence checks
-        self.assertIsNotNone(adm.sbr[0].action_ari, "Decoded reference should not be None")
+        # Get decoded ARI object
+        ari = adm.sbr[0].action_ari
         
-        # Organization ID validation
-        org_id = adm.ns_org_name 
-        self.assertIsNotNone(org_id, "Organization ID should not be None") 
+        # Verify ARI type and structure
+        self.assertIsInstance(ari, LiteralARI)
+        self.assertEqual(ari.type_id, StructType.AC)
         
-        # Model ID validation
-        model_id = adm.ns_model_enum #is this the model ID attribute?
-        self.assertIsNotNone(model_id, "Model ID should not be None")
+        # Verify ReferenceARI objects
+        references = ari.value
+        self.assertEqual(len(references), 2)
         
-        '''# Additional reference checks 
-        self.assertTrue(len(decoded_ref.references) > 0, "Should have at least one reference") #TODO: how to access references attribute?
+        # Test first reference
+        ref1 = references[0]
+        self.assertIsInstance(ref1, ReferenceARI)
+        self.assertEqual(ref1.ident.org_id, 'example')
+        self.assertEqual(ref1.ident.model_id, 'mod')
+        self.assertIsNone(ref1.ident.model_rev)
+        self.assertEqual(ref1.ident.type_id, StructType.CTRL)
+        self.assertEqual(ref1.ident.obj_id, 'first')
+        self.assertIsNone(ref1.params)
         
-        # Verify individual references
-        for ref in decoded_ref.references:
-            self.assertIsNotNone(ref.path, "Reference path should not be None")
-            self.assertTrue(ref.path.startswith("./"), "Reference paths should be relative")'''
+        # Test second reference
+        ref2 = references[1]
+        self.assertIsInstance(ref2, ReferenceARI)
+        self.assertEqual(ref2.ident.org_id, 'example')
+        self.assertEqual(ref2.ident.model_id, 'mod')
+        self.assertIsNone(ref2.ident.model_rev)
+        self.assertEqual(ref2.ident.type_id, StructType.CTRL)
+        self.assertEqual(ref2.ident.obj_id, 'second')
+        self.assertIsNone(ref2.params)
 
 
         self.assertEqual("/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)", adm.sbr[0].condition_value)
