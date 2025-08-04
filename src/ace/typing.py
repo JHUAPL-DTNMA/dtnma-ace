@@ -284,8 +284,8 @@ class TimeType(BuiltInType):
 
     # FIXME should get and convert normalize to datetime values?
     VALUE_CLS = {
-        StructType.TP: (datetime.datetime, int, float),
-        StructType.TD: (datetime.timedelta, int, float),
+        StructType.TP: (numpy.datetime64, int, float),
+        StructType.TD: (numpy.timedelta64, int, float),
     }
     ''' Required value type for target time type. '''
 
@@ -317,11 +317,19 @@ class TimeType(BuiltInType):
         # coerce to native value class
         newval = obj.value
         if self.type_id == StructType.TP:
-            if not isinstance(obj.value, datetime.datetime):
-                newval = DTN_EPOCH + datetime.timedelta(seconds=obj.value)
+            if not isinstance(obj.value, numpy.datetime64):
+                if isinstance(obj.value, float):
+                    offset = numpy.timedelta64(int(1e9 * obj.value), 'ns')
+                else:
+                    offset = numpy.timedelta64(obj.value, 's')
+                print('TP', DTN_EPOCH, offset)
+                newval = DTN_EPOCH + offset
         elif self.type_id == StructType.TD:
-            if not isinstance(obj.value, datetime.timedelta):
-                newval = datetime.timedelta(seconds=obj.value)
+            if not isinstance(obj.value, numpy.timedelta64):
+                if isinstance(obj.value, float):
+                    newval = numpy.timedelta64(int(1e9 * obj.value), 'ns')
+                else:
+                    newval = numpy.timedelta64(obj.value, 's')
 
         return LiteralARI(newval, self.type_id)
 
@@ -431,6 +439,7 @@ class AnyType(BuiltInType):
 
         return True
 
+
 LITERALS = {
     'null': NullType(),
     'bool': BoolType(),
@@ -440,12 +449,12 @@ LITERALS = {
     'vast': NumericType(StructType.VAST, -2 ** 63, 2 ** 63 - 1),
     'uvast': NumericType(StructType.UVAST, 0, 2 ** 64 - 1),
     # from: numpy.finfo(numpy.float32).max
-    'real32': NumericType(StructType.REAL32, 
-                         struct.unpack('!f', bytes.fromhex('ff7fffff'))[0], 
+    'real32': NumericType(StructType.REAL32,
+                         struct.unpack('!f', bytes.fromhex('ff7fffff'))[0],
                          struct.unpack('!f', bytes.fromhex('7f7fffff'))[0]),
     # from: numpy.finfo(numpy.float32).max
     'real64': NumericType(StructType.REAL64,
-                          struct.unpack('!d', bytes.fromhex('ffefffffffffffff'))[0], 
+                          struct.unpack('!d', bytes.fromhex('ffefffffffffffff'))[0],
                           struct.unpack('!d', bytes.fromhex('7fefffffffffffff'))[0]),
     'textstr': StringType(StructType.TEXTSTR),
     'bytestr': StringType(StructType.BYTESTR),
