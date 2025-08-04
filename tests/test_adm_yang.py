@@ -1214,6 +1214,30 @@ class TestAdmContents(BaseYang):
         self.assertEqual(2, len(adm.sbr))
 
         self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[0].action_value)
+        #TODO: madeline - extend to test decoded references
+        # Get decoded reference object
+        decoded_ref = adm.sbr[0].action_ari
+        
+        # Basic existence checks
+        self.assertIsNotNone(decoded_ref, "Decoded reference should not be None")
+        
+        # Organization ID validation
+        '''org_id = decoded_ref.organization_id #TODO: how to access organization_id attribute for decoded_ref?
+        self.assertIsNotNone(org_id, "Organization ID should not be None") 
+        
+        # Model ID validation
+        model_id = decoded_ref.model_id #TODO: how to access model_id attribute?
+        self.assertIsNotNone(model_id, "Model ID should not be None")
+        
+        # Additional reference checks 
+        self.assertTrue(len(decoded_ref.references) > 0, "Should have at least one reference") #TODO: how to access references attribute?
+        
+        # Verify individual references
+        for ref in decoded_ref.references:
+            self.assertIsNotNone(ref.path, "Reference path should not be None")
+            self.assertTrue(ref.path.startswith("./"), "Reference paths should be relative")'''
+
+
         self.assertEqual("/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)", adm.sbr[0].condition_value)
         self.assertEqual("/TD/PT30S", adm.sbr[0].min_interval_value)
         self.assertEqual(False, adm.sbr[0].init_enabled)
