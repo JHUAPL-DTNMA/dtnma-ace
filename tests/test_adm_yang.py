@@ -1215,39 +1215,6 @@ class TestAdmContents(BaseYang):
         self.assertEqual(2, len(adm.sbr))
 
         self.assertEqual("/AC/(./CTRL/first,./CTRL/second)", adm.sbr[0].action_value)
-        
-        '''# Get decoded ARI object
-        ari = adm.sbr[0].action_ari
-        
-        # Verify ARI type and structure
-        self.assertIsInstance(ari, LiteralARI)
-        self.assertEqual(ari.type_id, StructType.AC)
-        
-        # Verify ReferenceARI objects
-        references = ari.value
-        self.assertEqual(len(references), 2)
-        
-        # Test first reference
-        ref1 = references[0]
-        self.assertIsInstance(ref1, ReferenceARI)
-        self.assertEqual(ref1.ident.org_id, 'example')
-        self.assertEqual(ref1.ident.model_id, 'mod')
-        self.assertIsNone(ref1.ident.model_rev)
-        self.assertEqual(ref1.ident.type_id, StructType.CTRL)
-        self.assertEqual(ref1.ident.obj_id, 'first')
-        self.assertIsNone(ref1.params)
-        
-        # Test second reference
-        ref2 = references[1]
-        self.assertIsInstance(ref2, ReferenceARI)
-        self.assertEqual(ref2.ident.org_id, 'example')
-        self.assertEqual(ref2.ident.model_id, 'mod')
-        self.assertIsNone(ref2.ident.model_rev)
-        self.assertEqual(ref2.ident.type_id, StructType.CTRL)
-        self.assertEqual(ref2.ident.obj_id, 'second')
-        self.assertIsNone(ref2.params)'''
-
-
         self.assertEqual("/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)", adm.sbr[0].condition_value)
         self.assertEqual("/TD/PT30S", adm.sbr[0].min_interval_value)
         self.assertEqual(False, adm.sbr[0].init_enabled)
@@ -1320,8 +1287,8 @@ class TestAdmContents(BaseYang):
         }
       ''')
       with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
-            adm = self._adm_dec.decode(buf)
-    # Build expected ARI structure
+        adm = self._adm_dec.decode(buf)
+      # Build expected ARI structure
       expected_ari = ari.LiteralARI(
           value=[
               ari.ReferenceARI(
