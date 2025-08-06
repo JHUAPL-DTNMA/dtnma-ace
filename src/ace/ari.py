@@ -35,6 +35,16 @@ DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
 ''' Reference for absolute time points '''
 
 
+def _is_nan(val) -> bool:
+    ''' Determine if a value is a NaN float.
+    '''
+    try:
+        return math.isnan(val)
+    except TypeError:
+        pass
+    return False
+
+
 class Table(numpy.ndarray):
     ''' Wrapper class to overload some numpy behavior. '''
 
@@ -175,7 +185,7 @@ class LiteralARI(ARI):
             and self.type_id == other.type_id
             and (
                 (self.value == other.value)
-                or (math.isnan(self.value) and math.isnan(other.value))
+                or (_is_nan(self.value) and _is_nan(other.value))
             )
         )
 

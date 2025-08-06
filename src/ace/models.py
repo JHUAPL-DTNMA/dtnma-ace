@@ -23,7 +23,8 @@
 ''' ORM models for the ADM and its contents.
 '''
 from sqlalchemy import (
-    Column, ForeignKey, Boolean, Integer, String, Date, DateTime, Text, PickleType
+    Column, ForeignKey, Boolean, Integer, String, Date, DateTime,
+    Text, PickleType
 )
 from sqlalchemy.orm import (
     declarative_base, relationship, declared_attr, Mapped
@@ -32,7 +33,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import declarative_mixin, declared_attr
 
-CURRENT_SCHEMA_VERSION = 22
+CURRENT_SCHEMA_VERSION = 23
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
@@ -200,10 +201,11 @@ class AdmModule(Base):
         order_by='asc(AdmRevision.position)',
         cascade="all, delete"
     )
+    ''' An ordered list of revisions of this module '''
 
-    @hybrid_property
-    def latest_revision_date(self):
-        return max(rev.date for rev in self.revisions)
+    latest_revision_date = Column(Date, index=True)
+    ''' An indexed form of the latest of all associated
+    AdmRevision objects. '''
 
     imports = relationship(
         "AdmImport",
