@@ -26,6 +26,7 @@ from dataclasses import dataclass
 import logging
 import math
 from typing import List, Dict, TextIO
+import numpy
 import urllib.parse
 import cbor2
 from ace.ari import (
@@ -47,30 +48,33 @@ def percent_encode(text):
     return urllib.parse.quote(text, safe="'")
 
 
+TP_TRANS = str.maketrans({'-': '', ':': ''})
+
+
 def encode_datetime(value):
-    if value.microsecond:
-        fmt = '%Y%m%dT%H%M%S.%fZ'
-    else:
-        fmt = '%Y%m%dT%H%M%SZ'
-    text = value.strftime(fmt)
+    text = str(value).translate(TP_TRANS)
+    text = text.rstrip('0').rstrip('.')
+    text += 'Z'
     return text
 
 
 def encode_timedelta(value):
-    neg = value.days < 0
+    neg = value < 0
     diff = -value if neg else value
 
-    days = diff.days
-    secs = diff.seconds
-    hours = secs // 3600
-    secs = secs % 3600
-    minutes = secs // 60
-    secs = secs % 60
+    days = diff // numpy.timedelta64(1, 'D')
+    diff -= numpy.timedelta64(days, 'D')
+    hours = diff // numpy.timedelta64(1, 'h')
+    diff -= numpy.timedelta64(hours, 'h')
+    minutes = diff // numpy.timedelta64(1, 'm')
+    diff -= numpy.timedelta64(minutes, 'm')
+    secs = diff // numpy.timedelta64(1, 's')
+    diff -= numpy.timedelta64(secs, 's')
 
-    usec = diff.microseconds
-    pad = 6
-    while usec and usec % 10 == 0:
-        usec //= 10
+    nsec = diff // numpy.timedelta64(1, 'ns')
+    pad = 9
+    while nsec and nsec % 10 == 0:
+        nsec //= 10
         pad -= 1
 
     text = ''
@@ -84,8 +88,8 @@ def encode_timedelta(value):
         text += f'{hours}H'
     if minutes:
         text += f'{minutes}M'
-    if usec:
-        text += f'{secs}.{usec:0>{pad}}S'
+    if nsec:
+        text += f'{secs}.{nsec:0>{pad}}S'
     elif secs:
         text += f'{secs}S'
     return text
@@ -154,15 +158,17 @@ class Encoder:
                     text = encode_datetime(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = (obj.value - DTN_EPOCH).total_seconds()
-                    buf.write(f'{diff:.6f}')
+                    diff = (obj.value - DTN_EPOCH) / numpy.timedelta64(1, 's')
+                    text = f'{diff:.9f}'.rstrip('0')
+                    buf.write(text)
             elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = obj.value.total_seconds()
-                    buf.write(f'{diff:.6f}')
+                    diff = obj.value / numpy.timedelta64(1, 's')
+                    text = f'{diff:.9f}'.rstrip('0')
+                    buf.write(text)
             elif obj.type_id is StructType.LABEL:
                 # no need to percent_encode identity
                 buf.write(str(obj.value))

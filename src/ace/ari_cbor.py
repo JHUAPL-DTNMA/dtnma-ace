@@ -24,6 +24,7 @@
 '''
 import datetime
 import logging
+import numpy
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
@@ -81,8 +82,8 @@ class Decoder:
                     idx += 1
                 else:
                     model_rev = None
-            
-                for item_idx in (0,1,idx,idx+1):
+
+                for item_idx in (0, 1, idx, idx + 1):
                     if not (item[item_idx] == None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
                         raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
 
@@ -91,12 +92,12 @@ class Decoder:
                     model_id=item[1],
                     model_rev=model_rev,
                     type_id=StructType(item[idx]) if item[idx] else None,
-                    obj_id=item[idx+1],
+                    obj_id=item[idx + 1],
                 )
                 idx += 2
 
                 params = None
-                if len(item) == idx+1:
+                if len(item) == idx + 1:
                     if isinstance(item[idx], list):
                         params = [
                             self._item_to_ari(param_item)
@@ -111,7 +112,7 @@ class Decoder:
                         params = mapobj
                     else:
                         raise ParseError(f'Invalid parameter format: {item} segment {idx} should be a list or dictionary')
-                elif len(item) > idx+1:
+                elif len(item) > idx + 1:
                     raise ParseError(f'Invalid ARI CBOR item, too many segments: {item}')
 
                 res = ReferenceARI(ident=ident, params=params)
@@ -126,10 +127,10 @@ class Decoder:
                 )
             else:
                 raise ParseError(f'Invalid ARI CBOR item, unexpected number of segments: {item}')
-        
+
         elif isinstance(item, dict):
             raise ParseError(f'Invalid ARI CBOR major type: {item}')
-        
+
         else:
             # Untyped literal
             value = self._item_to_val(item, None)
@@ -155,7 +156,7 @@ class Decoder:
                 nrow = 0
             else:
                 nrow = (len(item) - 1) // ncol
-            if len(item) != nrow*ncol+1:
+            if len(item) != nrow * ncol + 1:
                 raise ParseError(f'Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns')
             value = Table((nrow, ncol))
             LOGGER.debug(f'Processing TBL with {nrow} rows and {ncol} columns...')
@@ -170,7 +171,7 @@ class Decoder:
         elif type_id == StructType.LABEL:
             if not isinstance(item, str) and not isinstance(item, int):
                 raise TypeError(f'invalid label: {item} shoud be string or int')
-            value=item
+            value = item
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
@@ -204,16 +205,16 @@ class Decoder:
             value = item
         return value
 
-    def _item_to_timeval(self, item) -> datetime.timedelta:
+    def _item_to_timeval(self, item) -> numpy.timedelta64:
         ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
-            return datetime.timedelta(seconds=item)
+            return numpy.timedelta64(item, 's')
         elif isinstance(item, list):
             exp, mant = map(int, item)
             if exp < -9 or exp > 9:
                 raise ValueError(f'Decimal fraction exponent outside valid range [-9,9]')
-            total_usec = mant * 10 ** (exp + 6)
-            return datetime.timedelta(microseconds=total_usec)
+            total_nsec = mant * 10 ** (exp + 9)
+            return numpy.timedelta64(total_nsec, 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
 
@@ -282,10 +283,10 @@ class Encoder:
             item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}
         elif isinstance(value, Table):
             item = [value.shape[1]] + list(map(self._ari_to_item, value.flat))
-        elif isinstance(value, datetime.datetime):
+        elif isinstance(value, numpy.datetime64):
             diff = value - DTN_EPOCH
             item = self._timeval_to_item(diff)
-        elif isinstance(value, datetime.timedelta):
+        elif isinstance(value, numpy.timedelta64):
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
@@ -308,9 +309,10 @@ class Encoder:
         return item
 
     def _timeval_to_item(self, diff):
-        total_usec = (diff.days * 24 * 3600 + diff.seconds) * 10 ** 6 + diff.microseconds
-        mant = total_usec
-        exp = -6
+        total_nsec = int(diff // numpy.timedelta64(1, 'ns'))
+
+        mant = total_nsec
+        exp = -9
         while mant and mant % 10 == 0:
             mant //= 10
             exp += 1

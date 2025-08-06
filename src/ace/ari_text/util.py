@@ -27,6 +27,7 @@ import datetime
 import logging
 import re
 from typing import List
+import numpy
 import cbor_diag
 from ace.ari import UNDEFINED, StructType
 
@@ -199,43 +200,38 @@ def part_to_int(digits):
         return 0
 
 
-def subsec_to_microseconds(digits):
-    ''' Convert subseconds text into microseconds, defaulting to zero. '''
+def subsec_to_nanoseconds(digits):
+    ''' Convert subseconds text into nanoseconds, defaulting to zero. '''
     if digits:
-        usec = int(digits) * 10 ** (6 - len(digits))
+        return int(digits) * 10 ** (9 - len(digits))
     else:
-        usec = 0
-    return usec
+        return 0
 
 
 @TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z')
 def t_timepoint(found):
-    value = datetime.datetime(
-        year=part_to_int(found.group('yr')),
-        month=part_to_int(found.group('mon')),
-        day=part_to_int(found.group('dom')),
-        hour=part_to_int(found.group('H')),
-        minute=part_to_int(found.group('M')),
-        second=part_to_int(found.group('S')),
-        microsecond=subsec_to_microseconds(found.group('SS'))
-    )
+    exp = f"{found.group('yr')}-{found.group('mon')}-{found.group('dom')}T{found.group('H')}:{found.group('M')}:{found.group('S')}"
+    nsec = found.group('SS')
+    if nsec:
+        exp += "." + found.group('SS')
+    value = numpy.datetime64(exp)
     return value
 
 
-@TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,6}))?S)?')
+@TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,9}))?S)?')
 def t_timeperiod(found):
     neg = found.group('sign') == '-'
     day = part_to_int(found.group('D'))
     hour = part_to_int(found.group('H'))
     minute = part_to_int(found.group('M'))
     second = part_to_int(found.group('S'))
-    usec = subsec_to_microseconds(found.group('SS'))
-    value = datetime.timedelta(
-        days=day,
-        hours=hour,
-        minutes=minute,
-        seconds=second,
-        microseconds=usec
+    nsec = subsec_to_nanoseconds(found.group('SS'))
+    value = (
+        numpy.timedelta64(day, 'D')
+        +numpy.timedelta64(hour, 'h')
+        +numpy.timedelta64(minute, 'm')
+        +numpy.timedelta64(second, 's')
+        +numpy.timedelta64(nsec, 'ns')
     )
     if neg:
         value = -value
