@@ -33,6 +33,7 @@ from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
 from typing import List
 from ace import adm_yang, ari, ari_text, models, lookup
+from ace.ari import ReferenceARI, LiteralARI, StructType, Identity
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
@@ -1244,4 +1245,78 @@ class TestAdmContents(BaseYang):
         self.assertEqual("/TD/PT0S", adm.tbr[1].start_value)
         self.assertEqual(True, adm.tbr[1].init_enabled)
         self.assertEqual(0, adm.tbr[1].max_count)
+    
+    def test_ari_components(self):
+      buf = self._get_mod_buf('''
+        amm:sbr sbr1 {
+          amm:enum 8;
+          description
+            "";
+          amm:action "/AC/(./CTRL/first,./CTRL/second)";
+          amm:condition "/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)";
+          amm:min-interval "/TD/PT30S";
+          amm:init-enabled false;
+          amm:max-count 10;
+        }
 
+        amm:sbr sbr2 {
+          amm:enum 9;
+          description
+            "";
+          amm:action "/AC/(./CTRL/first,./CTRL/second)";
+          amm:condition "/AC/(./EDD/sensor,./VAR/min_threshold,./OPER/compare_lt)";
+        }
+
+        amm:tbr tbr1 {
+          amm:enum 6;
+          description
+            "";
+          amm:action "/AC/(./CTRL/first,./CTRL/second)";
+          amm:period "/TD/PT30S";
+          amm:start "/TD/PT30S";
+          amm:init-enabled false;
+          amm:max-count 10;
+        }
+
+        amm:tbr tbr2 {
+          amm:enum 7;
+          description
+            "";
+          amm:action "/AC/(./CTRL/first,./CTRL/second)";
+          amm:period "/TD/PT30S";
+        }
+      ''')
+      with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+        adm = self._adm_dec.decode(buf)
+      # Build expected ARI structure
+      expected_ari = ari.LiteralARI(
+          value=[
+              ari.ReferenceARI(
+                  ident=ari.Identity(
+                      org_id='example',
+                      model_id='mod',
+                      model_rev=None,
+                      type_id=ari.StructType.CTRL,
+                      obj_id='first'
+                  ),
+                  params=None
+              ),
+              ari.ReferenceARI(
+                  ident=ari.Identity(
+                      org_id='example',
+                      model_id='mod',
+                      model_rev=None,
+                      type_id=ari.StructType.CTRL,
+                      obj_id='second'
+                  ),
+                  params=None
+              )
+          ],
+          type_id=ari.StructType.AC
+      )
+
+      # Get decoded ARI object
+      actual_ari = adm.sbr[0].action_ari
+      
+      # Single comparison
+      self.assertEqual(expected_ari, actual_ari)
