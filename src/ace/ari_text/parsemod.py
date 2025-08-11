@@ -34,7 +34,6 @@ from ace.ari import (
 from ace.typing import BUILTINS_BY_ENUM, NONCE
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
-from ace import ari_text
 
 # make linters happy
 __all__ = [

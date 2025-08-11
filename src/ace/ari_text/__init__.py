@@ -66,15 +66,6 @@ class Decoder:
         '''
         text = buf.read()
 
-        if LOGGER.isEnabledFor(logging.DEBUG):
-            lexer = new_lexer()
-            lexer.input(text)
-            while True:
-                tok = lexer.token()
-                if tok is None:
-                    break
-                LOGGER.debug('TOKEN %s', tok)
-
         lexer = new_lexer()
         parser = new_parser(
             debug=False,
