@@ -24,6 +24,7 @@
 '''
 import datetime
 import logging
+import numpy
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
@@ -199,16 +200,16 @@ class Decoder:
             value = item
         return value
 
-    def _item_to_timeval(self, item) -> datetime.timedelta:
+    def _item_to_timeval(self, item) -> numpy.timedelta64:
         ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
-            return datetime.timedelta(seconds=item)
+            return numpy.timedelta64(item, 's')
         elif isinstance(item, list):
             exp, mant = map(int, item)
             if exp < -9 or exp > 9:
                 raise ValueError(f'Decimal fraction exponent outside valid range [-9,9]')
-            total_usec = mant * 10 ** (exp + 6)
-            return datetime.timedelta(microseconds=total_usec)
+            total_nsec = mant * 10 ** (exp + 9)
+            return numpy.timedelta64(total_nsec, 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
 
@@ -277,10 +278,10 @@ class Encoder:
             item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}
         elif isinstance(value, Table):
             item = [value.shape[1]] + list(map(self._ari_to_item, value.flat))
-        elif isinstance(value, datetime.datetime):
+        elif isinstance(value, numpy.datetime64):
             diff = value - DTN_EPOCH
             item = self._timeval_to_item(diff)
-        elif isinstance(value, datetime.timedelta):
+        elif isinstance(value, numpy.timedelta64):
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
             item = [
@@ -303,9 +304,10 @@ class Encoder:
         return item
 
     def _timeval_to_item(self, diff):
-        total_usec = (diff.days * 24 * 3600 + diff.seconds) * 10 ** 6 + diff.microseconds
-        mant = total_usec
-        exp = -6
+        total_nsec = int(diff // numpy.timedelta64(1, 'ns'))
+
+        mant = total_nsec
+        exp = -9
         while mant and mant % 10 == 0:
             mant //= 10
             exp += 1

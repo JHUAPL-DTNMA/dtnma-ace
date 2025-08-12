@@ -112,19 +112,19 @@ class TestAriText(unittest.TestCase):
         ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
         ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
         # Times
-        ('ari:/TP/20230102T030405Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0)),
-        ('ari:/TP/2023-01-02T03:04:05Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), 'ari:/TP/20230102T030405Z'),  # with formatting
-        ('ari:/TP/20230102T030405.250000Z', datetime.datetime(2023, 1, 2, 3, 4, 5, 250000)),
-        ('ari:/TP/725943845.0', datetime.datetime(2023, 1, 2, 3, 4, 5, 0), 'ari:/TP/20230102T030405Z'),
-        ('ari:/TD/PT3H', datetime.timedelta(hours=3)),
-        ('ari:/TD/PT10.001S', datetime.timedelta(seconds=10.001)),
-        ('ari:/TD/PT10.25S', datetime.timedelta(seconds=10.25), 'ari:/TD/PT10.25S'),
-        ('ari:/TD/PT10.250000S', datetime.timedelta(seconds=10.25), 'ari:/TD/PT10.25S'),
-        ('ari:/TD/P1DT10.25S', datetime.timedelta(days=1, seconds=10.25), 'ari:/TD/P1DT10.25S'),
-        ('ari:/TD/+PT3H', datetime.timedelta(hours=3), 'ari:/TD/PT3H'),
-        ('ari:/TD/-PT3H', -datetime.timedelta(hours=3)),
-        ('ari:/TD/100', datetime.timedelta(seconds=100), 'ari:/TD/PT1M40S'),
-        ('ari:/TD/1.5', datetime.timedelta(seconds=1.5), 'ari:/TD/PT1.5S'),
+        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05')),
+        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),  # with formatting
+        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25')),
+        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),
+        ('ari:/TD/PT3H', numpy.timedelta64(3, 'h')),
+        ('ari:/TD/PT10.001S', numpy.timedelta64(10001, 'ms')),
+        ('ari:/TD/PT10.25S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
+        ('ari:/TD/PT10.250000S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
+        ('ari:/TD/P1DT10.25S', numpy.timedelta64(1, 'D') + numpy.timedelta64(10250, 'ms'), 'ari:/TD/P1DT10.25S'),
+        ('ari:/TD/+PT3H', numpy.timedelta64(3, 'h'), 'ari:/TD/PT3H'),
+        ('ari:/TD/-PT3H', -numpy.timedelta64(3, 'h')),
+        ('ari:/TD/100', numpy.timedelta64(100, 's'), 'ari:/TD/PT1M40S'),
+        ('ari:/TD/1.5', numpy.timedelta64(1500, 'ms'), 'ari:/TD/PT1.5S'),
         # Extras
         ('ari:/LABEL/test', 'test'),
         ('ari:/LABEL/null', 'null'),
@@ -181,7 +181,7 @@ class TestAriText(unittest.TestCase):
                 reports=[
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-                        rel_time=datetime.timedelta(seconds=0),
+                        rel_time=numpy.timedelta64(0, 's'),
                         items=[
                             LiteralARI(None)
                         ]
@@ -197,7 +197,7 @@ class TestAriText(unittest.TestCase):
                 reports=[
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-                        rel_time=datetime.timedelta(seconds=0),
+                        rel_time=numpy.timedelta64(0, 's'),
                         items=[
                             LiteralARI(None)
                         ]
@@ -235,8 +235,8 @@ class TestAriText(unittest.TestCase):
     LITERAL_OPTIONS = (
         ('1000', dict(int_base=2), 'ari:0b1111101000'),
         ('1000', dict(int_base=16), 'ari:0x3E8'),
-        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845.000000'),
-        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800.000000'),
+        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845.'),
+        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800.'),
         ('1e3', dict(float_form='g'), 'ari:1000.0'),
         ('1e3', dict(float_form='f'), 'ari:1000.000000'),
         ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
@@ -920,14 +920,13 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_tp(self):
         TEST_CASE = [
-            ("ari:/TP/2000-01-01T00:00:20Z", datetime.datetime(2000, 1, 1, 0, 0, 20)),
-            ("ari:/TP/20000101T000020Z", datetime.datetime(2000, 1, 1, 0, 0, 20)),
-# FIXME: datetime does not support nanoseconds
-            # ("ari:/TP/20000101T000020.5Z", 20, 500e6),
-            # ("ari:/TP/20.5", 20, 500e6),
-            # ("ari:/TP/20.500", 20, 500e6),
-            # ("ari:/TP/20.000001", 20, 1e3),
-            # ("ari:/TP/20.000000001", 20, 1),
+            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20')),
+            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20')),
+            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5')),
+            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5')),
+            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5')),
+            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001')),
+            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001')),
         ]
 
         dec = ari_text.Decoder()
@@ -941,17 +940,17 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_td(self):
         TEST_CASE = [
-            ("ari:/TD/PT1M", datetime.timedelta(seconds=60)),
-            ("ari:/TD/PT20S", datetime.timedelta(seconds=20)),
-            ("ari:/TD/PT20.5S", datetime.timedelta(seconds=20, microseconds=500000)),
-            ("ari:/TD/20.5", datetime.timedelta(seconds=20, microseconds=500000)),
-            ("ari:/TD/20.500", datetime.timedelta(seconds=20, microseconds=500000)),
-            ("ari:/TD/20.000001", datetime.timedelta(seconds=20, microseconds=1)),
-            ("ari:/TD/20.000000001", datetime.timedelta(seconds=20, microseconds=0)),  # FIXME: nanonseconds not supported, truncates to 0
-            ("ari:/TD/+PT1M", datetime.timedelta(seconds=60, microseconds=0)),
-            ("ari:/TD/-PT1M", datetime.timedelta(seconds=-60, microseconds=0)),
-            ("ari:/TD/-P1DT", datetime.timedelta(seconds=-(24 * 60 * 60))),
-            ("ari:/TD/PT", datetime.timedelta(seconds=0)),
+            ("ari:/TD/PT1M", numpy.timedelta64(60, 's')),
+            ("ari:/TD/PT20S", numpy.timedelta64(20, 's')),
+            ("ari:/TD/PT20.5S", numpy.timedelta64(20500, 'ms')),
+            ("ari:/TD/20.5", numpy.timedelta64(20500, 'ms')),
+            ("ari:/TD/20.500", numpy.timedelta64(20500, 'ms')),
+            ("ari:/TD/20.000001", numpy.timedelta64(20000001, 'us')),
+            ("ari:/TD/20.000000001", numpy.timedelta64(20, 's') + numpy.timedelta64(1, 'ns')),
+            ("ari:/TD/+PT1M", numpy.timedelta64(60, 's')),
+            ("ari:/TD/-PT1M", -numpy.timedelta64(60, 's')),
+            ("ari:/TD/-P1DT", -numpy.timedelta64(1, 'D')),
+            ("ari:/TD/PT", numpy.timedelta64(0, 's')),
         ]
 
         dec = ari_text.Decoder()

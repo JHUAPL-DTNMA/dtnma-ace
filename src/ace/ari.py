@@ -31,7 +31,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
 
-DTN_EPOCH = datetime.datetime(2000, 1, 1, 0, 0, 0)
+DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
 ''' Reference for absolute time points '''
 
 
