@@ -55,11 +55,6 @@ class Decoder:
         except Exception as err:
             raise ParseError(f'Failed to decode CBOR: {err}') from err
 
-        if hasattr(buf, 'tell') and hasattr(buf, 'getbuffer'):
-            if buf.tell() != len(buf.getbuffer()):
-                LOGGER.warning('ARI decoder handled only the first %d octets of %s',
-                               buf.tell(), to_diag(buf.getvalue()))
-
         try:
             res = self._item_to_ari(item)
         except cbor2.CBORDecodeEOF as err:
@@ -81,8 +76,8 @@ class Decoder:
                     idx += 1
                 else:
                     model_rev = None
-            
-                for item_idx in (0,1,idx,idx+1):
+
+                for item_idx in (0, 1, idx, idx + 1):
                     if not (item[item_idx] == None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
                         raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
 
@@ -91,12 +86,12 @@ class Decoder:
                     model_id=item[1],
                     model_rev=model_rev,
                     type_id=StructType(item[idx]) if item[idx] else None,
-                    obj_id=item[idx+1],
+                    obj_id=item[idx + 1],
                 )
                 idx += 2
 
                 params = None
-                if len(item) == idx+1:
+                if len(item) == idx + 1:
                     if isinstance(item[idx], list):
                         params = [
                             self._item_to_ari(param_item)
@@ -111,7 +106,7 @@ class Decoder:
                         params = mapobj
                     else:
                         raise ParseError(f'Invalid parameter format: {item} segment {idx} should be a list or dictionary')
-                elif len(item) > idx+1:
+                elif len(item) > idx + 1:
                     raise ParseError(f'Invalid ARI CBOR item, too many segments: {item}')
 
                 res = ReferenceARI(ident=ident, params=params)
@@ -126,10 +121,10 @@ class Decoder:
                 )
             else:
                 raise ParseError(f'Invalid ARI CBOR item, unexpected number of segments: {item}')
-        
+
         elif isinstance(item, dict):
             raise ParseError(f'Invalid ARI CBOR major type: {item}')
-        
+
         else:
             # Untyped literal
             value = self._item_to_val(item, None)
@@ -155,7 +150,7 @@ class Decoder:
                 nrow = 0
             else:
                 nrow = (len(item) - 1) // ncol
-            if len(item) != nrow*ncol+1:
+            if len(item) != nrow * ncol + 1:
                 raise ParseError(f'Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns')
             value = Table((nrow, ncol))
             LOGGER.debug(f'Processing TBL with {nrow} rows and {ncol} columns...')
@@ -170,7 +165,7 @@ class Decoder:
         elif type_id == StructType.LABEL:
             if not isinstance(item, str) and not isinstance(item, int):
                 raise TypeError(f'invalid label: {item} shoud be string or int')
-            value=item
+            value = item
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
