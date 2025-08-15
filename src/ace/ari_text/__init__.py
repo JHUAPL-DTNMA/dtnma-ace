@@ -26,7 +26,11 @@ import datetime
 import logging
 import os
 from typing import TextIO
-import xdg_base_dirs
+try:
+    import xdg_base_dirs
+except ImportError:
+    # older compatibility
+    import xdg as xdg_base_dirs
 from ace.ari import (
     StructType, ARI, LiteralARI, ReferenceARI
 )

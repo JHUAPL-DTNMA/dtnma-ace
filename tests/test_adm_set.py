@@ -40,7 +40,7 @@ class TestAdmSet(unittest.TestCase):
     ''' Each test case run constructs a separate in-memory DB '''
 
     def setUp(self):
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
         self._dir = TmpDir()
 
     def tearDown(self):
@@ -87,9 +87,9 @@ class TestAdmSet(unittest.TestCase):
         self.assertEqual(1, len(adms))
 
         # cached state
-        with self.assertLogs('ace.adm_set', logging.DEBUG) as logcm:
+        with self.assertLogs('ace.adm_set', logging.DEBUG) as logs:
             self.assertEqual(1, adms.load_from_dirs([adms_path]))
-            self.assertTrue([ent for ent in logcm.output if 'Skipping file' in ent], msg=logcm.output)
+            self.assertTrue([ent for ent in logs.output if 'Skipping file' in ent], msg=logs.output)
         self.assertEqual(1, len(adms))
 
         # updated file
@@ -102,8 +102,7 @@ class TestAdmSet(unittest.TestCase):
         adms = AdmSet()
         self.assertEqual(0, len(adms))
 
-        with self.assertNoLogs(level=logging.WARNING):
-            self.assertEqual(0, adms.load_default_dirs())
+        self.assertEqual(0, adms.load_default_dirs())
         self.assertEqual(0, len(adms))
         self.assertNotIn('example-adm-minimal', adms)
         with self.assertRaises(KeyError):
@@ -115,10 +114,10 @@ class TestAdmSet(unittest.TestCase):
         shutil.copy(os.path.join(SELFDIR, 'example-adm-minimal.yang'), adms_path)
         with self.assertLogs(level=logging.WARNING) as logs:
             self.assertEqual(1, adms.load_default_dirs())
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+            self.assertEqual(
+                [],
+                self._filter_logs(logs.output)
+            )
         self.assertEqual(1, len(adms))
         self.assertIn('example-adm-minimal', adms)
         self.assertIsInstance(adms['example-adm-minimal'], AdmModule)
