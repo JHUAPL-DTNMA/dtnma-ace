@@ -182,7 +182,7 @@ def p_report(p):
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
 
 
-def p_typedlit_single(p):
+'''def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
         typ = util.get_structtype(p[2])
@@ -202,6 +202,38 @@ def p_typedlit_single(p):
             type_id=typ,
             value=value
         ))
+    except Exception as err:
+        LOGGER.error('Literal type mismatch: %s', err)
+        raise RuntimeError(err) from err'''
+def p_typedlit_single(p):
+    'typedlit : SLASH VALSEG SLASH VALSEG'
+    try:
+        typ = util.get_structtype(p[2])
+    except Exception as err:
+        LOGGER.error('Literal value type invalid: %s', err)
+        raise RuntimeError(err) from err
+    
+    # Extract the literal value without the leading 'ari:/REAL32/'
+    raw_value = p[4]
+    
+    try:
+        # Handle hexadecimal floating-point literals
+        if raw_value.startswith(('0x', '0X')):
+            value = float.fromhex(raw_value)
+        else:
+            value = float(raw_value)
+            
+        if isinstance(typ, float):
+            value = struct.unpack('>f', struct.pack('>f', value))[0]
+            
+        p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(
+            type_id=typ,
+            value=value
+        ))
+        
+    except ValueError as err:
+        LOGGER.error('Failed to parse hexadecimal float: %s', err)
+        raise RuntimeError(f"Invalid float value: {raw_value}") from err
     except Exception as err:
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
@@ -259,7 +291,6 @@ def p_objpath_only_ns(p):
 
 def p_objpath_with_ns(p):
     'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
-
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
 
