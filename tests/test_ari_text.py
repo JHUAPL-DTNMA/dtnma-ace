@@ -1345,7 +1345,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_failure(self):
         TEST_CASE = [
             # FIXME: ("-0x8FFFFFFFFFFFFFFF"),
-            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"), 
+            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"),
             ("ari:/OTHERNAME/0"),
             ("ari:/UNDEFINED/undefined"),
             ("ari:/NULL/fae"),
