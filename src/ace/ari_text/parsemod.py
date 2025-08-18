@@ -58,8 +58,8 @@ def p_ari_noscheme(p):
 
 # The following are untyped literals with primitive values
 
-
-def p_ssp_primitive(p):
+#TODO: madeline - update this function for ACE 21?
+'''def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
         value = util.PRIMITIVE(p[1])
@@ -68,7 +68,20 @@ def p_ssp_primitive(p):
         raise RuntimeError(err) from err
     p[0] = LiteralARI(
         value=value,
-    )
+    )'''
+def p_ssp_primitive(p):
+    'ssp : VALSEG'
+    try:
+        value = util.PRIMITIVE(p[1])
+        p[0] = LiteralARI(
+            value=value,
+        )
+    except ValueError as ve:
+        LOGGER.error('FOO: Invalid primitive value: %s', ve)
+        raise ari_text.ParseError(f"Invalid primitive value: {ve}") from ve
+    except Exception as err:
+        LOGGER.error('BAR: Unexpected error parsing primitive: %s', err)
+        raise RuntimeError(err) from err
 
 
 def p_ssp_typedlit(p):

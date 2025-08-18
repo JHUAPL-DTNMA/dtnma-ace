@@ -758,7 +758,7 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_float32(self):
         TEST_CASE = [
-            # FIXME: ("ari:/REAL32/0", 0.0),
+            ("ari:/REAL32/0.0", 0.0),
             ("ari:/REAL32/-0.", 0.0),
             ("ari:/REAL32/0.255", 0.255),
             # FIXME: ("ari:/REAL32/0xF", 15.0),
@@ -782,7 +782,7 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_float64(self):
         TEST_CASE = [
-            # FIXME: ("ari:/REAL64/0", 0.0),
+            ("ari:/REAL64/0.0", 0.0),
             ("ari:/REAL64/-0.", 0.0),
             ("ari:/REAL64/0.255", 0.255),
             # FIXME: ("ari:/REAL64/0xF", 15.0),
@@ -1345,7 +1345,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_failure(self):
         TEST_CASE = [
             # FIXME: ("-0x8FFFFFFFFFFFFFFF"),
-            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"),
+            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"), 
             ("ari:/OTHERNAME/0"),
             ("ari:/UNDEFINED/undefined"),
             ("ari:/NULL/fae"),
@@ -1393,6 +1393,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/VAST/-0x8FFFFFFFFFFFFFFF"),
             ("ari:/VAST/-0x1FFFFFFFFFFFFFFFF"),
             ("ari:/UVAST/-1"),
+            ("ari:/REAL32/0"),
             ("ari:/REAL32/-3.40282347E+38"),
             ("ari:/REAL32/3.40282347E+38"),
             ("ari:/EXECSET/N=1234;"),  # no targets
