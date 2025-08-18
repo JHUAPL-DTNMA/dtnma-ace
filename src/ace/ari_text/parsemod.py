@@ -57,7 +57,6 @@ def p_ari_noscheme(p):
 
 # The following are untyped literals with primitive values
 
-
 def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
