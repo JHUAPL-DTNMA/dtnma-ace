@@ -181,30 +181,6 @@ def p_report(p):
 
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
 
-
-'''def p_typedlit_single(p):
-    'typedlit : SLASH VALSEG SLASH VALSEG'
-    try:
-        typ = util.get_structtype(p[2])
-    except Exception as err:
-        LOGGER.error('Literal value type invalid: %s', err)
-        raise RuntimeError(err) from err
-
-    # Literal value handled based on type-specific parsing
-    try:
-        value = util.TYPEDLIT[typ](p[4])
-    except Exception as err:
-        LOGGER.error('Literal %s value failure: %s', typ, err)
-        raise RuntimeError(err) from err
-
-    try:
-        p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(
-            type_id=typ,
-            value=value
-        ))
-    except Exception as err:
-        LOGGER.error('Literal type mismatch: %s', err)
-        raise RuntimeError(err) from err'''
 def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
@@ -218,7 +194,7 @@ def p_typedlit_single(p):
     
     try:
         # Handle hexadecimal floating-point literals
-        if raw_value.startswith(('0x', '0X')):
+        if raw_value.startswith(('0x')):
             value = float.fromhex(raw_value)
         else:
             value = float(raw_value)
