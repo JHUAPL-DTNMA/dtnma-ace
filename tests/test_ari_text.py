@@ -213,6 +213,14 @@ class TestAriText(unittest.TestCase):
             )
         ),
         (
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()',
+            ReportSet(
+                nonce=LiteralARI(None),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                reports=[]
+            )
+        ),
+        (
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
             ReportSet(
                 nonce=LiteralARI(None),

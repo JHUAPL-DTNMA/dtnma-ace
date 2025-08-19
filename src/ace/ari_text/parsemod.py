@@ -130,7 +130,7 @@ def p_typedlit_execset(p):
 
 
 def p_typedlit_rptset(p):
-    'typedlit : SLASH RPTSET structlist reportlist'
+    'typedlit : SLASH RPTSET structlist reportbracket'
     try:
         nonce = NONCE.get(p[3]['n'])
         if nonce is None or is_undefined(nonce) or nonce.type_id is not None:
@@ -153,10 +153,14 @@ def p_typedlit_rptset(p):
     p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)
 
 
-def p_reportlist_join(p):
-    'reportlist : reportlist report'
-    p[0] = p[1] + [p[2]]
+def p_reportbracket(p):
+    '''reportbracket : LPAREN RPAREN
+                     | LPAREN reportlist RPAREN'''
+    p[0] = p[2] if len(p) == 4 else []
 
+def p_reportlist_join(p):
+    'reportlist : reportlist COMMA report'
+    p[0] = p[1] + [p[3]]
 
 def p_reportlist_end(p):
     'reportlist : report'
@@ -164,22 +168,22 @@ def p_reportlist_end(p):
 
 
 def p_report(p):
-    '''report : LPAREN structlist acbracket RPAREN '''
+    'report : structlist acbracket'
     try:
-        rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[2]['t'])
+        rel_time = BUILTINS_BY_ENUM[StructType.TD].get(p[1]['t'])
         if rel_time is None or is_undefined(rel_time):
             raise ValueError
     except (KeyError, TypeError, ValueError):
-        raise RuntimeError(f"Invalid or missing report 't' parameter: {p[2]}")
+        raise RuntimeError(f"Invalid or missing report 't' parameter: {p[1]}")
 
     try:
-        source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[2]['s'])
+        source = BUILTINS_BY_ENUM[StructType.OBJECT].get(p[1]['s'])
         if source is None or is_undefined(source):
             raise ValueError
     except (KeyError, TypeError, ValueError):
-        raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
+        raise RuntimeError(f"Invalid or missing report 's' parameter: {p[1]}")
 
-    p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
+    p[0] = Report(rel_time=rel_time.value, source=source, items=p[2])
 
 
 def p_typedlit_single(p):
