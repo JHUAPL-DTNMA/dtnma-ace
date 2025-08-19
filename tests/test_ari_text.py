@@ -174,6 +174,13 @@ class TestAriText(unittest.TestCase):
             ])
         ),
         (
+            'ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)',
+            ExecutionSet(nonce=LiteralARI(None), targets=[
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
+            ])
+        ),
+        (
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
@@ -202,6 +209,29 @@ class TestAriText(unittest.TestCase):
                             LiteralARI(None)
                         ]
                     )
+                ]
+            )
+        ),
+        (
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
+            ReportSet(
+                nonce=LiteralARI(None),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                reports=[
+                    Report(
+                        rel_time=numpy.timedelta64(0, 's'),
+                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+                        items=[
+                            LiteralARI(None)
+                        ]
+                    ),
+                    Report(
+                        rel_time=numpy.timedelta64(1, 's'),
+                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
+                        items=[
+                            UNDEFINED
+                        ]
+                    ),
                 ]
             )
         ),
