@@ -174,6 +174,10 @@ class TestAriText(unittest.TestCase):
             ])
         ),
         (
+            'ari:/EXECSET/n=null;()',
+            ExecutionSet(nonce=LiteralARI(None), targets=[])
+        ),
+        (
             'ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)',
             ExecutionSet(nonce=LiteralARI(None), targets=[
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
