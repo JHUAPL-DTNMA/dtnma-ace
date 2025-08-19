@@ -197,19 +197,8 @@ class Encoder:
                     'n': obj.value.nonce,
                     'r': LiteralARI(obj.value.ref_time, StructType.TP),
                 }
-
                 self._encode_struct(buf, params)
-
-                first = True
-                for part in obj.value.reports:
-                    if not first:
-                        pass  # buf.write(',')
-                    first = False
-                    buf.write('(')
-                    self._encode_obj(buf, part)
-                    buf.write(')')
-
-                # self._encode_list(buf, obj.value.reports)
+                self._encode_list(buf, obj.value.reports)
             else:
                 if isinstance(obj.value, int) and not isinstance(obj.value, bool):
                     sign = "-" if obj.value < 0 else ""
