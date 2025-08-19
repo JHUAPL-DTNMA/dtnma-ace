@@ -241,24 +241,23 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         enc = ari_text.Encoder()
         for row in self.LITERAL_TEXTS:
-            with self.subTest(f'{row}'):
-                if len(row) == 2:
-                    text, val = row
-                    exp_loop = text
-                elif len(row) == 3:
-                    text, val, exp_loop = row
-                else:
-                    raise ValueError
-                LOGGER.info('Testing text: %s', text)
+            if len(row) == 2:
+                text, val = row
+                exp_loop = text
+            elif len(row) == 3:
+                text, val, exp_loop = row
+            else:
+                raise ValueError
 
+            with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.debug('Got ARI %s', ari)
                 self.assertIsInstance(ari, LiteralARI)
                 self.assertEqualWithNan(ari.value, val)
 
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.debug('Got text: %s', loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), exp_loop)
 
