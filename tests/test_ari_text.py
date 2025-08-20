@@ -761,17 +761,16 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL32/0.0", 0.0),
             ("ari:/REAL32/-0.", 0.0),
             ("ari:/REAL32/0.255", 0.255),
-            # madeline - fix all FIXMEs below for ACE #14
-            #("ari:/REAL32/0xF.0", 15.0),
+            #("ari:/REAL32/0xF.0", 15.0), #TODO: Remove because no p exponent?
             ("ari:/REAL32/0xFp0", 15.0),
             ("ari:/REAL32/0xF.0p0", 15.0),
-            #("ari:/REAL32/0xF.", 15.0),
-            #("ari:/REAL32/0xfF", 255.0),
-            # FIXME: ("ari:/REAL32/0xfF.ff", 255.255),
-            # FIXME: ("ari:/REAL32/0xfF.ffp0", 255.255),
-            # FIXME: ("ari:/REAL32/0xfF.ffp+0", 255.255),
-            # FIXME: ("ari:/REAL32/0x1.b8p+6", 1.1e2),
-            # FIXME: ("ari:/REAL32/0x1p+6", 64),
+            #("ari:/REAL32/0xF.", 15.0), #TODO: Remove?
+            #("ari:/REAL32/0xfF", 255.0), #TODO: Remove?
+            #("ari:/REAL32/0xfF.ff", 255.99609375), #TODO: Remove?
+            ("ari:/REAL32/0xfF.ffp0", 255.99609375),
+            ("ari:/REAL32/0xfF.ffp+0", 255.99609375),
+            ("ari:/REAL32/0x1.b8p+6", 1.1e2),
+            ("ari:/REAL32/0x1p+6", 64),
         ]
 
         dec = ari_text.Decoder()

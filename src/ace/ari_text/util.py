@@ -95,7 +95,7 @@ def t_float(found):
 
 
 # float as hex-encoded IEEE-754 binary
-@TypeMatch.apply(r'[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-][0-9a-fA-F]+)')
+@TypeMatch.apply(r'[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-]?[0-9a-fA-F]+)')
 def t_floathex(found):
     return float.fromhex(found[0])
 
