@@ -89,7 +89,7 @@ class TestAdmSet(unittest.TestCase):
         # cached state
         with self.assertLogs('ace.adm_set', logging.DEBUG) as logs:
             self.assertEqual(1, adms.load_from_dirs([adms_path]))
-            self.assertTrue([ent for ent in logs.output if 'Skipping file' in ent], msg=logs.output)
+        self.assertTrue([ent for ent in logs.output if 'Skipping file' in ent], msg=logs.output)
         self.assertEqual(1, len(adms))
 
         # updated file
@@ -114,10 +114,10 @@ class TestAdmSet(unittest.TestCase):
         shutil.copy(os.path.join(SELFDIR, 'example-adm-minimal.yang'), adms_path)
         with self.assertLogs(level=logging.WARNING) as logs:
             self.assertEqual(1, adms.load_default_dirs())
-            self.assertEqual(
-                [],
-                self._filter_logs(logs.output)
-            )
+        self.assertEqual(
+            [],
+            self._filter_logs(logs.output)
+        )
         self.assertEqual(1, len(adms))
         self.assertIn('example-adm-minimal', adms)
         self.assertIsInstance(adms['example-adm-minimal'], AdmModule)
