@@ -761,12 +761,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL32/0.0", 0.0),
             ("ari:/REAL32/-0.", 0.0),
             ("ari:/REAL32/0.255", 0.255),
-            #("ari:/REAL32/0xF.0", 15.0), #TODO: Remove because no p exponent?
             ("ari:/REAL32/0xFp0", 15.0),
             ("ari:/REAL32/0xF.0p0", 15.0),
-            #("ari:/REAL32/0xF.", 15.0), #TODO: Remove?
-            #("ari:/REAL32/0xfF", 255.0), #TODO: Remove?
-            #("ari:/REAL32/0xfF.ff", 255.99609375), #TODO: Remove?
             ("ari:/REAL32/0xfF.ffp0", 255.99609375),
             ("ari:/REAL32/0xfF.ffp+0", 255.99609375),
             ("ari:/REAL32/0x1.b8p+6", 1.1e2),
@@ -787,14 +783,10 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL64/0.0", 0.0),
             ("ari:/REAL64/-0.", 0.0),
             ("ari:/REAL64/0.255", 0.255),
-            # FIXME: ("ari:/REAL64/0xF", 15.0),
-            # FIXME: ("ari:/REAL64/0xF.", 15.0),
-            # FIXME: ("ari:/REAL64/0xfF", 255.0),
-            # FIXME: ("ari:/REAL64/0xfF.ff", 255.255),
-            # FIXME: ("ari:/REAL64/0xfF.ffp0", 255.255),
-            # FIXME: ("ari:/REAL64/0xfF.ffp+0", 255.255),
-            # FIXME: ("ari:/REAL64/0x1.b8p+6", 1.1e2),
-            # FIXME: ("ari:/REAL64/0x1p+6", 64),
+            ("ari:/REAL64/0xfF.ffp0", 255.99609375),
+            ("ari:/REAL64/0xfF.ffp+0", 255.99609375),
+            ("ari:/REAL64/0x1.b8p+6", 1.1e2),
+            ("ari:/REAL64/0x1p+6", 64),
             ("ari:/REAL64/-3.40282347E+38", -3.40282347E+38),
             ("ari:/REAL64/3.40282347E+38", 3.40282347e38),
         ]
@@ -1397,6 +1389,10 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL32/0"),
             ("ari:/REAL32/-3.40282347E+38"),
             ("ari:/REAL32/3.40282347E+38"),
+            ("ari:/REAL32/0xF.0"), # no p exponent
+            ("ari:/REAL32/0xF."),
+            ("ari:/REAL32/0xfF"),
+            ("ari:/REAL32/0xfF.ff"),
             ("ari:/EXECSET/N=1234;"),  # no targets
             ("ari:/RPTSET/n=null;r=725943845;"),  # no reports
         ]
