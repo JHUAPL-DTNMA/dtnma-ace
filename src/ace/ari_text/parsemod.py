@@ -205,42 +205,6 @@ def p_typedlit_single(p):
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
 
-# the following commented-out function is the new version of 
-# p_typedlit_single() that makes some of the REAL32 cases in 
-# test_ari_text_decode_lit_typed_float32() pass but not all
-'''def p_typedlit_single(p):
-    'typedlit : SLASH VALSEG SLASH VALSEG'
-    try:
-        typ = util.get_structtype(p[2])
-    except Exception as err:
-        LOGGER.error('Literal value type invalid: %s', err)
-        raise RuntimeError(err) from err
-    
-    # Extract the literal value without the leading 'ari:/REAL32/'
-    raw_value = p[4]
-    
-    try:
-        # Handle hexadecimal floating-point literals
-        if raw_value.startswith(('0x')):
-            value = float.fromhex(raw_value)
-        else:
-            value = float(raw_value)
-            
-        if isinstance(typ, float):
-            value = struct.unpack('>f', struct.pack('>f', value))[0]
-            
-        p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(
-            type_id=typ,
-            value=value
-        ))
-        
-    except ValueError as err:
-        LOGGER.error('Failed to parse hexadecimal float: %s', err)
-        raise RuntimeError(f"Invalid float value: {raw_value}") from err
-    except Exception as err:
-        LOGGER.error('Literal type mismatch: %s', err)
-        raise RuntimeError(err) from err'''
-
 
 def p_ssp_objref_noparams(p):
     'ssp : objpath'
