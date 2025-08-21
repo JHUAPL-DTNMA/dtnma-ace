@@ -174,7 +174,7 @@ class TestAriText(unittest.TestCase):
             ])
         ),
         (
-            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -190,7 +190,7 @@ class TestAriText(unittest.TestCase):
             )
         ),
         (
-            'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/other;(null))',
+            'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/other;(null))',
             ReportSet(
                 nonce=LiteralARI(1234),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
@@ -319,9 +319,9 @@ class TestAriText(unittest.TestCase):
         ('/LABEL/hi', '/LABEL/\'hi\'', '/LABEL/%22hi%22'),
         ('ari://example/ns/EDD/hello', 'ari://example/ns/EDD/hello(('),
         ('ari:./EDD/hello', 'ari://./EDD/hello', 'ari:/./EDD/hello'),
-        ('ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
-         'ari:/RPTSET/n=null;r=20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
-         'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=PT;s=//example/adm/CTRL/name;(null))'),
+        ('ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
+         'ari:/RPTSET/n=null;r=20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
+         'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=PT0S;s=//example/adm/CTRL/name;(null))'),
     ]
     ''' Valid ARI followed by invalid variations '''
 
@@ -1043,10 +1043,10 @@ class TestAriText(unittest.TestCase):
             ("ari:/RPTSET/n=1234;r=725943845;(t=0;s=//example/test/CTRL/hi;())", 1),  # ARI_PRIM_INT64, 1),
             ("ari:/RPTSET/n=1234;r=725943845;(t=0.0;s=//example/test/CTRL/hi;())", 1),  # ARI_PRIM_INT64, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", 1),
-            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
-            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
-            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
-            # FIXME: ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())(t=/TD/1;s=//example/test/CTRL/eh;())", 2), #ARI_PRIM_BSTR, 2),
+            ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//example/test/CTRL/hi;())", 1), #, ARI_PRIM_INT64, 1),
+            ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())(t=/TD/1;s=//example/test/CTRL/eh;())", 2), #ARI_PRIM_BSTR, 2),
         ]
 
         dec = ari_text.Decoder()
@@ -1241,8 +1241,8 @@ class TestAriText(unittest.TestCase):
             ("ari:/EXECSET/n=null;()"),
             ("ari:/EXECSET/n=1234;(//example/test/CTRL/hi)"),
             # FIXME: ("ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)"),
-            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
-            # FIXME: ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
+            ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/PT0S;s=//example/test/CTRL/hi;(null,3,h'6869'))"),
             ("ari://example/test/CONST/that"),
             ("ari://example/test@2025-01-01/CONST/that"),
             ("ari://example/!test/CONST/that"),

@@ -53,12 +53,17 @@ TP_TRANS = str.maketrans({'-': '', ':': ''})
 
 def encode_datetime(value):
     text = str(value).translate(TP_TRANS)
-    text = text.rstrip('0').rstrip('.')
+    text = text.split('.')
+    if len(text) > 1:
+        text[1] = text[1].rstrip('0')
+    text = '.'.join(text).rstrip('.')
     text += 'Z'
     return text
 
 
 def encode_timedelta(value):
+    if value == 0:
+        return 'PT0S'
     neg = value < 0
     diff = -value if neg else value
 
