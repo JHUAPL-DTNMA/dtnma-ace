@@ -57,7 +57,6 @@ def p_ari_noscheme(p):
 
 # The following are untyped literals with primitive values
 
-
 def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
@@ -182,7 +181,6 @@ def p_report(p):
 
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
 
-
 def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
@@ -260,7 +258,6 @@ def p_objpath_only_ns(p):
 
 def p_objpath_with_ns(p):
     'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
-
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
 

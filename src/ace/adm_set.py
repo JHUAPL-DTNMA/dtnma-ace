@@ -30,7 +30,11 @@ from typing import BinaryIO, List, Set, Union
 from pyang.repository import Repository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-import xdg_base_dirs
+try:
+    import xdg_base_dirs
+except ImportError:
+    # older compatibility
+    import xdg as xdg_base_dirs
 from ace import models, adm_yang
 
 LOGGER = logging.getLogger(__name__)
