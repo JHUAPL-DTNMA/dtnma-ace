@@ -61,12 +61,19 @@ def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
         value = util.PRIMITIVE(p[1])
+        
+        # Add validation for 64-bit signed integer range
+        min_int64 = -0x8000000000000000
+        max_int64 = 0x7FFFFFFFFFFFFFFF
+        
+        if not min_int64 <= value <= max_int64:
+            raise ari_text.ParseError(f"Value {value} is outside valid 64-bit integer range [{min_int64}, {max_int64}]")
+            
     except Exception as err:
         LOGGER.error('Primitive value invalid: %s', err)
-        raise RuntimeError(err) from err
-    p[0] = LiteralARI(
-        value=value,
-    )
+        raise ari_text.ParseError(f'Invalid primitive value: {err}') from err
+    
+    p[0] = LiteralARI(value=value)
 
 
 def p_ssp_typedlit(p):

@@ -1337,8 +1337,11 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_failure(self):
         TEST_CASE = [
-            # FIXME: ("-0x8FFFFFFFFFFFFFFF"),
-            # FIXME: ("-0x1FFFFFFFFFFFFFFFF"),
+            # madeline - fix for ACE #21
+            # Both are less than -0x8000000000000000 which
+            # is the minimum value for a 64-bit integer
+            ("-0x8FFFFFFFFFFFFFFF"),
+            ("-0x1FFFFFFFFFFFFFFFF"),
             ("ari:/OTHERNAME/0"),
             ("ari:/UNDEFINED/undefined"),
             ("ari:/NULL/fae"),
