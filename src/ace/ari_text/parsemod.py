@@ -56,8 +56,17 @@ def p_ari_noscheme(p):
     p[0] = p[1]
 
 # The following are untyped literals with primitive values
-
 def p_ssp_primitive(p):
+    'ssp : VALSEG'
+    try:
+        value = util.PRIMITIVE(p[1])
+    except Exception as err:
+        LOGGER.error('Primitive value invalid: %s', err)
+        raise RuntimeError(err) from err
+    p[0] = LiteralARI(
+        value=value,
+    )
+'''def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
         value = util.PRIMITIVE(p[1])
@@ -73,7 +82,7 @@ def p_ssp_primitive(p):
         LOGGER.error('Primitive value invalid: %s', err)
         raise RuntimeError(err) from err
     
-    p[0] = LiteralARI(value=value)
+    p[0] = LiteralARI(value=value)'''
 
 
 def p_ssp_typedlit(p):

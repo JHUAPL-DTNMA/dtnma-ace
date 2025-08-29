@@ -101,9 +101,23 @@ def t_floathex(found):
 
 
 # int is decimal, binary, or hexadecimal
-@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
+'''@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
-    return int(found[0], 0)
+    return int(found[0], 0)'''
+@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0xX][0-9a-fA-F]+|\d+)')  # Fixed regex pattern
+def t_int(found):
+    num_str = found[0] # Parse the number first
+    
+    # Convert to integer using base 0 for automatic base detection
+    parsed_num = int(num_str, 0)
+    
+    lower_bound = -(2 ** 63)
+    upper_bound = 2 ** 64 - 1
+    
+    if not lower_bound <= parsed_num <= upper_bound:
+        raise ValueError(f"Integer value {parsed_num} is outside valid range [{lower_bound}, {upper_bound}]")
+    
+    return parsed_num
 
 
 @TypeMatch.apply(r'!?[a-zA-Z_][a-zA-Z0-9_\-\.]*')
