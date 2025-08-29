@@ -104,12 +104,21 @@ def t_floathex(found):
 '''@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
     return int(found[0], 0)'''
-@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0xX][0-9a-fA-F]+|\d+)')  # Fixed regex pattern
+@TypeMatch.apply(r'[+-]?((\d+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+))')
 def t_int(found):
-    num_str = found[0] # Parse the number first
+    num_str = found[0]
     
-    # Convert to integer using base 0 for automatic base detection
-    parsed_num = int(num_str, 0)
+    # Determine base based on prefix
+    if num_str.lower().startswith(('0b','+0b')):
+        base = 2
+    elif num_str.lower().startswith(('0x','-0x')):
+        base = 16
+    elif num_str.lower().startswith(('+0X10')):
+        base = 10
+    else:
+        base = 10
+    
+    parsed_num = int(num_str, base)
     
     lower_bound = -(2 ** 63)
     upper_bound = 2 ** 64 - 1
