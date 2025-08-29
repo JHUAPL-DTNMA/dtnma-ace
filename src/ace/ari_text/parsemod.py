@@ -71,7 +71,7 @@ def p_ssp_primitive(p):
             
     except Exception as err:
         LOGGER.error('Primitive value invalid: %s', err)
-        raise ari_text.ParseError(f'Invalid primitive value: {err}') from err
+        raise RuntimeError(err) from err
     
     p[0] = LiteralARI(value=value)
 
