@@ -103,8 +103,11 @@ def t_floathex(found):
 # int is decimal, binary, or hexadecimal
 '''@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
-    return int(found[0], 0)'''
-@TypeMatch.apply(r'[+-]?((\d+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+))')
+    return int(found[0], 0)
+#@TypeMatch.apply(r'[+-]?((\d+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+))')
+
+@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
+#@TypeMatch.apply(r'[+-]?((\d+)|(0[xX][0-9a-fA-F]+)|(0[bB][01]+))')
 def t_int(found):
     num_str = found[0]
     
@@ -113,8 +116,6 @@ def t_int(found):
         base = 2
     elif num_str.lower().startswith(('0x','-0x')):
         base = 16
-    elif num_str.lower().startswith(('+0X10')):
-        base = 10
     else:
         base = 10
     
@@ -123,6 +124,31 @@ def t_int(found):
     lower_bound = -(2 ** 63)
     upper_bound = 2 ** 64 - 1
     
+    if not lower_bound <= parsed_num <= upper_bound:
+        raise ValueError(f"Integer value {parsed_num} is outside valid range [{lower_bound}, {upper_bound}]")
+    
+    return parsed_num'''
+@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
+def t_int(found):
+    num_str = found[0]
+    # Remove leading '+' or '-' sign if present (only for hex numbers)
+    if num_str.lower().startswith(('0x', '+0x', '-0x')):
+        num_str = '0x' + num_str[2:]
+    elif num_str.lower().startswith(('0b', '+0b', '-0b')):
+        num_str = '0b' + num_str[2:]
+    
+    # Determine base based on prefix
+    if num_str.lower().startswith(('0b')):
+        base = 2
+    elif num_str.lower().startswith(('0x')):
+        base = 16
+    else:
+        base = 10
+    
+    parsed_num = int(num_str, base)
+    
+    lower_bound = -(2 ** 63)
+    upper_bound = 2 ** 64 - 1
     if not lower_bound <= parsed_num <= upper_bound:
         raise ValueError(f"Integer value {parsed_num} is outside valid range [{lower_bound}, {upper_bound}]")
     
