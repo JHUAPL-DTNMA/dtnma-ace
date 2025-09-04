@@ -28,7 +28,7 @@ import numpy
 from typing import BinaryIO
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, ARI, Identity, ReferenceARI, LiteralARI, StructType,
+    DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
 from ace.typing import BUILTINS_BY_ENUM, NONCE
@@ -197,7 +197,12 @@ class Decoder:
                 reports=rpts
             )
         else:
+            # any other type or untyped primitive value
             value = item
+            if isinstance(value, int):
+                if not value in INT_ENVELOPE:
+                    raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
+
         return value
 
     def _item_to_timeval(self, item) -> numpy.timedelta64:

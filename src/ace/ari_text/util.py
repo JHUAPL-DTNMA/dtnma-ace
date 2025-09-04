@@ -29,7 +29,7 @@ import re
 from typing import List
 import numpy
 import cbor_diag
-from ace.ari import UNDEFINED, StructType
+from ace.ari import INT_ENVELOPE, UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -105,11 +105,9 @@ def t_floathex(found):
 def t_int(found):
     value = int(found[0], 0)
 
-    lower_bound = -(2 ** 63)
-    upper_bound = 2 ** 64 - 1
-    if not lower_bound <= value <= upper_bound:
-        raise ValueError(f"Integer value {value} is outside valid range [{lower_bound}, {upper_bound}]")
-    
+    if not value in INT_ENVELOPE:
+        raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
+
     return value
 
 
