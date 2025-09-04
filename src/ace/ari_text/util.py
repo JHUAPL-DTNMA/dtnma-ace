@@ -29,7 +29,7 @@ import re
 from typing import List
 import numpy
 import cbor_diag
-from ace.ari import UNDEFINED, StructType
+from ace.ari import INT_ENVELOPE, UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -103,7 +103,12 @@ def t_floathex(found):
 # int is decimal, binary, or hexadecimal
 @TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
-    return int(found[0], 0)
+    value = int(found[0], 0)
+
+    if not value in INT_ENVELOPE:
+        raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
+
+    return value
 
 
 @TypeMatch.apply(r'!?[a-zA-Z_][a-zA-Z0-9_\-\.]*')

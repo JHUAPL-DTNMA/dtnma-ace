@@ -27,12 +27,16 @@ import datetime
 from dataclasses import dataclass
 import enum
 import math
+import portion
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
 
 DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
 ''' Reference for absolute time points '''
+
+INT_ENVELOPE = portion.closedopen(-(2 ** 63), 2 ** 64)
+''' Envelope for union of all valid integer types '''
 
 
 def _is_nan(val) -> bool:
