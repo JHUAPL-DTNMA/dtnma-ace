@@ -31,4 +31,4 @@ SELFDIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 cd ${SELFDIR}
 
 # Python source and test fixtures
-autopep8 --max-line-length=160 -ir src tests
+autopep8 -ir src tests
