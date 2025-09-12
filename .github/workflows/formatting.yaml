@@ -66,5 +66,4 @@ jobs:
       - name: Prep
         run: pip3 install -e '.[flake8]'
       - name: Run flake8
-        run: flake8 src
-
+        run: flake8 src tests

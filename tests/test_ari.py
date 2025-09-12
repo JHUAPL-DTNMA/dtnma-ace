@@ -23,12 +23,9 @@
 ''' Verify behavior of the ace.ari module.
 '''
 import logging
-import math
 import unittest
-import numpy
 from ace.ari import (
-    ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report
+    ARI, Identity, ReferenceARI, LiteralARI, StructType,
 )
 
 LOGGER = logging.getLogger(__name__)

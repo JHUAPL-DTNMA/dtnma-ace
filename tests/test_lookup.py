@@ -127,7 +127,7 @@ class TestActualParameterSet(unittest.TestCase):
 
     def catch_error(self, ari, etype=lookup.ParameterError):
         with self.assertRaises(etype):
-            aparams = self._process(ari)
+            self._process(ari)
 
     def test_params_error(self):
         # too many

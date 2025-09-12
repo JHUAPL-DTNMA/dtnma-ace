@@ -33,7 +33,6 @@ from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
 from typing import List
 from ace import adm_yang, ari, ari_text, models, lookup
-from ace.ari import ReferenceARI, LiteralARI, StructType, Identity
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
@@ -907,6 +906,7 @@ class TestAdmContents(BaseYang):
                 self._db_sess.commit()
 
                 typedef = adm.typedef[0]
+
                 def action(): return lookup.TypeResolver().resolve(typedef.typeobj, adm)
 
                 if valid:
@@ -1286,7 +1286,7 @@ class TestAdmContents(BaseYang):
           amm:period "/TD/PT30S";
         }
       ''')
-        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING):
             adm = self._adm_dec.decode(buf)
         # Build expected ARI structure
         expected_ari = ari.LiteralARI(

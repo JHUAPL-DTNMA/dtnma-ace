@@ -118,6 +118,7 @@ class TestConstraintsBasic(BaseTest):
             model_name='myadm',
             model_enum=200,
         )
+        self.assertIsInstance(adm_a, models.AdmModule)
 
         adm_b = self._add_mod(
             abs_file_path='dir-b/example-myadm.yang',
@@ -126,6 +127,7 @@ class TestConstraintsBasic(BaseTest):
             model_name='myadm',
             model_enum=201,
         )
+        self.assertIsInstance(adm_b, models.AdmModule)
         self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
