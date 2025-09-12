@@ -399,7 +399,7 @@ class AdmSet:
         import_names = [obj.name for obj in adm_new.imports]
         pending = False
         for module_name in import_names:
-            if not module_name in self:
+            if module_name not in self:
                 pending = True
                 break
 

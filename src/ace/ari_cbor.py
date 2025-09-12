@@ -31,8 +31,7 @@ from ace.ari import (
     DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report
 )
-from ace.typing import BUILTINS_BY_ENUM, NONCE
-from ace.cborutil import to_diag
+from ace.typing import NONCE
 
 LOGGER = logging.getLogger(__name__)
 
@@ -79,7 +78,7 @@ class Decoder:
                     model_rev = None
 
                 for item_idx in (0, 1, idx, idx + 1):
-                    if not (item[item_idx] == None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
+                    if not (item[item_idx] is None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
                         raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
 
                 ident = Identity(
@@ -143,7 +142,7 @@ class Decoder:
             item_it = iter(item)
 
             ncol = next(item_it, None)
-            if ncol == None:
+            if ncol is None:
                 raise ParseError(f'No column number provided for TBL: {item}')
             elif not isinstance(ncol, int):
                 raise ParseError(f'Invalid column provided for TBL: {ncol}')
@@ -200,7 +199,7 @@ class Decoder:
             # any other type or untyped primitive value
             value = item
             if isinstance(value, int):
-                if not value in INT_ENVELOPE:
+                if value not in INT_ENVELOPE:
                     raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
 
         return value
@@ -212,7 +211,7 @@ class Decoder:
         elif isinstance(item, list):
             exp, mant = map(int, item)
             if exp < -9 or exp > 9:
-                raise ValueError(f'Decimal fraction exponent outside valid range [-9,9]')
+                raise ValueError('Decimal fraction exponent outside valid range [-9,9]')
             total_nsec = mant * 10 ** (exp + 9)
             return numpy.timedelta64(total_nsec, 'ns')
         else:

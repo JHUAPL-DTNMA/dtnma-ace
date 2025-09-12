@@ -22,7 +22,7 @@
 #
 from dataclasses import dataclass
 import re
-from typing import List, Optional, Set, Dict, Iterator, Union
+from typing import Optional, Set, Dict
 import cbor2
 from portion import Interval
 from sqlalchemy.orm.session import object_session
@@ -162,7 +162,7 @@ class CborCddl(Constraint):
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, bytes):
             try:
-                item = cbor2.loads(obj.value)
+                cbor2.loads(obj.value)
             except cbor2.CBORDecodeError:
                 return False
             return True  # FIXME: interpret CDDL

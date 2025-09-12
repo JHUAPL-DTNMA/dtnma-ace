@@ -100,7 +100,7 @@ def can_unquote(text):
     try:
         SINGLETONS(text)
         return False
-    except:
+    except ValueError:
         pass
     return t_identity.regex.fullmatch(text) is not None
 

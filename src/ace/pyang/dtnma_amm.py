@@ -609,7 +609,7 @@ class AriChecker:
         try:
             self._dec.decode(buf)
             return True
-        except:
+        except Exception:
             return False
 
 

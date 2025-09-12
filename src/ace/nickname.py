@@ -25,7 +25,6 @@
 import enum
 import logging
 from sqlalchemy.orm.session import Session
-from ace import models
 from ace.ari import ARI, ReferenceARI, Identity
 from ace.lookup import find_adm, dereference
 

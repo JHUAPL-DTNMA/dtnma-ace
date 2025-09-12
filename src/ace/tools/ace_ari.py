@@ -32,7 +32,6 @@ and each item is handled as a separate ARI.
 import argparse
 import io
 import logging
-import os
 import sys
 from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
 

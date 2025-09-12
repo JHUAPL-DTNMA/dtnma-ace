@@ -22,12 +22,10 @@
 #
 ''' Basic constraints enforced from the ADM definitions.
 '''
-import io
 import logging
 import os
 from sqlalchemy import inspect, orm, func
-from ace import models, ari, ari_text
-from ace.typing import TypeUse
+from ace import models, ari
 from ace.lookup import dereference, TypeResolver, TypeResolverError
 from .core import register, Issue
 

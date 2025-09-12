@@ -105,7 +105,7 @@ def t_floathex(found):
 def t_int(found):
     value = int(found[0], 0)
 
-    if not value in INT_ENVELOPE:
+    if value not in INT_ENVELOPE:
         raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
 
     return value

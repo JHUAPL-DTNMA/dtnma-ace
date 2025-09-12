@@ -30,7 +30,6 @@ from typing import List
 import pyang
 from pyang.context import Context
 from pyang.statements import Statement
-from pyang.error import err_add
 try:
     from ace.adm_yang import AriTextDecoder, TypingDecoder
     from ace.ari_text import Encoder as AriEncoder
@@ -137,7 +136,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
                         for base in baselist:
                             self._emit_line(outfile, f'Base {base.arg}')
                         if not baselist:
-                            self._emit_line(outfile, f'No base objects')
+                            self._emit_line(outfile, 'No base objects')
 
                         absstmt = obj.search((MODULE_NAME, 'abstract'), children=obj.i_children)
                         is_abstract = bool(absstmt.arg) if absstmt else False

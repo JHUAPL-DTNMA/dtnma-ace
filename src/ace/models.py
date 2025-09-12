@@ -27,11 +27,9 @@ from sqlalchemy import (
     Text, PickleType
 )
 from sqlalchemy.orm import (
-    declarative_base, relationship, declared_attr, Mapped
+    declarative_base, declarative_mixin, relationship, declared_attr, Mapped
 )
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import declarative_mixin, declared_attr
 
 CURRENT_SCHEMA_VERSION = 23
 ''' Value of :attr:`SchemaVersion.version_num` '''
