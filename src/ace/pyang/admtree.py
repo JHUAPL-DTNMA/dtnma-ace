@@ -89,13 +89,13 @@ class AdmTree(pyang.plugin.PyangPlugin):
         g = optparser.add_option_group("ADM tree specific options")
         g.add_options(optlist)
 
-    def setup_fmt(self, ctx:Context):
+    def setup_fmt(self, ctx: Context):
         return pyang.plugin.PyangPlugin.setup_fmt(self, ctx)
 
-    def post_validate(self, ctx:Context, modules):
+    def post_validate(self, ctx: Context, modules):
         return pyang.plugin.PyangPlugin.post_validate(self, ctx, modules)
 
-    def emit(self, ctx:Context, modules:List[Statement], outfile):
+    def emit(self, ctx: Context, modules: List[Statement], outfile):
         self._prefix = ''
 
         for module in modules:
@@ -175,7 +175,7 @@ class AdmTree(pyang.plugin.PyangPlugin):
         featurestr = f'{{{feature.arg}}}?' if feature else ''
         outfile.write(f'{start:<59} {typestr or "":<19} {featurestr}\n')
 
-    def _get_status_str(self, obj:Statement):
+    def _get_status_str(self, obj: Statement):
         status = obj.search_one('status')
         if status is None or status.arg == 'current':
             return '+'
@@ -184,9 +184,9 @@ class AdmTree(pyang.plugin.PyangPlugin):
         elif status.arg == 'obsolete':
             return 'o'
 
-    def _get_type(self, ctx:Context, parent:Statement) -> str:
+    def _get_type(self, ctx: Context, parent: Statement) -> str:
         if TypingDecoder is None:
-            return "(need ACE)";
+            return "(need ACE)"
 
         ari_dec = AriTextDecoder()
         type_dec = TypingDecoder(ari_dec)

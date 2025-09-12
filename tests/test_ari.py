@@ -40,14 +40,14 @@ class Counter:
         self.count = 0
         self.seen = []
 
-    def __call__(self, ari:ARI) -> None:
+    def __call__(self, ari: ARI) -> None:
         self.count += 1
         self.seen.append(ari)
 
 
 class IdentityMapper:
 
-    def __call__(self, ari:ARI) -> ARI:
+    def __call__(self, ari: ARI) -> ARI:
         return ari
 
 

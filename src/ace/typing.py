@@ -38,7 +38,7 @@ import struct
 LOGGER = logging.getLogger(__name__)
 
 
-def get_amm_ident(model_id:str, obj_id:str) -> Identity:
+def get_amm_ident(model_id: str, obj_id: str) -> Identity:
     ''' Get an IDENT in the ietf-amm model. '''
     return Identity(org_id='ietf', model_id=model_id, type_id=StructType.IDENT, obj_id=obj_id)
 
@@ -52,7 +52,7 @@ class Constraint:
         '''
         raise NotImplementedError
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         ''' Determine if a specific AMM value meets this constraint.
         '''
         raise NotImplementedError
@@ -88,10 +88,10 @@ class BaseType:
         '''
         raise NotImplementedError()
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         raise NotImplementedError()
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         ''' Force a literal conversion to this target type.
 
         :param obj: The input ARI.
@@ -101,7 +101,7 @@ class BaseType:
         '''
         raise NotImplementedError()
 
-    def simplify(self, obj:ARI) -> ARI:
+    def simplify(self, obj: ARI) -> ARI:
         ''' Perform type simplification to avoid duplicate literal typing.
 
         The base type returns itself.
@@ -118,7 +118,7 @@ class BuiltInType(BaseType):
     :param type_id: The :cls:`StructType` value related to the instance.
     '''
 
-    def __init__(self, type_id:StructType):
+    def __init__(self, type_id: StructType):
         self.type_id = type_id
 
     def __repr__(self):
@@ -139,7 +139,7 @@ class NullType(BuiltInType):
     def __init__(self):
         super().__init__(StructType.NULL)
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -148,7 +148,7 @@ class NullType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         return NULL
@@ -159,7 +159,7 @@ class BoolType(BuiltInType):
     def __init__(self):
         super().__init__(StructType.BOOL)
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -168,7 +168,7 @@ class BoolType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -198,7 +198,7 @@ class NumericType(BuiltInType):
         self.dom_min = dom_min
         self.dom_max = dom_max
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
@@ -209,7 +209,7 @@ class NumericType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -251,7 +251,7 @@ class StringType(BuiltInType):
     }
     ''' Required value type for target string type. '''
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -262,7 +262,7 @@ class StringType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -289,7 +289,7 @@ class TimeType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -300,7 +300,7 @@ class TimeType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -343,7 +343,7 @@ class ContainerType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -354,7 +354,7 @@ class ContainerType(BuiltInType):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -376,14 +376,14 @@ class ObjRefType(BuiltInType):
     def __init__(self, type_id=None):
         super().__init__(type_id)
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if not isinstance(obj, ReferenceARI):
             return None
         if self.type_id is not None and obj.ident.type_id != self.type_id:
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ReferenceARI):
@@ -404,21 +404,21 @@ class AnyType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not self._match(obj):
             return None
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not self._match(obj):
             raise TypeError(f'Cannot convert type: {obj}')
         return obj
 
-    def _match(self, obj:ARI) -> bool:
+    def _match(self, obj: ARI) -> bool:
         typ = self.VALUE_CLS[self.type_id]
         if not isinstance(obj, typ):
             return False
@@ -450,8 +450,8 @@ LITERALS = {
     'uvast': NumericType(StructType.UVAST, 0, 2 ** 64 - 1),
     # from: numpy.finfo(numpy.float32).max
     'real32': NumericType(StructType.REAL32,
-                         struct.unpack('!f', bytes.fromhex('ff7fffff'))[0],
-                         struct.unpack('!f', bytes.fromhex('7f7fffff'))[0]),
+                          struct.unpack('!f', bytes.fromhex('ff7fffff'))[0],
+                          struct.unpack('!f', bytes.fromhex('7f7fffff'))[0]),
     # from: numpy.finfo(numpy.float32).max
     'real64': NumericType(StructType.REAL64,
                           struct.unpack('!d', bytes.fromhex('ffefffffffffffff'))[0],
@@ -507,19 +507,19 @@ class SemType(BaseType):
 class TypeUse(SemType):
     ''' Use of and optional restriction on an other type. '''
 
-    type_text:str = None
+    type_text: str = None
     ''' Original text name of the type being used. '''
 
-    type_ari:ARI = None
+    type_ari: ARI = None
     ''' Absolute ARI for the :ivar:`base` type to bind to. '''
 
-    base:Optional[BaseType] = None
+    base: Optional[BaseType] = None
     ''' The bound type being used. '''
 
-    units:Optional[str] = None
+    units: Optional[str] = None
     ''' Optional unit name for this use. '''
 
-    constraints:List[Constraint] = field(default_factory=list)
+    constraints: List[Constraint] = field(default_factory=list)
     ''' Optional value constraints on this use. '''
 
     def children(self) -> List['BaseType']:
@@ -539,7 +539,7 @@ class TypeUse(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         # extract the value before checks
         got = self.base.get(obj)
         if got is not None:
@@ -550,7 +550,7 @@ class TypeUse(SemType):
                 return None
         return got
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         got = self.base.convert(obj)
@@ -560,7 +560,7 @@ class TypeUse(SemType):
             raise ValueError(f'TypeUse.convert() invalid constraints: {err}')
         return got
 
-    def _constrain(self, obj:ARI) -> List[str]:
+    def _constrain(self, obj: ARI) -> List[str]:
         ''' Check constraints on a value.
 
         :param obj: The value to check.
@@ -578,7 +578,7 @@ class TypeUse(SemType):
 class TypeUnion(SemType):
     ''' A union of other types. '''
 
-    types:List[SemType] = field(default_factory=list)
+    types: List[SemType] = field(default_factory=list)
     ''' The underlying types, with significant order. '''
 
     def children(self) -> List['BaseType']:
@@ -599,7 +599,7 @@ class TypeUnion(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         for typ in self.types:
             try:
                 got = typ.get(obj)
@@ -609,7 +609,7 @@ class TypeUnion(SemType):
                 return got
         return None
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
 
@@ -631,12 +631,12 @@ class TypeUnion(SemType):
 class UniformList(SemType):
     ''' A list with uniform-typed items. '''
 
-    base:BaseType
+    base: BaseType
     ''' Type for all items. '''
 
-    min_elements:Optional[int] = None
+    min_elements: Optional[int] = None
     ''' Lower limit on the size of the list. '''
-    max_elements:Optional[int] = None
+    max_elements: Optional[int] = None
     ''' Upper limit on the size of the list. '''
 
     def children(self) -> List['BaseType']:
@@ -659,7 +659,7 @@ class UniformList(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -679,7 +679,7 @@ class UniformList(SemType):
 
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -697,7 +697,7 @@ class UniformList(SemType):
         rvalue = list(map(self.base.convert, obj.value))
         return LiteralARI(rvalue, StructType.AC)
 
-    def _constrain(self, obj:ARI) -> List[str]:
+    def _constrain(self, obj: ARI) -> List[str]:
         ''' Check constraints on the list.
         '''
         invalid = []
@@ -716,12 +716,12 @@ class Sequence(SemType):
     The value itself is handled as a List[ARI], not an ARI
     '''
 
-    base:BaseType
+    base: BaseType
     ''' Type restriction within the sequence. '''
 
-    min_elements:Optional[int] = None
+    min_elements: Optional[int] = None
     ''' Lower limit on the size of the sequence. '''
-    max_elements:Optional[int] = None
+    max_elements: Optional[int] = None
     ''' Upper limit on the size of the sequence. '''
 
     def children(self) -> List['BaseType']:
@@ -740,14 +740,14 @@ class Sequence(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         raise NotImplementedError
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         rvalue = list(map(self.base.convert, obj.value))
         return LiteralARI(rvalue, StructType.AC)
 
-    def take(self, remain:List[ARI]) -> List[ARI]:
+    def take(self, remain: List[ARI]) -> List[ARI]:
         ''' Match as many given parameters from a list as allowed.
 
         :param remain: A mutable list to remove matching items from.
@@ -775,7 +775,7 @@ class Sequence(SemType):
 class DiverseList(SemType):
     ''' A list with non-uniform-typed items. '''
 
-    parts:List[BaseType]
+    parts: List[BaseType]
     ''' Type for each item or sequence. '''
 
     def children(self) -> List['BaseType']:
@@ -799,7 +799,7 @@ class DiverseList(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -830,7 +830,7 @@ class DiverseList(SemType):
 
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -867,9 +867,9 @@ class DiverseList(SemType):
 class UniformMap(SemType):
     ''' A map with uniform-typed items. '''
 
-    kbase:Optional[BaseType] = None
+    kbase: Optional[BaseType] = None
     ''' Type for all keys. '''
-    vbase:Optional[BaseType] = None
+    vbase: Optional[BaseType] = None
     ''' Type for all values. '''
 
     def children(self) -> List['BaseType']:
@@ -888,7 +888,7 @@ class UniformMap(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -904,7 +904,7 @@ class UniformMap(SemType):
 
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, ARI):
@@ -935,9 +935,9 @@ class UniformMap(SemType):
 class TableColumn:
     ''' Each column of a TableTemplate object. '''
 
-    name:str
+    name: str
     ''' Unique name of this column. '''
-    base:BaseType
+    base: BaseType
     ''' Type for this column. '''
 
     def ari_name(self) -> ARI:
@@ -954,16 +954,16 @@ class TableColumn:
 class TableTemplate(SemType):
     ''' A template for specific table (TBL) structure. '''
 
-    columns:List[TableColumn] = field(default_factory=list)
+    columns: List[TableColumn] = field(default_factory=list)
     ''' Column definitions, with significant order. '''
 
-    key:Optional[str] = None
+    key: Optional[str] = None
     ''' The key column tuple. '''
-    unique:List[str] = field(default_factory=list)
+    unique: List[str] = field(default_factory=list)
     ''' Unique column tuples. '''
-    min_elements:Optional[int] = None
+    min_elements: Optional[int] = None
     ''' Lower limit on the number of rows. '''
-    max_elements:Optional[int] = None
+    max_elements: Optional[int] = None
     ''' Upper limit on the number of rows. '''
 
     def children(self) -> List['BaseType']:
@@ -985,7 +985,7 @@ class TableTemplate(SemType):
             }
         )
 
-    def get(self, obj:ARI) -> Optional[ARI]:
+    def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
         if not isinstance(obj, LiteralARI):
@@ -1008,7 +1008,7 @@ class TableTemplate(SemType):
 
         return obj
 
-    def convert(self, obj:ARI) -> ARI:
+    def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
         if not isinstance(obj, LiteralARI):
@@ -1024,7 +1024,7 @@ class TableTemplate(SemType):
         nrows, _ = obj.value.shape
         rvalue = Table(obj.value.shape)
         for row_ix in range(nrows):
-            irow = obj.value[row_ix,:]
+            irow = obj.value[row_ix, :]
             badcols = []
             for col_ix, col in enumerate(self.columns):
                 try:
@@ -1037,7 +1037,7 @@ class TableTemplate(SemType):
 
         return LiteralARI(rvalue, StructType.TBL)
 
-    def _constrain(self, obj:ARI) -> List[str]:
+    def _constrain(self, obj: ARI) -> List[str]:
         ''' Check constraints on the shape of the table.
         '''
         invalid = []
@@ -1056,7 +1056,7 @@ class TableTemplate(SemType):
         return invalid
 
 
-def type_walk(root:BaseType) -> Iterator:
+def type_walk(root: BaseType) -> Iterator:
     ''' Walk all type objects in a tree,
     ignoring duplicates in cases of circular references.
 
@@ -1066,7 +1066,7 @@ def type_walk(root:BaseType) -> Iterator:
 
     seen = set()
 
-    def walk(typeobj:BaseType) -> None:
+    def walk(typeobj: BaseType) -> None:
         if id(typeobj) in seen:
             return
 

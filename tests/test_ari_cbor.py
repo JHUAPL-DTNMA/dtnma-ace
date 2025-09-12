@@ -181,7 +181,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         enc = ari_cbor.Encoder()
-        for row  in TEST_CASE:
+        for row in TEST_CASE:
             org_id, model_id, type_id, obj_id, expect = row
             ari = ReferenceARI(
                 ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
@@ -261,8 +261,8 @@ class TestAriCbor(unittest.TestCase):
 
     def test_ari_cbor_decode_rptset(self):
         TEST_CASE = [
-          ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
-          ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1),
+            ("8215831904D21903E885008419FFFF647465737422626869F603426869", 1234, 1000, 0, 1),
+            ("8215831904D282211904D285008419FFFF647465737422626869F603426869", 1234, 12, 340000000, 1),
         ]
 
         dec = ari_cbor.Decoder()
@@ -288,7 +288,7 @@ class TestAriCbor(unittest.TestCase):
         ]
 
         enc = ari_cbor.Encoder()
-        for row  in TEST_CASE:
+        for row in TEST_CASE:
             expect, nonce, sec, nsec = row
             with self.subTest(str(expect)):
                 tval = ari_cbor.DTN_EPOCH + numpy.timedelta64(sec, 's') + numpy.timedelta64(nsec, 'ns')
@@ -569,7 +569,8 @@ class TestAriCbor(unittest.TestCase):
             ("82138101"),
             ("821481F6"),
             ("8214821904D28419FFFF647465737422626869"),
-            ("82148342686984676578616D706C6564746573742262686984676578616D706C65647465737422626568"),  # ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)
+            # ari:/EXECSET/n=h'6869';(//example/test/CTRL/hi,//example/test/CTRL/eh)
+            ("82148342686984676578616D706C6564746573742262686984676578616D706C65647465737422626568"),
             ("84676578616D706C656474657374216474686174"),  # ari://example/test/CONST/that
             ("8214834268698419FFFF6474657374226268698419FFFF647465737422626568"),
             ("8214821904D284676578616D706C65647465737422626869"),

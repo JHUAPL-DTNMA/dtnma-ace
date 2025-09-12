@@ -84,12 +84,12 @@ MOD_META_KYWDS = {
 }
 
 
-def range_from_text(text:str) -> portion.Interval:
+def range_from_text(text: str) -> portion.Interval:
     ''' Parse a YANG "range" statement argument.
     '''
     parts = [part.strip() for part in text.split('|')]
 
-    def from_num(text:str):
+    def from_num(text: str):
         try:
             return int(text)
         except (ValueError, OverflowError):
@@ -110,7 +110,7 @@ def range_from_text(text:str) -> portion.Interval:
     return ranges
 
 
-def range_to_text(ranges:portion.Interval) -> str:
+def range_to_text(ranges: portion.Interval) -> str:
     ''' Construct a YANG "range" statement argument.
     '''
     parts = []
@@ -137,7 +137,7 @@ class AriTextDecoder:
         '''
         self._ns_id = (org_id, model_id)
 
-    def decode(self, text:str) -> ARI:
+    def decode(self, text: str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
         '''
         ari = self._ari_dec.decode(io.StringIO(text))
@@ -171,7 +171,7 @@ class TypingDecoder:
         }
         self._ari_dec = ari_dec
 
-    def _get_ari(self, text:str) -> ARI:
+    def _get_ari(self, text: str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
         '''
         ari = self._ari_dec.decode(text)
@@ -201,7 +201,7 @@ class TypingDecoder:
         LOGGER.debug('Got type for %s: %s', type_stmt.keyword, typeobj)
         return typeobj
 
-    def _handle_type(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_type(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = TypeUse()
 
         typeobj.type_text = stmt.arg
@@ -260,7 +260,7 @@ class TypingDecoder:
 
         return typeobj
 
-    def _handle_ulist(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_ulist(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = UniformList(
             base=self.decode(stmt)
         )
@@ -275,7 +275,7 @@ class TypingDecoder:
 
         return typeobj
 
-    def _handle_dlist(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_dlist(self, stmt: pyang.statements.Statement) -> SemType:
         found_type_stmts = [
             type_stmt for type_stmt in stmt.substmts
             if type_stmt.keyword in self._type_handlers
@@ -290,7 +290,7 @@ class TypingDecoder:
         )
         return typeobj
 
-    def _handle_umap(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_umap(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = UniformMap()
 
         sub_stmt = stmt.search_one((AMM_MOD, 'keys'))
@@ -303,7 +303,7 @@ class TypingDecoder:
 
         return typeobj
 
-    def _handle_tblt(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_tblt(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = TableTemplate()
 
         col_names = set()
@@ -339,7 +339,7 @@ class TypingDecoder:
 
         return typeobj
 
-    def _handle_union(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_union(self, stmt: pyang.statements.Statement) -> SemType:
         found_type_stmts = [
             type_stmt for type_stmt in stmt.substmts
             if type_stmt.keyword in self._type_handlers
@@ -352,7 +352,7 @@ class TypingDecoder:
 
         return TypeUnion(types=tuple(types))
 
-    def _handle_seq(self, stmt:pyang.statements.Statement) -> SemType:
+    def _handle_seq(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = Sequence(
             base=self.decode(stmt)
         )
@@ -370,7 +370,7 @@ class TypingDecoder:
 
 class EmptyRepos(pyang.repository.Repository):
 
-    def get_modules_and_revisions(self, _ctx:pyang.context.Context):
+    def get_modules_and_revisions(self, _ctx: pyang.context.Context):
         return []
 
 
@@ -378,7 +378,7 @@ class Decoder:
     ''' The decoder portion of this CODEC.
     '''
 
-    def __init__(self, repos:pyang.repository.Repository):
+    def __init__(self, repos: pyang.repository.Repository):
         # Initializer copied from pyang.scripts.pyang_tool.run()
         if not pyang.plugin.plugins:
             plugindirs = [os.path.join(SELFDIR, 'pyang')]
@@ -407,7 +407,7 @@ class Decoder:
     def _get_typeobj(self, parent: pyang.statements.Statement) -> SemType:
         return self._type_dec.decode(parent)
 
-    def _check_ari(self, ari:ARI):
+    def _check_ari(self, ari: ARI):
         ''' Verify ARI references only imported modules. '''
         if isinstance(ari, ReferenceARI):
             if ari.ident.module_name == self._module.arg:
@@ -416,14 +416,14 @@ class Decoder:
             if ari.ident.module_name is not None and ari.ident.module_name not in imports:
                 raise ValueError(f'ARI references module {ari.ident.module_name} that is not imported')
 
-    def _get_ari(self, text:str) -> ARI:
+    def _get_ari(self, text: str) -> ARI:
         ''' Decode ARI text and resolve any relative reference.
         '''
         ari = self._ari_dec.decode(text)
         ari.visit(self._check_ari)
         return ari
 
-    def _get_namespace(self, text:str) -> Tuple[str, str]:
+    def _get_namespace(self, text: str) -> Tuple[str, str]:
         ''' Resolve a possibly qualified identifier into a module name and statement name.
         '''
         if ':' in text:
@@ -437,7 +437,7 @@ class Decoder:
             stmt_name = normalize_ident(text)
         return (stmt_ns, stmt_name)
 
-    def from_stmt(self, cls, stmt:pyang.statements.Statement) -> AdmObjMixin:
+    def from_stmt(self, cls, stmt: pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
 
         :param cls: The ORM class to instantiate.
@@ -488,7 +488,7 @@ class Decoder:
                         # actually check the content
                         item.default_ari = self._get_ari(def_stmt.arg)
                 except Exception as err:
-                    raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err;
+                    raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err
 
                 orm_val.items.append(item)
 
@@ -604,7 +604,7 @@ class Decoder:
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
-                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err;
+                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err
 
         elif issubclass(cls, Oper):
             obj.operands = TypeNameList()
@@ -616,7 +616,7 @@ class Decoder:
                         typeobj=self._get_typeobj(opnd_stmt)
                     ))
                 except Exception as err:
-                    raise RuntimeError(f'Failure handling operand "{opnd_stmt.arg}": {err}') from err;
+                    raise RuntimeError(f'Failure handling operand "{opnd_stmt.arg}": {err}') from err
 
             result_stmt = stmt.search_one((AMM_MOD, 'result'), children=stmt.i_children)
             if result_stmt:
@@ -627,7 +627,7 @@ class Decoder:
                         typeobj=self._get_typeobj(result_stmt)
                     )
                 except Exception as err:
-                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err;
+                    raise RuntimeError(f'Failure handling result "{result_stmt.arg}": {err}') from err
 
         return obj
 
@@ -649,7 +649,7 @@ class Decoder:
             try:
                 obj = self.from_stmt(orm_cls, yang_stmt)
             except Exception as err:
-                raise RuntimeError(f'Failure handling definition for {yang_stmt.keyword} "{yang_stmt.arg}": {err}') from err;
+                raise RuntimeError(f'Failure handling definition for {yang_stmt.keyword} "{yang_stmt.arg}": {err}') from err
 
             # FIXME: check for duplicates
             if obj.enum is None:
@@ -880,23 +880,23 @@ class Encoder:
         self._module = None
         self._denorm_prefixes = None
 
-    def _denorm_tuple(self, val:Tuple[str, str]) -> Tuple[str, str]:
+    def _denorm_tuple(self, val: Tuple[str, str]) -> Tuple[str, str]:
         prefix, name = val
         if prefix in self._denorm_prefixes:
             prefix = self._denorm_prefixes[prefix]
         return (prefix, name)
 
-    def _add_substmt(self, parent:pyang.statements.Statement, keyword:str, arg:str=None) -> pyang.statements.Statement:
+    def _add_substmt(self, parent: pyang.statements.Statement, keyword: str, arg: str = None) -> pyang.statements.Statement:
         sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
         parent.substmts.append(sub_stmt)
         return sub_stmt
 
-    def _put_section(self, obj_list, orm_cls, module:pyang.statements.ModSubmodStatement):
+    def _put_section(self, obj_list, orm_cls, module: pyang.statements.ModSubmodStatement):
         ''' Insert a section to the file '''
         for obj in obj_list:
             self.to_stmt(obj, module)
 
-    def to_stmt(self, obj:AdmObjMixin, module) -> pyang.statements.Statement:
+    def to_stmt(self, obj: AdmObjMixin, module) -> pyang.statements.Statement:
         ''' Construct a YANG statement from an ORM object.
 
         :param obj: The ORM object to read from.
@@ -977,7 +977,7 @@ class Encoder:
 
         return obj_stmt
 
-    def _put_typeobj(self, typeobj:SemType, parent:pyang.statements.Statement) -> pyang.statements.Statement:
+    def _put_typeobj(self, typeobj: SemType, parent: pyang.statements.Statement) -> pyang.statements.Statement:
         if isinstance(typeobj, TypeUse):
             type_stmt = self._add_substmt(parent, (AMM_MOD, 'type'), typeobj.type_text)
 

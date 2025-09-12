@@ -63,7 +63,7 @@ class Decoder:
 
         return res
 
-    def _item_to_ari(self, item:object):
+    def _item_to_ari(self, item: object):
         LOGGER.debug('Got ARI item: %s', item)
 
         if isinstance(item, list):
@@ -101,9 +101,9 @@ class Decoder:
                     elif isinstance(item[idx], dict):
                         mapobj = {}
                         for key, val in item[idx].items():
-                          k = self._item_to_ari(key)
-                          v = self._item_to_ari(val)
-                          mapobj[k] = v
+                            k = self._item_to_ari(key)
+                            v = self._item_to_ari(val)
+                            mapobj[k] = v
                         params = mapobj
                     else:
                         raise ParseError(f'Invalid parameter format: {item} segment {idx} should be a list or dictionary')
@@ -233,7 +233,7 @@ class Encoder:
         LOGGER.debug('ARI to item %s', item)
         cborenc.encode(item)
 
-    def _ari_to_item(self, obj:ARI) -> object:
+    def _ari_to_item(self, obj: ARI) -> object:
         ''' Convert an ARI object into a CBOR item. '''
         item = None
         LOGGER.debug('ARI: %s', obj)
@@ -259,9 +259,9 @@ class Encoder:
             elif isinstance(obj.params, dict):
                 mapobj = {}
                 for key, val in obj.params.items():
-                  k = self._ari_to_item(key)
-                  v = self._ari_to_item(val)
-                  mapobj[k] = v
+                    k = self._ari_to_item(key)
+                    v = self._ari_to_item(val)
+                    mapobj[k] = v
                 item.append(mapobj)
 
         elif isinstance(obj, LiteralARI):

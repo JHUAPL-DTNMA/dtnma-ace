@@ -752,9 +752,9 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
                 if math.isnan(expect):
-                  self.assertEqual(math.isnan(ari.value), True)
+                    self.assertEqual(math.isnan(ari.value), True)
                 else:
-                  self.assertEqual(ari.value, expect)
+                    self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_float32(self):
         TEST_CASE = [
@@ -1389,7 +1389,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL32/0"),
             ("ari:/REAL32/-3.40282347E+38"),
             ("ari:/REAL32/3.40282347E+38"),
-            ("ari:/REAL32/0xF.0"), # no p exponent
+            ("ari:/REAL32/0xF.0"),  # no p exponent
             ("ari:/REAL32/0xF."),
             ("ari:/REAL32/0xfF"),
             ("ari:/REAL32/0xfF.ff"),

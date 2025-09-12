@@ -141,7 +141,7 @@ def pyang_plugin_init():
     statements.add_validation_fun(
         'grammar',
         AMM_OBJ_NAMES
-        +(
+        + (
             (MODULE_NAME, 'parameter'),
             (MODULE_NAME, 'operand'),
             (MODULE_NAME, 'result'),
@@ -283,7 +283,7 @@ MODULE_STMT_ALLOW = (
 ''' Allowed statements at the ADM module level. '''
 
 
-def type_use(parent:str) -> List:
+def type_use(parent: str) -> List:
     ''' Get a list of type-use substatements for a particular parent.
 
     :param parent: The parent statement keyword.
@@ -328,7 +328,7 @@ MODULE_EXTENSIONS = (
             ('description', '?'),
             ('reference', '?'),
         ],
-    ),
+        ),
     Ext('ulist', None,
         subs=(
             [
@@ -337,16 +337,16 @@ MODULE_EXTENSIONS = (
                 ('min-elements', '?'),
                 ('max-elements', '?'),
             ]
-            +type_use('ulist')
+            + type_use('ulist')
         ),
-    ),
+        ),
     Ext('dlist', None,
         subs=[
             ('description', '?'),
             ('reference', '?'),
             ('$interleave', type_use('dlist')),
         ],
-    ),
+        ),
     Ext('seq', None,
         subs=(
             [
@@ -355,9 +355,9 @@ MODULE_EXTENSIONS = (
                 ('min-elements', '?'),
                 ('max-elements', '?'),
             ]
-            +type_use('seq')
+            + type_use('seq')
         ),
-    ),
+        ),
     Ext('umap', None,
         subs=[
             ('description', '?'),
@@ -365,25 +365,25 @@ MODULE_EXTENSIONS = (
             ((MODULE_NAME, 'keys'), '?'),
             ((MODULE_NAME, 'values'), '?'),
         ]
-    ),
+        ),
     Ext('keys', None,
         subs=(
             [
                 ('description', '?'),
                 ('reference', '?'),
             ]
-            +type_use('keys')
+            + type_use('keys')
         )
-    ),
+        ),
     Ext('values', None,
         subs=(
             [
                 ('description', '?'),
                 ('reference', '?'),
             ]
-            +type_use('values')
+            + type_use('values')
         )
-    ),
+        ),
     Ext('tblt', None,
         subs=[
             ('description', '?'),
@@ -396,7 +396,7 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'column'), '*'),
             ]),
         ],
-    ),
+        ),
     Ext('column', 'identifier',
         subs=(
             [
@@ -404,9 +404,9 @@ MODULE_EXTENSIONS = (
                 ('description', '?'),
                 ('reference', '?'),
             ]
-            +type_use('column')
+            + type_use('column')
         ),
-    ),
+        ),
     Ext('key', 'string'),
     Ext('unique', 'string'),
     Ext('union', None,
@@ -415,7 +415,7 @@ MODULE_EXTENSIONS = (
             ('reference', '?'),
             ('$interleave', type_use('union')),
         ],
-    ),
+        ),
     # Type narrowing extensions
     Ext('display-hint', 'ARI'),
     Ext('cddl', 'string'),
@@ -424,7 +424,7 @@ MODULE_EXTENSIONS = (
             ('enum', '*'),
             ('bit', '*'),
         ],
-    ),
+        ),
 
     Ext('parameter', 'identifier',
         subs=(
@@ -433,28 +433,28 @@ MODULE_EXTENSIONS = (
                 ('reference', '?'),
                 ((MODULE_NAME, 'default'), '?'),
             ]
-            +type_use('parameter')
+            + type_use('parameter')
         ),
-    ),
+        ),
     Ext('default', 'ARI',
         subs=[
             ('description', '?'),
             ('reference', '?'),
         ],
-    ),
+        ),
 
     # managed objects
     Ext('typedef', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +type_use('typedef')
+            + type_use('typedef')
         ),
-    ),
+        ),
 
     Ext('ident', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ('$interleave', [
                     ((MODULE_NAME, 'parameter'), '*'),
                     ('uses', '*'),
@@ -463,43 +463,43 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'base'), '*'),
             ]
         ),
-    ),
+        ),
     Ext('abstract', 'boolean'),
     Ext('base', 'ARI'),
 
     Ext('const', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ('$interleave', [
                     ((MODULE_NAME, 'parameter'), '*'),
                     ('uses', '*'),
                 ]),
                 ((MODULE_NAME, 'init-value'), '1'),
             ]
-            +type_use('const')
+            + type_use('const')
         ),
-    ),
+        ),
     Ext('init-value', 'ARI'),
 
     Ext('edd', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ('$interleave', [
                     ((MODULE_NAME, 'parameter'), '*'),
                     ('uses', '*'),
                 ]),
             ]
-            +type_use('edd')
+            + type_use('edd')
         ),
-    ),
+        ),
 
     Ext('var', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +type_use('var')
-            +[
+            + type_use('var')
+            + [
                 ('$interleave', [
                     ((MODULE_NAME, 'parameter'), '*'),
                     ('uses', '*'),
@@ -507,7 +507,7 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'init-value'), '?'),
             ]
         ),
-    ),
+        ),
 
     Ext('ctrl', 'identifier',
         subs=(
@@ -519,21 +519,21 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'result'), '?'),
             ]
         ),
-    ),
+        ),
     Ext('result', 'identifier',
         subs=(
             [
                 ('description', '?'),
                 ('reference', '?'),
             ]
-            +type_use('result')
+            + type_use('result')
         ),
-    ),
+        ),
 
     Ext('oper', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ('$interleave', [
                     ((MODULE_NAME, 'parameter'), '*'),
                     ('uses', '*'),
@@ -545,20 +545,20 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'result'), '?'),  # can be provided via uses
             ]
         ),
-    ),
+        ),
     Ext('operand', 'identifier',
         subs=(
             [
                 ('description', '?'),
                 ('reference', '?'),
             ]
-            +type_use('operand')
+            + type_use('operand')
         ),
-    ),
+        ),
     Ext('sbr', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'condition'), '1'),
                 ((MODULE_NAME, 'min-interval'), '?'),
@@ -566,11 +566,11 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'init-enabled'), '?'),
             ]
         ),
-    ),
+        ),
     Ext('tbr', 'identifier',
         subs=(
             OBJ_SUBS_PRE
-            +[
+            + [
                 ((MODULE_NAME, 'action'), '1'),
                 ((MODULE_NAME, 'start'), '?'),
                 ((MODULE_NAME, 'period'), '1'),
@@ -578,7 +578,7 @@ MODULE_EXTENSIONS = (
                 ((MODULE_NAME, 'init-enabled'), '?'),
             ]
         ),
-    ),
+        ),
     Ext('action', 'ARI'),
     Ext('condition', 'ARI'),
     Ext('period', 'ARI'),
@@ -601,7 +601,7 @@ class AriChecker:
         else:
             self._dec = None
 
-    def __call__(self, val:str) -> bool:
+    def __call__(self, val: str) -> bool:
         if self._dec is None:
             return True
 
@@ -613,7 +613,7 @@ class AriChecker:
             return False
 
 
-def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_namespace(ctx: context.Context, stmt: statements.Statement):
     ''' Verify namespace conforms to to an ADM module. '''
     if not ari_text:
         return
@@ -628,7 +628,7 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
     # check that it is a namespace reference
     if (not isinstance(ns_ref, ReferenceARI)
         or ns_ref.ident.type_id is not None
-        or ns_ref.ident.obj_id is not None):
+            or ns_ref.ident.obj_id is not None):
         error.err_add(ctx.errors, stmt.pos, 'AMM_MODULE_NS_ARI',
                       (stmt.arg))
 
@@ -639,7 +639,7 @@ def _stmt_check_namespace(ctx:context.Context, stmt:statements.Statement):
                       (module_name, stmt.arg))
 
 
-def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_ari_import_use(ctx: context.Context, stmt: statements.Statement):
     ''' Check that referenced modules exist and
     mark those modules as used based on ARI content. '''
     if not ari_text:
@@ -673,7 +673,7 @@ def _stmt_check_ari_import_use(ctx:context.Context, stmt:statements.Statement):
     ari.visit(visitor)
 
 
-def _stmt_check_module_enums(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_module_enums(ctx: context.Context, stmt: statements.Statement):
     ''' Check the model and org enum values for an ADM module. '''
     enum_stmt = stmt.search_one((MODULE_NAME, 'enum'))
     if not enum_stmt:
@@ -687,7 +687,7 @@ def _stmt_check_module_enums(ctx:context.Context, stmt:statements.Statement):
                       (stmt.arg))
 
 
-def _stmt_check_module_objs(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_module_objs(ctx: context.Context, stmt: statements.Statement):
     ''' Verify only AMP objects are present in the module. '''
     if stmt.keyword != 'module':
         return
@@ -702,7 +702,7 @@ def _stmt_check_module_objs(ctx:context.Context, stmt:statements.Statement):
                           (keyword_to_str(sub.keyword), sub.arg))
 
 
-def _stmt_check_obj_enum(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_obj_enum(ctx: context.Context, stmt: statements.Statement):
     ''' Check an enum value for an ADM object. '''
     enum_stmt = stmt.search_one((MODULE_NAME, 'enum'))
     if not enum_stmt:
@@ -710,7 +710,7 @@ def _stmt_check_obj_enum(ctx:context.Context, stmt:statements.Statement):
                       (stmt.raw_keyword[1], stmt.arg))
 
 
-def _stmt_check_intlabels(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_intlabels(ctx: context.Context, stmt: statements.Statement):
     ''' Verify either enum or bit but not both are present. '''
     has_enum = stmt.search_one('enum') is not None
     has_bit = stmt.search_one('bit') is not None
@@ -748,7 +748,7 @@ def _stmt_check_intlabels(ctx:context.Context, stmt:statements.Statement):
             seen.add(got)
 
 
-def _stmt_check_enum_unique(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_enum_unique(ctx: context.Context, stmt: statements.Statement):
     for obj_kywd in AMM_OBJ_NAMES:
         seen_enum = set()
         for obj_stmt in stmt.search(obj_kywd):
@@ -762,7 +762,7 @@ def _stmt_check_enum_unique(ctx:context.Context, stmt:statements.Statement):
             seen_enum.add(enum_val)
 
 
-def _stmt_check_documentation(ctx:context.Context, stmt:statements.Statement):
+def _stmt_check_documentation(ctx: context.Context, stmt: statements.Statement):
     if stmt.search_one('description') is None:
         error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_DESCRIPTION',
                       (keyword_to_str(stmt.keyword), stmt.arg))

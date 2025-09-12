@@ -59,7 +59,7 @@ class BaseTest(unittest.TestCase):
         self.assertEqual(obj_ref, issue.obj)
         self.assertRegex(issue.detail, detail_re)
 
-    def _from_text(self, text:str) -> ari.ARI:
+    def _from_text(self, text: str) -> ari.ARI:
         return self._ari_dec.decode(io.StringIO(text))
 
     def _add_mod(self, abs_file_path, org_name, org_enum, model_name, model_enum):

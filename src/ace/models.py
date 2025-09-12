@@ -235,7 +235,7 @@ class AdmModule(Base):
                          cascade="all, delete")
     ctrl = relationship("Ctrl",
                         back_populates="module",
-                         order_by='asc(Ctrl.position)',
+                        order_by='asc(Ctrl.position)',
                         cascade="all, delete")
     edd = relationship("Edd",
                        back_populates="module",

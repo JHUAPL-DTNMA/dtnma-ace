@@ -56,7 +56,7 @@ class TypeSeq:
     ''' An ordered list of TypeMatch to check against.
     '''
 
-    def __init__(self, matchers:List[TypeMatch]):
+    def __init__(self, matchers: List[TypeMatch]):
         self._matchers = matchers
 
     def __call__(self, text):
@@ -129,7 +129,7 @@ def t_modseg(found):
     return (mod_id, mod_rev)
 
 
-def unescape(esc:str) -> str:
+def unescape(esc: str) -> str:
     ''' unescape tstr/bstr text
     '''
     esc_it = iter(esc)
@@ -233,10 +233,10 @@ def t_timeperiod(found):
     nsec = subsec_to_nanoseconds(found.group('SS'))
     value = (
         numpy.timedelta64(day, 'D')
-        +numpy.timedelta64(hour, 'h')
-        +numpy.timedelta64(minute, 'm')
-        +numpy.timedelta64(second, 's')
-        +numpy.timedelta64(nsec, 'ns')
+        + numpy.timedelta64(hour, 'h')
+        + numpy.timedelta64(minute, 'm')
+        + numpy.timedelta64(second, 's')
+        + numpy.timedelta64(nsec, 'ns')
     )
     if neg:
         value = -value
@@ -257,7 +257,7 @@ SINGLETONS = TypeSeq([
 ''' Types that match singleton values. '''
 
 
-def get_structtype(text:str) -> StructType:
+def get_structtype(text: str) -> StructType:
     value = IDSEGMENT(text)
     if isinstance(value, int):
         return StructType(value)

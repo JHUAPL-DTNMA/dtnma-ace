@@ -39,13 +39,13 @@ class StringLength(Constraint):
     count of bytes.
     '''
 
-    ranges:Interval
+    ranges: Interval
     ''' The Interval representing valid lengths. '''
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.TEXTSTR, StructType.BYTESTR, StructType.CBOR])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, (str, bytes)):
             return len(obj.value) in self.ranges
         else:
@@ -57,13 +57,13 @@ class TextPattern(Constraint):
     ''' Limit the content of text string values.
     '''
 
-    pattern:str
+    pattern: str
     ''' The regular expression pattern. '''
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.TEXTSTR])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, (str, bytes)):
             got = re.fullmatch(self.pattern, obj.value)
             return got is not None
@@ -76,7 +76,7 @@ class NumericRange(Constraint):
     ''' Limit the range of numeric values.
     '''
 
-    ranges:Interval
+    ranges: Interval
     ''' The Interval representing valid ranges. '''
 
     def applicable(self) -> Set[StructType]:
@@ -90,7 +90,7 @@ class NumericRange(Constraint):
             StructType.REAL64,
         ])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, (int, float)):
             return obj.value in self.ranges
         else:
@@ -102,7 +102,7 @@ class IntegerEnums(Constraint):
     ''' Named enumerated values.
     '''
 
-    values:Dict[int, str]
+    values: Dict[int, str]
     ''' Named values. '''
 
     def applicable(self) -> Set[StructType]:
@@ -114,7 +114,7 @@ class IntegerEnums(Constraint):
             StructType.UVAST,
         ])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):
             return obj.value in self.values
         else:
@@ -126,9 +126,9 @@ class IntegerBits(Constraint):
     ''' Label enumerated values and bit positions.
     '''
 
-    positions:Dict[int, str]
+    positions: Dict[int, str]
     ''' Named bit positions. '''
-    mask:int
+    mask: int
     ''' Mask for all named bits. '''
 
     def applicable(self) -> Set[StructType]:
@@ -140,7 +140,7 @@ class IntegerBits(Constraint):
             StructType.UVAST,
         ])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):
             # no unknown bits
             return (obj.value & ~self.mask) == 0
@@ -153,13 +153,13 @@ class CborCddl(Constraint):
     ''' CDDL pattern for embedded CBOR item.
     '''
 
-    text:str
+    text: str
     ''' CDDL expression. '''
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.CBOR])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, bytes):
             try:
                 item = cbor2.loads(obj.value)
@@ -175,23 +175,23 @@ class IdentRefBase(Constraint):
     ''' Limit the base of Ident object references.
     '''
 
-    base_text:str
+    base_text: str
     ''' Original required base text. '''
-    base_ari:ReferenceARI
+    base_ari: ReferenceARI
     ''' The  base object reference. '''
-    base_ident:Optional[Ident] = None
+    base_ident: Optional[Ident] = None
     ''' ADM object lookup session '''
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.IDENT])
 
-    def is_valid(self, obj:ARI) -> bool:
+    def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj, ReferenceARI) and obj.ident.type_id == StructType.IDENT:
             if self.base_ident is None:
                 return False
             db_sess = object_session(self.base_ident)
 
-            def match_base(ref:ARI):
+            def match_base(ref: ARI):
                 print('check base', ref)
                 try:
                     got_ident = dereference(ref, db_sess)

@@ -84,4 +84,3 @@ class Decoder:
             raise ParseError(msg) from err
 
         return res
-
