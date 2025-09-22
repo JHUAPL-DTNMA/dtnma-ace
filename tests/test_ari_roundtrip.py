@@ -75,7 +75,13 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari://ietf/bp-agent/CTRL/reset_all_counts()',
         'ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
-        'ari://ietf/AMP-AGENT/CTRL/ADD_SBR(//APL/SC/SBR/HEAT_ON,/VAST/0,/AC/(//APL/SC/EDD/payload_temperature,//APL/SC/CONST/payload_heat_on_temp,//ietf/AMP-AGENT/OPER/LESSTHAN),/VAST/1000,/VAST/1000,/AC/(//APL/SC/CTRL/payload_heater(/INT/1)),%22heater%20on%22)',
+        'ari://ietf/AMP-AGENT/CTRL/ADD_SBR('
+        '//APL/SC/SBR/HEAT_ON,/VAST/0,'
+        '/AC/(//APL/SC/EDD/payload_temperature,//APL/SC/CONST/payload_heat_on_temp,//ietf/AMP-AGENT/OPER/LESSTHAN),'
+        '/VAST/1000,'
+        '/VAST/1000,'
+        '/AC/(//APL/SC/CTRL/payload_heater(/INT/1)),'
+        '%22heater%20on%22)',
     ]
 
     def test_text_cbor_roundtrip(self):

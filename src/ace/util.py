@@ -45,4 +45,3 @@ def normalize_ident(text: str) -> str:
     '''
 
     return text.casefold()
-

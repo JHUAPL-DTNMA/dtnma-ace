@@ -57,6 +57,7 @@ def p_ari_noscheme(p):
 
 # The following are untyped literals with primitive values
 
+
 def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
@@ -99,7 +100,7 @@ def p_typedlit_tbl_rows(p):
     for row_ix, row in enumerate(rows):
         if len(row) != ncol:
             raise RuntimeError('Table column count is mismatched')
-        table[row_ix,:] = row
+        table[row_ix, :] = row
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
@@ -180,6 +181,7 @@ def p_report(p):
         raise RuntimeError(f"Invalid or missing report 's' parameter: {p[2]}")
 
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[3])
+
 
 def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'

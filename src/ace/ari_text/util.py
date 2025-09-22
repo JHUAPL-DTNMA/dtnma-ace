@@ -29,7 +29,7 @@ import re
 from typing import List
 import numpy
 import cbor_diag
-from ace.ari import UNDEFINED, StructType
+from ace.ari import INT_ENVELOPE, UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class TypeSeq:
     ''' An ordered list of TypeMatch to check against.
     '''
 
-    def __init__(self, matchers:List[TypeMatch]):
+    def __init__(self, matchers: List[TypeMatch]):
         self._matchers = matchers
 
     def __call__(self, text):
@@ -103,7 +103,12 @@ def t_floathex(found):
 # int is decimal, binary, or hexadecimal
 @TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
 def t_int(found):
-    return int(found[0], 0)
+    value = int(found[0], 0)
+
+    if value not in INT_ENVELOPE:
+        raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
+
+    return value
 
 
 @TypeMatch.apply(r'!?[a-zA-Z_][a-zA-Z0-9_\-\.]*')
@@ -124,7 +129,7 @@ def t_modseg(found):
     return (mod_id, mod_rev)
 
 
-def unescape(esc:str) -> str:
+def unescape(esc: str) -> str:
     ''' unescape tstr/bstr text
     '''
     esc_it = iter(esc)
@@ -228,10 +233,10 @@ def t_timeperiod(found):
     nsec = subsec_to_nanoseconds(found.group('SS'))
     value = (
         numpy.timedelta64(day, 'D')
-        +numpy.timedelta64(hour, 'h')
-        +numpy.timedelta64(minute, 'm')
-        +numpy.timedelta64(second, 's')
-        +numpy.timedelta64(nsec, 'ns')
+        + numpy.timedelta64(hour, 'h')
+        + numpy.timedelta64(minute, 'm')
+        + numpy.timedelta64(second, 's')
+        + numpy.timedelta64(nsec, 'ns')
     )
     if neg:
         value = -value
@@ -252,7 +257,7 @@ SINGLETONS = TypeSeq([
 ''' Types that match singleton values. '''
 
 
-def get_structtype(text:str) -> StructType:
+def get_structtype(text: str) -> StructType:
     value = IDSEGMENT(text)
     if isinstance(value, int):
         return StructType(value)
