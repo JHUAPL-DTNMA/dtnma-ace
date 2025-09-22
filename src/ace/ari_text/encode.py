@@ -100,7 +100,7 @@ def can_unquote(text):
     try:
         SINGLETONS(text)
         return False
-    except:
+    except ValueError:
         pass
     return t_identity.regex.fullmatch(text) is not None
 
@@ -109,27 +109,27 @@ def can_unquote(text):
 class EncodeOptions:
     ''' Preferences for text encoding variations. '''
 
-    scheme_prefix:bool = True
+    scheme_prefix: bool = True
     ''' True if the scheme is present at the start. '''
-    int_base:int = 10
+    int_base: int = 10
     ''' One of 2, 10, or 16 '''
-    float_form:str = 'g'
+    float_form: str = 'g'
     ''' One of 'f', 'e', 'g', or 'a' for standard format'''
-    text_identity:bool = True
+    text_identity: bool = True
     ''' True if specific text can be left unquoted. '''
-    time_text:bool = True
+    time_text: bool = True
     ''' True if time values should be in text form. '''
-    cbor_diag:bool = False
+    cbor_diag: bool = False
     ''' True if CBOR values should be in diagnostic form. '''
 
 
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def __init__(self, options:EncodeOptions=None, **kwargs):
+    def __init__(self, options: EncodeOptions = None, **kwargs):
         self._options = options or EncodeOptions(**kwargs)
 
-    def encode(self, obj:ARI, buf: TextIO):
+    def encode(self, obj: ARI, buf: TextIO):
         ''' Encode an ARI into UTF8 text.
 
         :param obj: The ARI object to encode.
@@ -137,7 +137,7 @@ class Encoder:
         '''
         self._encode_obj(buf, obj, prefix=self._options.scheme_prefix)
 
-    def _encode_obj(self, buf: TextIO, obj:ARI, prefix:bool=False):
+    def _encode_obj(self, buf: TextIO, obj: ARI, prefix: bool = False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
             if prefix:
@@ -231,7 +231,7 @@ class Encoder:
                         return
                     elif self._options.float_form in {'f', 'e', 'g'}:
                         text = f'{{0:{self._options.float_form}}}'.format(obj.value)
-                        if self._options.float_form == 'g' and '.' not in text and 'e' not  in text:
+                        if self._options.float_form == 'g' and '.' not in text and 'e' not in text:
                             text += '.0'
                         buf.write(text)
                         return
@@ -320,15 +320,15 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_tbl(self, buf: TextIO, array:'numpy.ndarray'):
+    def _encode_tbl(self, buf: TextIO, array: 'numpy.ndarray'):
         params = {
             'c': LiteralARI(array.shape[1]),
         }
         self._encode_struct(buf, params)
         for row_ix in range(array.shape[0]):
-            self._encode_list(buf, array[row_ix,:].flat)
+            self._encode_list(buf, array[row_ix, :].flat)
 
-    def _encode_struct(self, buf, obj:ARI):
+    def _encode_struct(self, buf, obj: ARI):
         for key, val in obj.items():
             buf.write(key)
             buf.write('=')

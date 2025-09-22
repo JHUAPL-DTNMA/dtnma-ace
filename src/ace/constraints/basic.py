@@ -22,12 +22,10 @@
 #
 ''' Basic constraints enforced from the ADM definitions.
 '''
-import io
 import logging
 import os
 from sqlalchemy import inspect, orm, func
-from ace import models, ari, ari_text
-from ace.typing import TypeUse
+from ace import models, ari
 from ace.lookup import dereference, TypeResolver, TypeResolverError
 from .core import register, Issue
 
@@ -172,7 +170,7 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _check_typeobj(self, issuelist, top_obj, ctr:models.TypeUseMixin, db_sess, adm:models.AdmModule):
+    def _check_typeobj(self, issuelist, top_obj, ctr: models.TypeUseMixin, db_sess, adm: models.AdmModule):
         ''' Verify a single named type. '''
         typeobj = ctr.typeobj
         if not typeobj:

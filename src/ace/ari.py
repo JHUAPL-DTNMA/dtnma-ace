@@ -52,14 +52,14 @@ def _is_nan(val) -> bool:
 class Table(numpy.ndarray):
     ''' Wrapper class to overload some numpy behavior. '''
 
-    def __new__(self, shape:tuple):
+    def __new__(self, shape: tuple):
         return super().__new__(self, shape, dtype=ARI)
 
-    def __eq__(self, other:'Table'):
+    def __eq__(self, other: 'Table'):
         return numpy.array_equal(self, other)
 
     @staticmethod
-    def from_rows(rows:List[List]) -> 'Table':
+    def from_rows(rows: List[List]) -> 'Table':
         ''' Construct and initialize a table from a list of rows.
 
         :param rows: A row-major list of lists.
@@ -71,39 +71,39 @@ class Table(numpy.ndarray):
             shape = (0, 0)
         obj = Table(shape)
         for row_ix, row in enumerate(rows):
-            obj[row_ix,:] = row
+            obj[row_ix, :] = row
         return obj
 
 
 @dataclass(eq=True, frozen=True)
 class ExecutionSet:
     ''' Internal representation of Execution-Set data. '''
-    nonce:'LiteralARI'
+    nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    targets:List['ARI']
+    targets: List['ARI']
     ''' The targets to execute '''
 
 
 @dataclass(eq=True, frozen=True)
 class Report:
     ''' Internal representation of Report data. '''
-    rel_time:datetime.timedelta
+    rel_time: datetime.timedelta
     ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
     value. '''
-    source:'ARI'
+    source: 'ARI'
     ''' Source of the report, either a RPTT or CTRL. '''
-    items:List['ARI']
+    items: List['ARI']
     ''' Items of the report. '''
 
 
 @dataclass
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
-    nonce:'LiteralARI'
+    nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    ref_time:datetime.datetime
+    ref_time: datetime.datetime
     ''' The reference time for all contained Report relative-times. '''
-    reports:List['Report']
+    reports: List['Report']
     ''' The contained Reports '''
 
 
@@ -155,7 +155,7 @@ class StructType(enum.IntEnum):
 class ARI:
     ''' Base class for all forms of ARI. '''
 
-    def visit(self, visitor:Callable[['ARI'], None]) -> None:
+    def visit(self, visitor: Callable[['ARI'], None]) -> None:
         ''' Call a visitor on this ARI and each child ARI.
 
         The base type calls the visitor on itself, so only composing types
@@ -165,7 +165,7 @@ class ARI:
         '''
         visitor(self)
 
-    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
+    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
         ''' Call a mapping on this ARI (after each child ARI if present).
 
         :param func: The callable visitor for each type object.
@@ -177,12 +177,12 @@ class ARI:
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    value:object = cbor2.undefined
+    value: object = cbor2.undefined
     ''' Literal value specific to :attr:`type_id` '''
-    type_id:Optional[StructType] = None
+    type_id: Optional[StructType] = None
     ''' ADM type of this value '''
 
-    def __eq__(self, other:'LiteralARI') -> bool:
+    def __eq__(self, other: 'LiteralARI') -> bool:
         # check attributes in specific order
         return (
             isinstance(other, LiteralARI)
@@ -193,7 +193,7 @@ class LiteralARI(ARI):
             )
         )
 
-    def visit(self, visitor:Callable[['ARI'], None]) -> None:
+    def visit(self, visitor: Callable[['ARI'], None]) -> None:
         if isinstance(self.value, list):
             for item in self.value:
                 item.visit(visitor)
@@ -202,12 +202,12 @@ class LiteralARI(ARI):
                 key.visit(visitor)
                 item.visit(visitor)
         elif isinstance(self.value, Table):
-            func = lambda item: item.visit(visitor)
+            def func(item): return item.visit(visitor)
             numpy.vectorize(func)(self.value)
         super().visit(visitor)
 
-    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
-        lfunc = lambda item: item.map(func)
+    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+        def lfunc(item): return item.map(func)
 
         result = None
         if isinstance(self.value, list):
@@ -234,7 +234,7 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ReportSet):
-            rpt_func = lambda ireport: Report(
+            def rpt_func(ireport): return Report(
                 rel_time=ireport.rel_time,
                 source=lfunc(ireport.source),
                 items=list(map(lfunc, ireport.items))
@@ -264,7 +264,7 @@ FALSE = LiteralARI(value=False, type_id=StructType.BOOL)
 ''' The false value of the AMM '''
 
 
-def is_undefined(val:ARI) -> bool:
+def is_undefined(val: ARI) -> bool:
     ''' Logic to compare against the UNDEFINED value.
 
     :param val: The value to check.
@@ -276,7 +276,7 @@ def is_undefined(val:ARI) -> bool:
     )
 
 
-def is_null(val:ARI) -> bool:
+def is_null(val: ARI) -> bool:
     ''' Logic to compare against the NULL value.
 
     :param val: The value to check.
@@ -288,7 +288,7 @@ def is_null(val:ARI) -> bool:
     )
 
 
-def as_bool(val:ARI) -> bool:
+def as_bool(val: ARI) -> bool:
     if isinstance(val, LiteralARI) and val.value in (True, False):
         return val.value
     raise ValueError('as_bool given non-boolean value')
@@ -299,15 +299,15 @@ class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
 
-    org_id:Union[str, int, None] = None
+    org_id: Union[str, int, None] = None
     ''' The None value indicates an org-relative path. '''
-    model_id:Union[str, int, None] = None
+    model_id: Union[str, int, None] = None
     ''' The None value indicates an model-relative path. '''
-    model_rev:Optional[datetime.date] = None
+    model_rev: Optional[datetime.date] = None
     ''' For the text-form ARI a specific ADM revision date. '''
-    type_id:Optional[StructType] = None
+    type_id: Optional[StructType] = None
     ''' ADM type of the referenced object '''
-    obj_id:Union[str, int, None] = None
+    obj_id: Union[str, int, None] = None
     ''' Name with the type removed '''
 
     @property
@@ -351,7 +351,7 @@ class ReferenceARI(ARI):
     params: Union[List[ARI], Dict[LiteralARI, ARI], None] = None
     ''' Optional paramerization, None is different than empty list '''
 
-    def visit(self, visitor:Callable[['ARI'], None]) -> None:
+    def visit(self, visitor: Callable[['ARI'], None]) -> None:
         if isinstance(self.params, list):
             for val in self.params:
                 val.visit(visitor)
@@ -361,8 +361,8 @@ class ReferenceARI(ARI):
                 val.visit(visitor)
         super().visit(visitor)
 
-    def map(self, func:Callable[['ARI'], 'ARI']) -> 'ARI':
-        lfunc = lambda item: item.map(func)
+    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+        def lfunc(item): return item.map(func)
 
         rparams = None
         if isinstance(self.params, list):

@@ -73,7 +73,7 @@ class Checker:
     def __init__(self, db_sess):
         self._db_sess = db_sess
 
-    def check(self, src: models.AdmModule=None):
+    def check(self, src: models.AdmModule = None):
         ''' Check a specific ADM for issues.
 
         :param src: The ADM to check or None.

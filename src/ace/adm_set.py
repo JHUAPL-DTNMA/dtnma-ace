@@ -42,7 +42,7 @@ LOGGER = logging.getLogger(__name__)
 
 class DbRepository(Repository):
 
-    def __init__(self, db_sess, file_entries:List[os.DirEntry]=None):
+    def __init__(self, db_sess, file_entries: List[os.DirEntry] = None):
         self._db_sess = db_sess
         self._file_entries = file_entries or []
 
@@ -75,8 +75,8 @@ class DbRepository(Repository):
                     models.AdmSource.abs_file_path,
                     models.AdmSource.file_text
                 )
-                    .filter(models.AdmSource.id == handle[1])
-                    .one_or_none()
+                .filter(models.AdmSource.id == handle[1])
+                .one_or_none()
             )
             if found is None:
                 raise Repository.ReadError(
@@ -101,7 +101,7 @@ class AdmSet:
         If False, the cache is kept in-memory.
     '''
 
-    def __init__(self, cache_dir:str=None):
+    def __init__(self, cache_dir: str = None):
         if cache_dir is False:
             self.cache_path = None
         else:
@@ -188,7 +188,7 @@ class AdmSet:
         )
         return frozenset(row[0] for row in query.all())
 
-    def __contains__(self, name:str) -> bool:
+    def __contains__(self, name: str) -> bool:
         ''' Determine if a specific ADM normalized name is known.
         :return: True if the name s present.
         '''
@@ -205,7 +205,7 @@ class AdmSet:
         '''
         return self.get_by_norm_name(name)
 
-    def get_by_norm_name(self, name:str) -> models.AdmModule:
+    def get_by_norm_name(self, name: str) -> models.AdmModule:
         ''' Retreive a specific ADM by its normalized name.
 
         :param name: The value to filter on exactly.
@@ -222,7 +222,7 @@ class AdmSet:
             raise KeyError(f'No ADM found with name {name}')
         return adm
 
-    def get_by_enum(self, enum:int) -> models.AdmModule:
+    def get_by_enum(self, enum: int) -> models.AdmModule:
         ''' Retreive a specific ADM by its integer enum.
 
         :param enum: The value to filter on exactly.
@@ -261,12 +261,12 @@ class AdmSet:
         return self.load_from_dirs(adm_dirs)
 
     @staticmethod
-    def _is_usable(item:os.DirEntry) -> bool:
+    def _is_usable(item: os.DirEntry) -> bool:
         return (
             item.is_file() and item.name.endswith('.yang')
         )
 
-    def load_from_dirs(self, dir_paths:Union[str, List[str]]) -> int:
+    def load_from_dirs(self, dir_paths: Union[str, List[str]]) -> int:
         ''' Scan directories for YANG files and attempt to read them as
         ADM definitions.
 
@@ -299,7 +299,7 @@ class AdmSet:
 
         return adm_cnt
 
-    def load_from_file(self, file_path:str, del_dupe:bool=True) -> models.AdmModule:
+    def load_from_file(self, file_path: str, del_dupe: bool = True) -> models.AdmModule:
         ''' Load an ADM definition from a specific file.
         The ADM may be cached if an earlier load occurred on the same path.
 
@@ -322,7 +322,7 @@ class AdmSet:
             self._db_sess.rollback()
             raise
 
-    def load_from_data(self, buf:BinaryIO, del_dupe:bool=True) -> models.AdmModule:
+    def load_from_data(self, buf: BinaryIO, del_dupe: bool = True) -> models.AdmModule:
         ''' Load an ADM definition from file content.
 
         :param buf: The file-like object to read from.
@@ -342,8 +342,8 @@ class AdmSet:
             self._db_sess.rollback()
             raise
 
-    def _read_file(self, dec:adm_yang.Decoder, file_path:str,
-                   del_dupe:bool) -> models.AdmModule:
+    def _read_file(self, dec: adm_yang.Decoder, file_path: str,
+                   del_dupe: bool) -> models.AdmModule:
         ''' Read an ADM from file into the DB.
         if has uses skip till later?
         :param dec: The ADM decoder object.
@@ -356,11 +356,11 @@ class AdmSet:
                 models.AdmSource.id,
                 models.AdmSource.last_modified,
             )
-                .filter(models.AdmSource.abs_file_path == file_path)
-                .one_or_none()
+            .filter(models.AdmSource.abs_file_path == file_path)
+            .one_or_none()
         )
         if (src_existing is not None
-            and src_existing.last_modified >= dec.get_file_time(file_path)):
+                and src_existing.last_modified >= dec.get_file_time(file_path)):
             LOGGER.debug('Skipping file %s already loaded from time %s',
                          file_path, src_existing.last_modified)
             mod = (
@@ -385,7 +385,7 @@ class AdmSet:
         self._post_load(adm_new, del_dupe)
         return adm_new
 
-    def _post_load(self, adm_new:models.AdmModule, del_dupe:bool):
+    def _post_load(self, adm_new: models.AdmModule, del_dupe: bool):
         ''' Check a loaded ADM file.
 
         :param adm_new: The loaded ADM.
@@ -399,7 +399,7 @@ class AdmSet:
         import_names = [obj.name for obj in adm_new.imports]
         pending = False
         for module_name in import_names:
-            if not module_name in self:
+            if module_name not in self:
                 pending = True
                 break
 
@@ -425,7 +425,7 @@ class AdmSet:
                 else:
                     self._db_sess.add(adm)
 
-    def get_child(self, adm:models.AdmModule, cls:type, norm_name:str=None, enum:int=None):
+    def get_child(self, adm: models.AdmModule, cls: type, norm_name: str = None, enum: int = None):
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.
         '''
         query = self._db_sess.query(cls).filter(cls.module == adm)

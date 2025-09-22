@@ -63,7 +63,7 @@ class RelativeResolver:
         self._org_id = org_id
         self._model_id = model_id
 
-    def __call__(self, ari:ARI) -> ARI:
+    def __call__(self, ari: ARI) -> ARI:
         if isinstance(ari, ReferenceARI):
             if ari.ident.org_id is None or ari.ident.model_id is None:
                 out_org_id = ari.ident.org_id if ari.ident.org_id is not None else self._org_id
@@ -78,7 +78,7 @@ class RelativeResolver:
 
 
 def find_adm(org_id: Union[str, int], model_id: Union[str, int],
-             model_rev: Optional[datetime.date], db_sess:Session) -> Optional[AdmModule]:
+             model_rev: Optional[datetime.date], db_sess: Session) -> Optional[AdmModule]:
     ''' Dereference an ADM module.
     '''
     query_adm = db_sess.query(AdmModule)
@@ -104,7 +104,7 @@ def find_adm(org_id: Union[str, int], model_id: Union[str, int],
     return found_adm
 
 
-def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
+def dereference(ref: ReferenceARI, db_sess: Session) -> Optional[AdmObjMixin]:
     ''' Dereference a single object reference.
     '''
     orm_type = ORM_TYPE[ref.ident.type_id]
@@ -130,7 +130,7 @@ def dereference(ref:ReferenceARI, db_sess:Session) -> Optional[AdmObjMixin]:
 
 class TypeResolverError(RuntimeError):
 
-    def __init__(self, msg:str, badtypes:List):
+    def __init__(self, msg: str, badtypes: List):
         super().__init__(msg)
         self.badtypes = badtypes
 
@@ -144,7 +144,7 @@ class TypeResolver:
         self._badtypes = None
         self._db_sess = None
 
-    def resolve(self, typeobj:SemType, adm:'AdmModule') -> SemType:
+    def resolve(self, typeobj: SemType, adm: 'AdmModule') -> SemType:
         ''' Bind references to external BaseType objects from type names.
         This function is not reentrant.
 
@@ -185,7 +185,7 @@ class TypeResolver:
         self._db_sess = None
         return typeobj
 
-    def _typeuse_bind(self, obj:'BaseType'):
+    def _typeuse_bind(self, obj: 'BaseType'):
         ''' A type visitor suitable for binding :cls:`TypeUse` objects
         from type references.
         '''
@@ -235,7 +235,7 @@ class TypeResolver:
 
         LOGGER.debug('result for %s bound %s', obj.type_ari, obj.base)
 
-    def _constraint_bind(self, obj:'BaseType') -> None:
+    def _constraint_bind(self, obj: 'BaseType') -> None:
         ''' Bindi :cls:`Constraint` objects to local DB session.
         '''
         from .type_constraint import IdentRefBase
@@ -263,13 +263,13 @@ class FormalParameter:
     ''' A single formal parameter obtained from a :cls:`models.ParamMixin`
     object within an ADM context. '''
 
-    name:str
+    name: str
     ''' The unique name of the parameter. '''
-    index:int
+    index: int
     ''' The list index (ordinal) of the parameter. '''
-    typeobj:SemType
+    typeobj: SemType
     ''' The fully recursively resolved type of the parameter. '''
-    default:Optional[ARI] = None
+    default: Optional[ARI] = None
     ''' Default value. '''
 
 
@@ -285,8 +285,8 @@ class ActualParameterSet:
     :param fparams: The formal parameters from an ADM.
     '''
 
-    def __init__(self, gparams:Union[List[ARI], Dict[ARI, ARI]],
-                 fparams:List['FormalParameter']):
+    def __init__(self, gparams: Union[List[ARI], Dict[ARI, ARI]],
+                 fparams: List['FormalParameter']):
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
 
@@ -343,7 +343,7 @@ class ActualParameterSet:
             keys = [str(key.value) for key in gparams.keys()]
             raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
 
-    def _add_val(self, gparam:ARI, fparam:'FormalParameter'):
+    def _add_val(self, gparam: ARI, fparam: 'FormalParameter'):
         if is_undefined(gparam):
             if fparam.default is not None:
                 gparam = fparam.default
@@ -365,7 +365,7 @@ class ActualParameterSet:
     def __len__(self):
         return len(self._ordinal)
 
-    def __getitem__(self, idx:Union[int, str]) -> ARI:
+    def __getitem__(self, idx: Union[int, str]) -> ARI:
         if isinstance(idx, int):
             return self._ordinal[idx]
         elif isinstance(idx, str):

@@ -46,7 +46,7 @@ class TestAdmSet(unittest.TestCase):
     def tearDown(self):
         del self._dir
 
-    def _filter_logs(self, output:List) -> List:
+    def _filter_logs(self, output: List) -> List:
         ''' Remove known isolated module set log message. '''
 
         def incl(msg):

@@ -33,7 +33,6 @@ from sqlalchemy.orm import Session
 from pyang.repository import FileRepository
 from typing import List
 from ace import adm_yang, ari, ari_text, models, lookup
-from ace.ari import ReferenceARI, LiteralARI, StructType, Identity
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)
@@ -97,7 +96,7 @@ class BaseYang(unittest.TestCase):
         models.Base.metadata.drop_all(self._db_eng)
         self._db_eng = None
 
-    def _from_text(self, text:str) -> ari.ARI:
+    def _from_text(self, text: str) -> ari.ARI:
         return self._ari_dec.decode(io.StringIO(text))
 
     NOOBJECT_MODULE_HEAD = '''\
@@ -125,7 +124,7 @@ module example-mod {
 }
 '''
 
-    def _get_mod_buf(self, body:str) -> TextIO:
+    def _get_mod_buf(self, body: str) -> TextIO:
         buf = io.StringIO()
         buf.write(self.NOOBJECT_MODULE_HEAD)
         buf.write(body)
@@ -134,7 +133,7 @@ module example-mod {
         buf.seek(0)
         return buf
 
-    def _filter_logs(self, output:List) -> List:
+    def _filter_logs(self, output: List) -> List:
         ''' Remove known isolated module set log message. '''
 
         def incl(msg):
@@ -907,7 +906,8 @@ class TestAdmContents(BaseYang):
                 self._db_sess.commit()
 
                 typedef = adm.typedef[0]
-                action = lambda: lookup.TypeResolver().resolve(typedef.typeobj, adm)
+
+                def action(): return lookup.TypeResolver().resolve(typedef.typeobj, adm)
 
                 if valid:
                     self.assertIsNotNone(action())
@@ -1245,9 +1245,9 @@ class TestAdmContents(BaseYang):
         self.assertEqual("/TD/PT0S", adm.tbr[1].start_value)
         self.assertEqual(True, adm.tbr[1].init_enabled)
         self.assertEqual(0, adm.tbr[1].max_count)
-    
+
     def test_ari_components(self):
-      buf = self._get_mod_buf('''
+        buf = self._get_mod_buf('''
         amm:sbr sbr1 {
           amm:enum 8;
           description
@@ -1286,37 +1286,37 @@ class TestAdmContents(BaseYang):
           amm:period "/TD/PT30S";
         }
       ''')
-      with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
-        adm = self._adm_dec.decode(buf)
-      # Build expected ARI structure
-      expected_ari = ari.LiteralARI(
-          value=[
-              ari.ReferenceARI(
-                  ident=ari.Identity(
-                      org_id='example',
-                      model_id='mod',
-                      model_rev=None,
-                      type_id=ari.StructType.CTRL,
-                      obj_id='first'
-                  ),
-                  params=None
-              ),
-              ari.ReferenceARI(
-                  ident=ari.Identity(
-                      org_id='example',
-                      model_id='mod',
-                      model_rev=None,
-                      type_id=ari.StructType.CTRL,
-                      obj_id='second'
-                  ),
-                  params=None
-              )
-          ],
-          type_id=ari.StructType.AC
-      )
+        with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING):
+            adm = self._adm_dec.decode(buf)
+        # Build expected ARI structure
+        expected_ari = ari.LiteralARI(
+            value=[
+                ari.ReferenceARI(
+                    ident=ari.Identity(
+                        org_id='example',
+                        model_id='mod',
+                        model_rev=None,
+                        type_id=ari.StructType.CTRL,
+                        obj_id='first'
+                    ),
+                    params=None
+                ),
+                ari.ReferenceARI(
+                    ident=ari.Identity(
+                        org_id='example',
+                        model_id='mod',
+                        model_rev=None,
+                        type_id=ari.StructType.CTRL,
+                        obj_id='second'
+                    ),
+                    params=None
+                )
+            ],
+            type_id=ari.StructType.AC
+        )
 
-      # Get decoded ARI object
-      actual_ari = adm.sbr[0].action_ari
-      
-      # Single comparison
-      self.assertEqual(expected_ari, actual_ari)
+        # Get decoded ARI object
+        actual_ari = adm.sbr[0].action_ari
+
+        # Single comparison
+        self.assertEqual(expected_ari, actual_ari)

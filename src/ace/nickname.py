@@ -25,7 +25,6 @@
 import enum
 import logging
 from sqlalchemy.orm.session import Session
-from ace import models
 from ace.ari import ARI, ReferenceARI, Identity
 from ace.lookup import find_adm, dereference
 
@@ -51,22 +50,22 @@ class Converter:
     is available.
     '''
 
-    def __init__(self, mode:Mode, db_sess:Session, must_nickname:bool=False):
+    def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool = False):
         self._mode = mode
         self._db_sess = db_sess
         self._must = must_nickname
 
-    def __call__(self, ari:ARI) -> ARI:
+    def __call__(self, ari: ARI) -> ARI:
         LOGGER.debug('Converting object %s', ari)
         return ari.map(self._convert_ari)
 
-    def _convert_ari(self, ari:ARI) -> ARI:
+    def _convert_ari(self, ari: ARI) -> ARI:
         if isinstance(ari, ReferenceARI):
             ari = self._convert_ref(ari)
 
         return ari
 
-    def _convert_ref(self, ari:ReferenceARI) -> ReferenceARI:
+    def _convert_ref(self, ari: ReferenceARI) -> ReferenceARI:
         if ari.ident.type_id is not None:
             obj = dereference(ari, self._db_sess)
         else:
