@@ -50,7 +50,7 @@ class Converter:
     is available.
     '''
 
-    def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool = False):
+    def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool=False):
         self._mode = mode
         self._db_sess = db_sess
         self._must = must_nickname
@@ -70,6 +70,7 @@ class Converter:
             obj = dereference(ari, self._db_sess)
         else:
             obj = None
+
         if obj is not None:
             adm = obj.module
         else:
@@ -86,7 +87,7 @@ class Converter:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {org_id} {err}'
+                    msg = f'The ADM organization named {org_id} {err}'
                     raise RuntimeError(msg)
             else:
                 org_id = adm.ns_org_enum
@@ -98,7 +99,7 @@ class Converter:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {model_id} {err}'
+                    msg = f'The ADM model named {model_id} {err}'
                     raise RuntimeError(msg)
             else:
                 model_id = adm.ns_model_enum

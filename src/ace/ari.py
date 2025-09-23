@@ -71,7 +71,7 @@ class Table(numpy.ndarray):
             shape = (0, 0)
         obj = Table(shape)
         for row_ix, row in enumerate(rows):
-            obj[row_ix, :] = row
+            obj[row_ix,:] = row
         return obj
 
 
@@ -202,11 +202,14 @@ class LiteralARI(ARI):
                 key.visit(visitor)
                 item.visit(visitor)
         elif isinstance(self.value, Table):
+
             def func(item): return item.visit(visitor)
+
             numpy.vectorize(func)(self.value)
         super().visit(visitor)
 
     def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+
         def lfunc(item): return item.map(func)
 
         result = None
@@ -234,11 +237,13 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ReportSet):
+
             def rpt_func(ireport): return Report(
                 rel_time=ireport.rel_time,
                 source=lfunc(ireport.source),
                 items=list(map(lfunc, ireport.items))
             )
+
             rreports = list(map(rpt_func, self.value.reports))
             rvalue = ReportSet(
                 nonce=self.value.nonce,
@@ -337,7 +342,10 @@ class Identity:
             text += f'/{self.model_id}'
         if self.model_rev:
             text += f'@{self.model_rev}'
-        text += f'/{self.type_id.name}'
+        if self.type_id is not None:
+            text += f'/{self.type_id.name}'
+        else:
+            text += '/'
         text += f'/{self.obj_id}'
         return text
 
@@ -362,6 +370,7 @@ class ReferenceARI(ARI):
         super().visit(visitor)
 
     def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+
         def lfunc(item): return item.map(func)
 
         rparams = None
