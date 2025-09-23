@@ -50,7 +50,7 @@ class Converter:
     is available.
     '''
 
-    def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool=False):
+    def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool = False):
         self._mode = mode
         self._db_sess = db_sess
         self._must = must_nickname
@@ -75,8 +75,7 @@ class Converter:
             adm = obj.module
         else:
             adm = find_adm(ari.ident.org_id, ari.ident.model_id, ari.ident.model_rev, self._db_sess)
-        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s',
-                     ari.ident, adm, obj)
+        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s', ari.ident, adm, obj)
 
         if self._mode == Mode.TO_NN:
             # Prefer nicknames

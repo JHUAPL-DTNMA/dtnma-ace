@@ -71,7 +71,7 @@ class Table(numpy.ndarray):
             shape = (0, 0)
         obj = Table(shape)
         for row_ix, row in enumerate(rows):
-            obj[row_ix,:] = row
+            obj[row_ix, :] = row
         return obj
 
 
