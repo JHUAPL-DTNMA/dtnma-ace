@@ -346,7 +346,8 @@ class Identity:
             text += f'/{self.type_id.name}'
         else:
             text += '/'
-        text += f'/{self.obj_id}'
+        if self.obj_id is not None:
+            text += f'/{self.obj_id}'
         return text
 
 
