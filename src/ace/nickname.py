@@ -70,12 +70,12 @@ class Converter:
             obj = dereference(ari, self._db_sess)
         else:
             obj = None
+
         if obj is not None:
             adm = obj.module
         else:
             adm = find_adm(ari.ident.org_id, ari.ident.model_id, ari.ident.model_rev, self._db_sess)
-        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s',
-                     ari.ident, adm, obj)
+        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s', ari.ident, adm, obj)
 
         if self._mode == Mode.TO_NN:
             # Prefer nicknames
@@ -86,7 +86,7 @@ class Converter:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {org_id} {err}'
+                    msg = f'The ADM organization named {org_id} {err}'
                     raise RuntimeError(msg)
             else:
                 org_id = adm.ns_org_enum
@@ -98,7 +98,7 @@ class Converter:
                         err = 'does not exist'
                     else:
                         err = 'does not have an enumeration'
-                    msg = f'The ADM named {model_id} {err}'
+                    msg = f'The ADM model named {model_id} {err}'
                     raise RuntimeError(msg)
             else:
                 model_id = adm.ns_model_enum
