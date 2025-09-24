@@ -105,7 +105,7 @@ class TestActualParameterSet(unittest.TestCase):
             ),
         ]
 
-    def _process(self, text:str) -> lookup.ActualParameterSet:
+    def _process(self, text: str) -> lookup.ActualParameterSet:
         ref = self._ari_dec.decode(io.StringIO(text))
         return lookup.ActualParameterSet(ref.params, self._fparams[ref.ident.obj_id])
 
@@ -125,18 +125,17 @@ class TestActualParameterSet(unittest.TestCase):
             list(aparams)
         )
 
-    def catch_error(self, ari, etype = lookup.ParameterError):
+    def catch_error(self, ari, etype=lookup.ParameterError):
         with self.assertRaises(etype):
-            aparams = self._process(ari)
+            self._process(ari)
 
     def test_params_error(self):
-        #too many
+        # too many
         self.catch_error('//example/test-mod/EDD/no_params(1)')
         self.catch_error('//example/test-mod/EDD/many_params(1,2,3,4)')
 
-        #value cannot be coerced
+        # value cannot be coerced
         self.catch_error('//example/test-mod/EDD/many_params(0=test)')
-
 
     def test_params_empty(self):
         aparams = self._process('//example/test-mod/EDD/no_params()')
@@ -144,7 +143,7 @@ class TestActualParameterSet(unittest.TestCase):
             [],
             list(aparams)
         )
-        
+
         aparams = self._process('//example/test-mod/EDD/many_params()')
         self.assertEqual(
             [

@@ -27,11 +27,9 @@ from sqlalchemy import (
     Text, PickleType
 )
 from sqlalchemy.orm import (
-    declarative_base, relationship, declared_attr, Mapped
+    declarative_base, declarative_mixin, relationship, declared_attr, Mapped
 )
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import declarative_mixin, declared_attr
 
 CURRENT_SCHEMA_VERSION = 23
 ''' Value of :attr:`SchemaVersion.version_num` '''
@@ -235,7 +233,7 @@ class AdmModule(Base):
                          cascade="all, delete")
     ctrl = relationship("Ctrl",
                         back_populates="module",
-                         order_by='asc(Ctrl.position)',
+                        order_by='asc(Ctrl.position)',
                         cascade="all, delete")
     edd = relationship("Edd",
                        back_populates="module",

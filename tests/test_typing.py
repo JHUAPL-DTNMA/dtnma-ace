@@ -31,9 +31,8 @@ from ace.typing import (
     TypeUse, TypeUnion, UniformList, DiverseList, UniformMap,
     TableTemplate, TableColumn, Sequence
 )
-from ace.adm_yang import range_from_text
 from ace.type_constraint import (
-    NumericRange, StringLength, TextPattern, IntegerEnums
+    NumericRange, StringLength
 )
 from ace.ari import (
     StructType, Table, LiteralARI, ReferenceARI, Identity,
@@ -412,6 +411,70 @@ class TestTyping(unittest.TestCase):
         for val in range(26, 30):
             with self.assertRaises(ValueError):
                 typ.convert(LiteralARI(val))
+
+    def test_typeuse_textstr_length_get(self):
+        typ = TypeUse(
+            base=BUILTINS['textstr'],
+            constraints=[
+                StringLength(portion.closed(1, 10) | portion.closed(20, 25))
+            ]
+        )
+
+        self.assertIsNone(typ.get(UNDEFINED))
+        self.assertIsNone(typ.get(TRUE))
+        self.assertIsNone(typ.get(FALSE))
+
+        for slen in range(-10, 1):
+            val = LiteralARI('-' * slen)
+            self.assertIsNone(typ.get(val))
+        for slen in range(1, 11):
+            val = LiteralARI('-' * slen)
+            self.assertEqual(val, typ.get(val))
+        for slen in range(11, 20):
+            val = LiteralARI('-' * slen)
+            self.assertIsNone(typ.get(val))
+        for slen in range(20, 26):
+            val = LiteralARI('-' * slen)
+            self.assertEqual(val, typ.get(val))
+        for slen in range(26, 30):
+            val = LiteralARI('-' * slen)
+            self.assertIsNone(typ.get(val))
+
+    def test_typeuse_textstr_length_convert(self):
+        typ = TypeUse(
+            base=BUILTINS['textstr'],
+            constraints=[
+                StringLength(portion.closed(1, 10) | portion.closed(20, 25))
+            ]
+        )
+
+        self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
+        with self.assertRaises(TypeError):
+            typ.convert(TRUE)
+
+        for slen in range(-10, 1):
+            with self.subTest(f'length {slen}'):
+                val = LiteralARI('-' * slen)
+                with self.assertRaises(ValueError):
+                    typ.convert(val)
+        for slen in range(1, 11):
+            with self.subTest(f'length {slen}'):
+                val = LiteralARI('-' * slen)
+                self.assertEqual(LiteralARI(val.value, StructType.TEXTSTR), typ.convert(val))
+        for slen in range(11, 20):
+            with self.subTest(f'length {slen}'):
+                val = LiteralARI('-' * slen)
+                with self.assertRaises(ValueError):
+                    typ.convert(val)
+        for slen in range(20, 26):
+            with self.subTest(f'length {slen}'):
+                val = LiteralARI('-' * slen)
+                self.assertEqual(LiteralARI(val.value, StructType.TEXTSTR), typ.convert(val))
+        for slen in range(26, 30):
+            with self.subTest(f'length {slen}'):
+                val = LiteralARI('-' * slen)
+                with self.assertRaises(ValueError):
+                    typ.convert(val)
 
     def test_union_get(self):
         typ = TypeUnion(types=[

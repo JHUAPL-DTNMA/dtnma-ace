@@ -71,8 +71,11 @@ max-line-length=100
 [tool.pylint.DESIGN]
 min-public-methods=1
 
+[tool.autopep8]
+max_line_length = 160
+
 [tool.flake8]
-max-line-length=100
+max-line-length=160
 
 [project.scripts]
 ace_ari = "ace.tools.ace_ari:main"
