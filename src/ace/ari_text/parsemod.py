@@ -47,24 +47,40 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=invalid-name disable=missing-function-docstring
 
 
-'''def p_ari_scheme(p):
-    'ari : ARI_PREFIX ssp'
-    p[0] = p[2]'''
 def p_ari_scheme(p):
-    '''ari : ARI_PREFIX ssp'''
-    try:
-        # Get the matched text directly from the parse results
-        hex_str = p[2]  # Get first element from match
+    'ari : ARI_PREFIX ssp'
+    # Get the raw string representation
+    value = str(p[2])
+    
+    def decode_next_hex_pair(s, pos):
+        """Decode next two characters as hex"""
+        if pos + 1 >= len(str(s)):
+            return None, pos
+        pair = str(s)[pos:pos+2]
+        try:
+            return bytes([int(pair, 16)]), pos + 2
+        except ValueError:
+            return None, pos
+            
+    def decode_hex_encoded_string(s):
+        """Decode hex-encoded string starting with 'h'''"""
+        if not str(s).startswith("h'"):
+            return str(s).encode()
+            
+        result = []
+        pos = 2  # Skip 'h'
         
-        # Decode URL-encoded characters
-        decoded_str = urllib.parse.unquote(hex_str)
-        
-        # Remove any spaces that might remain
-        clean_hex = ''.join(decoded_str.split())
-        
-        p[0] = clean_hex
-    except ValueError as e:
-        raise RuntimeError(f"Failed to parse hex string: {str(e)}")
+        while True:
+            hex_bytes, pos = decode_next_hex_pair(s, pos)
+            if hex_bytes is None:
+                break
+            result.extend(hex_bytes)
+                
+        return bytes(result)
+    
+    decoded_value = decode_hex_encoded_string(value)
+    p[0] = LiteralARI(decoded_value)
+
 def p_ari_noscheme(p):
     'ari : ssp'
     p[0] = p[1]

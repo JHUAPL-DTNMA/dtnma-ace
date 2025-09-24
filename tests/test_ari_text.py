@@ -846,7 +846,7 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
-    # madeline - update FIXME for ACE #16
+    # madeline - fix for ACE #16
     def test_ari_text_decode_lit_prim_bstr(self):
         TEST_CASE = [
             ("''", b'', 0),
@@ -858,7 +858,7 @@ class TestAriText(unittest.TestCase):
             ("ari:h'666F6F626172'", b"foobar", 6),
             ("ari:b64'Zm9vYmFy'", b"foobar", 6),
             ("ari:b64'Zg%3d%3d'", b"f", 1),
-            ("ari:h'%20666%20F6F626172'", b"foobar", 6),
+            ("ari:h'%20666%20F6F626172'", b"foobar", 6), #FIXME
             ("ari:b64'Zm9v%20YmFy'", b"foobar", 6),
         ]
 
