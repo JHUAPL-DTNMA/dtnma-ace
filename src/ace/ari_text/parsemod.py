@@ -26,6 +26,7 @@
 
 import logging
 from ply import yacc
+import urllib
 from ace.ari import (
     is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
@@ -46,11 +47,24 @@ LOGGER = logging.getLogger(__name__)
 # pylint: disable=invalid-name disable=missing-function-docstring
 
 
-def p_ari_scheme(p):
+'''def p_ari_scheme(p):
     'ari : ARI_PREFIX ssp'
-    p[0] = p[2]
-
-
+    p[0] = p[2]'''
+def p_ari_scheme(p):
+    '''ari : ARI_PREFIX ssp'''
+    try:
+        # Get the matched text directly from the parse results
+        hex_str = p[2]  # Get first element from match
+        
+        # Decode URL-encoded characters
+        decoded_str = urllib.parse.unquote(hex_str)
+        
+        # Remove any spaces that might remain
+        clean_hex = ''.join(decoded_str.split())
+        
+        p[0] = clean_hex
+    except ValueError as e:
+        raise RuntimeError(f"Failed to parse hex string: {str(e)}")
 def p_ari_noscheme(p):
     'ari : ssp'
     p[0] = p[1]
