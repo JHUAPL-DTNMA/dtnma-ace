@@ -870,7 +870,6 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
-    # madeline - fix FIXME for ACE #16
     def test_ari_text_decode_lit_typed_cbor(self):
         TEST_CASE = [
             ("ari:/CBOR/h''", b""),
