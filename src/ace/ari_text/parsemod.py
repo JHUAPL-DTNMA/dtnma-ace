@@ -26,7 +26,6 @@
 
 import logging
 from ply import yacc
-import urllib
 from ace.ari import (
     is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
@@ -49,37 +48,7 @@ LOGGER = logging.getLogger(__name__)
 
 def p_ari_scheme(p):
     'ari : ARI_PREFIX ssp'
-    # Get the raw string representation
-    value = str(p[2])
-    
-    def decode_next_hex_pair(s, pos):
-        """Decode next two characters as hex"""
-        if pos + 1 >= len(str(s)):
-            return None, pos
-        pair = str(s)[pos:pos+2]
-        try:
-            return bytes([int(pair, 16)]), pos + 2
-        except ValueError:
-            return None, pos
-            
-    def decode_hex_encoded_string(s):
-        """Decode hex-encoded string starting with 'h'''"""
-        if not str(s).startswith("h'"):
-            return str(s).encode()
-            
-        result = []
-        pos = 2  # Skip 'h'
-        
-        while True:
-            hex_bytes, pos = decode_next_hex_pair(s, pos)
-            if hex_bytes is None:
-                break
-            result.extend(hex_bytes)
-                
-        return bytes(result)
-    
-    decoded_value = decode_hex_encoded_string(value)
-    p[0] = LiteralARI(decoded_value)
+    p[0] = p[1]
 
 def p_ari_noscheme(p):
     'ari : ssp'

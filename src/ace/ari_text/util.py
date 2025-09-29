@@ -177,6 +177,11 @@ def t_tstr(found):
 def t_bstr(found):
     enc = found['enc']
     val = found['val']
+
+    # Remove spaces from hex-encoded strings
+    if enc == 'h':
+        val = ''.join(filter(None, val.split()))
+        
     if enc == 'h':
         return base64.b16decode(val, casefold=True)
     elif enc == 'b64':
