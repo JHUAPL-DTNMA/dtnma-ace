@@ -48,7 +48,7 @@ LOGGER = logging.getLogger(__name__)
 
 def p_ari_scheme(p):
     'ari : ARI_PREFIX ssp'
-    p[0] = p[1]
+    p[0] = p[2]
 
 def p_ari_noscheme(p):
     'ari : ssp'
