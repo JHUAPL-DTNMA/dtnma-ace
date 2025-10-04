@@ -30,7 +30,7 @@ from typing import List, Optional, Set, Iterator
 import numpy
 from .ari import (
     DTN_EPOCH, StructType, Table,
-    ARI, LiteralARI, ReferenceARI, Identity, is_undefined
+    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL
 )
 import struct
 
