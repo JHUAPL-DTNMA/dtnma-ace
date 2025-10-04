@@ -268,24 +268,37 @@ TRUE = LiteralARI(True)
 FALSE = LiteralARI(False)
 ''' The untyped false value of the AMM '''
 
+TYPED_NULL = LiteralARI(None, StructType.NULL)
+''' The typed null value of the AMM '''
 
-def byte(value: int) -> LiteralARI:
+TYPED_TRUE = LiteralARI(True, StructType.BOOL)
+''' The typed true value of the AMM '''
+TYPED_FALSE = LiteralARI(False, StructType.BOOL)
+''' The typed false value of the AMM '''
+
+
+def typed_byte(value: int) -> LiteralARI:
+    ''' Convert to a typed BYTE literal. '''
     return LiteralARI(value, StructType.BYTE)
 
 
-def int(value: int) -> LiteralARI:
+def typed_int(value: int) -> LiteralARI:
+    ''' Convert to a typed INT literal. '''
     return LiteralARI(value, StructType.INT)
 
 
-def uint(value: int) -> LiteralARI:
+def typed_uint(value: int) -> LiteralARI:
+    ''' Convert to a typed UINT literal. '''
     return LiteralARI(value, StructType.UINT)
 
 
-def vast(value: int) -> LiteralARI:
+def typed_vast(value: int) -> LiteralARI:
+    ''' Convert to a typed VAST literal. '''
     return LiteralARI(value, StructType.VAST)
 
 
-def uvast(value: int) -> LiteralARI:
+def typed_uvast(value: int) -> LiteralARI:
+    ''' Convert to a typed UVAST literal. '''
     return LiteralARI(value, StructType.UVAST)
 
 
