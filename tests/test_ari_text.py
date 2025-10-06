@@ -857,7 +857,7 @@ class TestAriText(unittest.TestCase):
             ("ari:h'666F6F626172'", b"foobar", 6),
             ("ari:b64'Zm9vYmFy'", b"foobar", 6),
             ("ari:b64'Zg%3d%3d'", b"f", 1),
-            ("ari:h'%20666%20F6F626172'", b"foobar", 6), #FIXME
+            ("ari:h'%20666%20F6F626172'", b"foobar", 6), 
             ("ari:b64'Zm9v%20YmFy'", b"foobar", 6),
         ]
 
