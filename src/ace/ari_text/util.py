@@ -179,7 +179,7 @@ def t_bstr(found):
     val = found['val']
 
     # Remove spaces from hex-encoded strings
-    if enc == 'h':
+    if enc == 'h' or enc == 'b64':
         val = ''.join(filter(None, val.split()))
         
     if enc == 'h':
