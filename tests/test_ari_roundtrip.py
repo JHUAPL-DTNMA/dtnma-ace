@@ -65,7 +65,7 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TBL/c=3;',
         'ari:/TBL/c=3;(1,2,3)(a,b,c)',
         'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
-        'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT;s=//example/adm/CTRL/name;(null))',
+        'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
         # Reference
         'ari://65536/65536/VAR/0',
         'ari://4294967296/4294967296/VAR/2',
