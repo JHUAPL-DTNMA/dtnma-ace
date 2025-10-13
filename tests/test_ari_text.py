@@ -857,7 +857,7 @@ class TestAriText(unittest.TestCase):
             ("ari:h'666F6F626172'", b"foobar", 6),
             ("ari:b64'Zm9vYmFy'", b"foobar", 6),
             ("ari:b64'Zg%3d%3d'", b"f", 1),
-            # FIXME: ("ari:h'%20666%20F6F626172'", b"foobar", 6),
+            ("ari:h'%20666%20F6F626172'", b"foobar", 6),
             ("ari:b64'Zm9v%20YmFy'", b"foobar", 6),
         ]
 
@@ -875,7 +875,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/CBOR/h''", b""),
             ("ari:/CBOR/h'A164746573748203F94480'", b'\xa1dtest\x82\x03\xf9D\x80'),
             ("ari:/CBOR/h'0064746573748203F94480'", b'\x00dtest\x82\x03\xf9D\x80'),
-            # FIXME: ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", b"A164746573748203F94480")
+            ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", b'\xa1dtest\x82\x03\xf9D\x80'),
         ]
 
         dec = ari_text.Decoder()
