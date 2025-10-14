@@ -54,16 +54,16 @@ def pyang_plugin_init():
 class DtnmaAdmPlugin(plugin.PyangPlugin):
     ''' A transformer to clean up ADM Module contents. '''
 
-    def add_opts(self, _optparser:optparse.OptionParser):
+    def add_opts(self, _optparser: optparse.OptionParser):
         pass
 
-    def setup_ctx(self, _ctx:context.Context):
+    def setup_ctx(self, _ctx: context.Context):
         pass
 
     def add_transform(self, xforms):
         xforms['adm-add-enum'] = self
 
-    def transform(self, _ctx:context.Context, modules:List[statements.ModSubmodStatement]):
+    def transform(self, _ctx: context.Context, modules: List[statements.ModSubmodStatement]):
         for mod_stmt in modules:
             ns_stmt = mod_stmt.search_one('namespace')
             if not ns_stmt or not ns_stmt.arg.startswith('ari:'):
@@ -109,7 +109,7 @@ class DtnmaRefsPlugin(plugin.PyangPlugin):
         self._mod_resolver = {}
         self._ari_dec = ace.ari_text.Decoder()
 
-    def add_opts(self, optparser:optparse.OptionParser):
+    def add_opts(self, optparser: optparse.OptionParser):
         if ace:
             optparser.add_option(optparse.make_option(
                 '--adm-check-refs',
@@ -117,7 +117,7 @@ class DtnmaRefsPlugin(plugin.PyangPlugin):
                 help='Validate all object reference ARI values are dereferenceable'
             ))
 
-    def setup_ctx(self, ctx:context.Context):
+    def setup_ctx(self, ctx: context.Context):
         if not ctx.opts.adm_check_refs or not ace:
             return
 
@@ -157,7 +157,7 @@ class DtnmaRefsPlugin(plugin.PyangPlugin):
             res = ace.lookup.RelativeResolver(ns_val.ident.org_id, ns_val.ident.model_id)
             self._mod_resolver[mod_stmt] = res
 
-    def _chk_ari(self, ctx:context.Context, stmt:statements.Statement):
+    def _chk_ari(self, ctx: context.Context, stmt: statements.Statement):
         if not ctx.opts.adm_check_refs:
             return
 

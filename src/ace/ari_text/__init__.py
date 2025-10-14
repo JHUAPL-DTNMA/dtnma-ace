@@ -22,15 +22,15 @@
 #
 ''' CODEC for converting ARI to and from text URI form.
 '''
-import datetime
 import logging
 import os
 from typing import TextIO
-import xdg_base_dirs
-from ace.ari import (
-    StructType, ARI, LiteralARI, ReferenceARI
-)
-from ace.cborutil import to_diag
+try:
+    import xdg_base_dirs
+except ImportError:
+    # older compatibility
+    import xdg as xdg_base_dirs
+from ace.ari import ARI
 from .lexmod import new_lexer
 from .parsemod import new_parser
 from .encode import Encoder, EncodeOptions, percent_encode
@@ -80,4 +80,3 @@ class Decoder:
             raise ParseError(msg) from err
 
         return res
-

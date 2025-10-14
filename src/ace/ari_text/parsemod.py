@@ -57,6 +57,7 @@ def p_ari_noscheme(p):
 
 # The following are untyped literals with primitive values
 
+
 def p_ssp_primitive(p):
     'ssp : VALSEG'
     try:
@@ -99,7 +100,7 @@ def p_typedlit_tbl_rows(p):
     for row_ix, row in enumerate(rows):
         if len(row) != ncol:
             raise RuntimeError('Table column count is mismatched')
-        table[row_ix,:] = row
+        table[row_ix, :] = row
     p[0] = LiteralARI(type_id=StructType.TBL, value=table)
 
 
@@ -263,7 +264,6 @@ def p_objpath_only_ns(p):
 
 def p_objpath_with_ns(p):
     'objpath : SLASH SLASH VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'
-
     org = util.IDSEGMENT(p[3])
     mod = util.MODSEGMENT(p[5])
 

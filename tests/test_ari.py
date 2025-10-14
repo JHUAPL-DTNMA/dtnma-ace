@@ -23,12 +23,9 @@
 ''' Verify behavior of the ace.ari module.
 '''
 import logging
-import math
 import unittest
-import numpy
 from ace.ari import (
-    ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report
+    ARI, Identity, ReferenceARI, LiteralARI, StructType,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -40,14 +37,14 @@ class Counter:
         self.count = 0
         self.seen = []
 
-    def __call__(self, ari:ARI) -> None:
+    def __call__(self, ari: ARI) -> None:
         self.count += 1
         self.seen.append(ari)
 
 
 class IdentityMapper:
 
-    def __call__(self, ari:ARI) -> ARI:
+    def __call__(self, ari: ARI) -> ARI:
         return ari
 
 
