@@ -159,9 +159,11 @@ def p_reportbracket(p):
                      | LPAREN reportlist RPAREN'''
     p[0] = p[2] if len(p) == 4 else []
 
+
 def p_reportlist_join(p):
     'reportlist : reportlist COMMA report'
     p[0] = p[1] + [p[3]]
+
 
 def p_reportlist_end(p):
     'reportlist : report'
