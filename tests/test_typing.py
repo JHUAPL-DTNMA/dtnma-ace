@@ -36,7 +36,7 @@ from ace.type_constraint import (
 )
 from ace.ari import (
     StructType, Table, LiteralARI, ReferenceARI, Identity,
-    UNDEFINED, NULL, TRUE, FALSE
+    UNDEFINED, NULL, TRUE, FALSE, TYPED_NULL, TYPED_TRUE, TYPED_FALSE
 )
 from .util import TypeSummary
 
@@ -71,15 +71,15 @@ class TestTyping(unittest.TestCase):
     def test_bool_convert(self):
         typ = BUILTINS['bool']
 
-        self.assertEqual(TRUE, typ.convert(TRUE))
-        self.assertEqual(FALSE, typ.convert(FALSE))
-        self.assertEqual(FALSE, typ.convert(NULL))
-        self.assertEqual(FALSE, typ.convert(LiteralARI('')))
-        self.assertEqual(TRUE, typ.convert(LiteralARI('hi')))
-        self.assertEqual(FALSE, typ.convert(LiteralARI(b'')))
-        self.assertEqual(TRUE, typ.convert(LiteralARI(b'hi')))
-        self.assertEqual(FALSE, typ.convert(LiteralARI(0)))
-        self.assertEqual(TRUE, typ.convert(LiteralARI(123)))
+        self.assertEqual(TYPED_TRUE, typ.convert(TRUE))
+        self.assertEqual(TYPED_FALSE, typ.convert(FALSE))
+        self.assertEqual(TYPED_FALSE, typ.convert(NULL))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI('')))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI('hi')))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(b'')))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(b'hi')))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(0)))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(123)))
 
     def test_int_get(self):
         typ = BUILTINS['int']
@@ -87,6 +87,8 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
+        self.assertIsNone(typ.get(TYPED_TRUE))
+        self.assertIsNone(typ.get(TYPED_FALSE))
         self.assertIsNone(typ.get(LiteralARI('')))
         self.assertIsNone(typ.get(LiteralARI('hi')))
         self.assertIsNone(typ.get(LiteralARI(b'')))
@@ -104,6 +106,8 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(NULL))
         self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TRUE))
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(FALSE))
+        self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TYPED_TRUE))
+        self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(TYPED_FALSE))
         with self.assertRaises(ValueError):
             typ.convert(LiteralARI(''))
         with self.assertRaises(ValueError):
@@ -238,6 +242,8 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(NULL, typ.convert(NULL))
         self.assertEqual(TRUE, typ.convert(TRUE))
         self.assertEqual(FALSE, typ.convert(FALSE))
+        self.assertEqual(TYPED_TRUE, typ.convert(TYPED_TRUE))
+        self.assertEqual(TYPED_FALSE, typ.convert(TYPED_FALSE))
         self.assertEqual(LiteralARI('hi'), typ.convert(LiteralARI('hi')))
 
         ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
@@ -497,15 +503,17 @@ class TestTyping(unittest.TestCase):
         ])
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
-
+        self.assertEqual(NULL, typ.convert(NULL))
         self.assertEqual(TRUE, typ.convert(TRUE))
         self.assertEqual(FALSE, typ.convert(FALSE))
-        self.assertEqual(NULL, typ.convert(NULL))
+        self.assertEqual(TYPED_NULL, typ.convert(TYPED_NULL))
+        self.assertEqual(TYPED_TRUE, typ.convert(TYPED_TRUE))
+        self.assertEqual(TYPED_FALSE, typ.convert(TYPED_FALSE))
         # force the output type (in union order)
-        self.assertEqual(TRUE, typ.convert(LiteralARI('hi')))
-        self.assertEqual(FALSE, typ.convert(LiteralARI('')))
-        self.assertEqual(TRUE, typ.convert(LiteralARI(123)))
-        self.assertEqual(FALSE, typ.convert(LiteralARI(0)))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI('hi')))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI('')))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(123)))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(0)))
 
     def test_ulist_get(self):
         typ = UniformList(
