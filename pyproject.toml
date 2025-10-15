@@ -56,7 +56,7 @@ docs = [
 
 [tool.pytest.ini_options]
 addopts = [
-    "--log-cli-level=warning",
+    "--log-cli-level=critical",
     "--import-mode=importlib",
 ]
 testpaths = [

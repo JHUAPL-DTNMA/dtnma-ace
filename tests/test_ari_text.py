@@ -174,6 +174,17 @@ class TestAriText(unittest.TestCase):
             ])
         ),
         (
+            'ari:/EXECSET/n=null;()',
+            ExecutionSet(nonce=LiteralARI(None), targets=[])
+        ),
+        (
+            'ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)',
+            ExecutionSet(nonce=LiteralARI(None), targets=[
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
+            ])
+        ),
+        (
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
@@ -205,30 +216,60 @@ class TestAriText(unittest.TestCase):
                 ]
             )
         ),
+        (
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()',
+            ReportSet(
+                nonce=LiteralARI(None),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                reports=[]
+            )
+        ),
+        (
+            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
+            ReportSet(
+                nonce=LiteralARI(None),
+                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                reports=[
+                    Report(
+                        rel_time=numpy.timedelta64(0, 's'),
+                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+                        items=[
+                            LiteralARI(None)
+                        ]
+                    ),
+                    Report(
+                        rel_time=numpy.timedelta64(1, 's'),
+                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
+                        items=[
+                            UNDEFINED
+                        ]
+                    ),
+                ]
+            )
+        ),
     ]
 
     def test_literal_text_loopback(self):
         dec = ari_text.Decoder()
         enc = ari_text.Encoder()
         for row in self.LITERAL_TEXTS:
-            with self.subTest(f'{row}'):
-                if len(row) == 2:
-                    text, val = row
-                    exp_loop = text
-                elif len(row) == 3:
-                    text, val, exp_loop = row
-                else:
-                    raise ValueError
-                LOGGER.info('Testing text: %s', text)
+            if len(row) == 2:
+                text, val = row
+                exp_loop = text
+            elif len(row) == 3:
+                text, val, exp_loop = row
+            else:
+                raise ValueError
 
+            with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.debug('Got ARI %s', ari)
                 self.assertIsInstance(ari, LiteralARI)
                 self.assertEqualWithNan(ari.value, val)
 
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.debug('Got text: %s', loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), exp_loop)
 
@@ -1046,7 +1087,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
-            ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())(t=/TD/1;s=//example/test/CTRL/eh;())", bytes, 2),
+            ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;(),t=/TD/1;s=//example/test/CTRL/eh;())", bytes, 2),
         ]
 
         dec = ari_text.Decoder()
