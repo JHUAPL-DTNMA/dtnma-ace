@@ -30,7 +30,7 @@ from typing import List, Optional, Set, Iterator
 import numpy
 from .ari import (
     DTN_EPOCH, StructType, Table,
-    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL
+    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 import struct
 
@@ -150,7 +150,7 @@ class NullType(BuiltInType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        return LiteralARI(None, StructType.NULL)
+        return NULL
 
 
 class BoolType(BuiltInType):
@@ -170,14 +170,14 @@ class BoolType(BuiltInType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        elif isinstance(obj, LiteralARI):
-            obj = obj.value
-        elif isinstance(obj, ReferenceARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             # Any object reference is truthy
-            obj = True
+            return TRUE
 
         # FIXME compare Python logic with AMM requirements
-        return LiteralARI(bool(obj), StructType.BOOL)
+        return LiteralARI(bool(obj.value), StructType.BOOL)
 
 
 class NumericType(BuiltInType):
@@ -202,7 +202,7 @@ class NumericType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]) or isinstance(obj.value, bool):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
             return None
         if not self._in_domain(obj.value):
             return None
@@ -540,14 +540,15 @@ class TypeUse(SemType):
 
     def get(self, obj: ARI) -> Optional[ARI]:
         # extract the value before checks
-        got = self.base.get(obj)
-        if got is not None:
-            invalid = self._constrain(got)
+        if self.base:
+            obj = self.base.get(obj)
+        if obj is not None:
+            invalid = self._constrain(obj)
             if invalid:
                 err = ', '.join(invalid)
                 LOGGER.debug('TypeUse.get() invalid constraints: %s', err)
                 return None
-        return got
+        return obj
 
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
