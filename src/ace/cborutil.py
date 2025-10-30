@@ -97,6 +97,6 @@ def from_hexstr(text: str) -> bytes:
     :param text: The hexstring.
     :return: Decoded bytes.
     '''
-    if text[0:2].casefold() != '0x':
-        raise ValueError(f'hexstr must start with 0x, got:{text}')
-    return base64.b16decode(text[2:], casefold=True)
+    if text[0:2].casefold() == '0x':
+        text = text[2:]
+    return base64.b16decode(text, casefold=True)

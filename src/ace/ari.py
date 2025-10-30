@@ -24,7 +24,7 @@
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
 '''
 import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import enum
 import math
 import portion
@@ -59,7 +59,7 @@ class Table(numpy.ndarray):
         return numpy.array_equal(self, other)
 
     @staticmethod
-    def from_rows(rows: List[List]) -> 'Table':
+    def from_rows(rows: List[List['ARI']]) -> 'Table':
         ''' Construct and initialize a table from a list of rows.
 
         :param rows: A row-major list of lists.
@@ -177,7 +177,7 @@ class ARI:
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    value: object = cbor2.undefined
+    value: object = field(default_factory=lambda: UNDEFINED.value)
     ''' Literal value specific to :attr:`type_id` '''
     type_id: Optional[StructType] = None
     ''' ADM type of this value '''
@@ -260,13 +260,46 @@ class LiteralARI(ARI):
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
 ''' The undefined value of the AMM '''
-NULL = LiteralARI(value=None, type_id=StructType.NULL)
-''' The null value of the AMM '''
+NULL = LiteralARI(None)
+''' The untyped null value of the AMM '''
 
-TRUE = LiteralARI(value=True, type_id=StructType.BOOL)
-''' The true value of the AMM '''
-FALSE = LiteralARI(value=False, type_id=StructType.BOOL)
-''' The false value of the AMM '''
+TRUE = LiteralARI(True)
+''' The untyped true value of the AMM '''
+FALSE = LiteralARI(False)
+''' The untyped false value of the AMM '''
+
+TYPED_NULL = LiteralARI(None, StructType.NULL)
+''' The typed null value of the AMM '''
+
+TYPED_TRUE = LiteralARI(True, StructType.BOOL)
+''' The typed true value of the AMM '''
+TYPED_FALSE = LiteralARI(False, StructType.BOOL)
+''' The typed false value of the AMM '''
+
+
+def typed_byte(value: int) -> LiteralARI:
+    ''' Convert to a typed BYTE literal. '''
+    return LiteralARI(value, StructType.BYTE)
+
+
+def typed_int(value: int) -> LiteralARI:
+    ''' Convert to a typed INT literal. '''
+    return LiteralARI(value, StructType.INT)
+
+
+def typed_uint(value: int) -> LiteralARI:
+    ''' Convert to a typed UINT literal. '''
+    return LiteralARI(value, StructType.UINT)
+
+
+def typed_vast(value: int) -> LiteralARI:
+    ''' Convert to a typed VAST literal. '''
+    return LiteralARI(value, StructType.VAST)
+
+
+def typed_uvast(value: int) -> LiteralARI:
+    ''' Convert to a typed UVAST literal. '''
+    return LiteralARI(value, StructType.UVAST)
 
 
 def is_undefined(val: ARI) -> bool:
@@ -274,7 +307,7 @@ def is_undefined(val: ARI) -> bool:
 
     :param val: The value to check.
     :return: True if equivalent to :obj:`UNDEFINED`.
-     '''
+    '''
     return (
         isinstance(val, LiteralARI)
         and val.value == UNDEFINED.value
@@ -286,7 +319,7 @@ def is_null(val: ARI) -> bool:
 
     :param val: The value to check.
     :return: True if equivalent to :obj:`NULL`.
-     '''
+    '''
     return (
         isinstance(val, LiteralARI)
         and val.value == NULL.value
@@ -294,7 +327,13 @@ def is_null(val: ARI) -> bool:
 
 
 def as_bool(val: ARI) -> bool:
-    if isinstance(val, LiteralARI) and val.value in (True, False):
+    ''' Logic to compare against the TRUE and FALSE values.
+
+    :param val: The value to check.
+    :return: The corresponding python boolean value.
+    :raise ValueError: if not a boolean value.
+    '''
+    if isinstance(val, LiteralARI) and val.value in {True, False}:
         return val.value
     raise ValueError('as_bool given non-boolean value')
 
