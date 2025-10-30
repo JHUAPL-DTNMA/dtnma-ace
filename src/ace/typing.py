@@ -552,12 +552,13 @@ class TypeUse(SemType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        got = self.base.convert(obj)
-        invalid = self._constrain(got)
+        if self.base:
+            obj = self.base.convert(obj)
+        invalid = self._constrain(obj)
         if invalid:
             err = ', '.join(invalid)
             raise ValueError(f'TypeUse.convert() invalid constraints: {err}')
-        return got
+        return obj
 
     def _constrain(self, obj: ARI) -> List[str]:
         ''' Check constraints on a value.
