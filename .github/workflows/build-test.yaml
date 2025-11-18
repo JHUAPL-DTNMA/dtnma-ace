@@ -35,6 +35,8 @@ on:
 
 jobs:
   build:
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     strategy:
       max-parallel: 4
@@ -56,6 +58,8 @@ jobs:
 
   unit-test:
     needs: [build]
+    permissions:
+      contents: read
     runs-on: ubuntu-24.04
     strategy:
       max-parallel: 4
