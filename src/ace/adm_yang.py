@@ -436,7 +436,7 @@ class Decoder:
             stmt_ns = None
             stmt_name = normalize_ident(text)
         return (stmt_ns, stmt_name)
-
+    
     def from_stmt(self, cls, stmt: pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
 
@@ -487,6 +487,8 @@ class Decoder:
                         item.default_value = def_stmt.arg
                         # actually check the content
                         item.default_ari = self._get_ari(def_stmt.arg)
+                        if not item.typeobj.get(item.default_ari):
+                            item.default_ari = item.typeobj.convert(item.default_ari)
                 except Exception as err:
                     raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err
 
@@ -521,6 +523,8 @@ class Decoder:
                 obj.init_value = value_stmt.arg
                 # actually check the content
                 obj.init_ari = self._get_ari(value_stmt.arg)
+                if not obj.typeobj.get(obj.init_ari):
+                    obj.init_ari = obj.typeobj.convert(obj.init_ari)
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 
