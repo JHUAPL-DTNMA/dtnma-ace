@@ -436,7 +436,7 @@ class Decoder:
             stmt_ns = None
             stmt_name = normalize_ident(text)
         return (stmt_ns, stmt_name)
-    
+
     def from_stmt(self, cls, stmt: pyang.statements.Statement) -> AdmObjMixin:
         ''' Construct an ORM object from a decoded YANG statement.
 
