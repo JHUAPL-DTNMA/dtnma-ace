@@ -150,7 +150,7 @@ class NullType(BuiltInType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        return NULL
+        return LiteralARI(None, StructType.NULL)
 
 
 class BoolType(BuiltInType):
@@ -202,7 +202,7 @@ class NumericType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]) or isinstance(obj.value, bool):
             return None
         if not self._in_domain(obj.value):
             return None
