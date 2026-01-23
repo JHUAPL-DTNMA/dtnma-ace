@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2026 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
 # This file is part of the AMM CODEC Engine (ACE) under the
@@ -487,6 +487,8 @@ class Decoder:
                         item.default_value = def_stmt.arg
                         # actually check the content
                         item.default_ari = self._get_ari(def_stmt.arg)
+                        if item.typeobj.get(item.default_ari) is not None:
+                            item.default_ari = item.typeobj.convert(item.default_ari)
                 except Exception as err:
                     raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err
 
@@ -521,6 +523,8 @@ class Decoder:
                 obj.init_value = value_stmt.arg
                 # actually check the content
                 obj.init_ari = self._get_ari(value_stmt.arg)
+                if obj.typeobj.get(obj.init_ari) is not None:
+                    obj.init_ari = obj.typeobj.convert(obj.init_ari)
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 

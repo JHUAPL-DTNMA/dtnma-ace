@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020-2025 The Johns Hopkins University Applied Physics
+# Copyright (c) 2020-2026 The Johns Hopkins University Applied Physics
 # Laboratory LLC.
 #
 # This file is part of the AMM CODEC Engine (ACE) under the
@@ -30,7 +30,7 @@ from typing import List, Optional, Set, Iterator
 import numpy
 from .ari import (
     DTN_EPOCH, StructType, Table,
-    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL
+    ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 import struct
 
@@ -170,14 +170,14 @@ class BoolType(BuiltInType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        elif isinstance(obj, LiteralARI):
-            obj = obj.value
-        elif isinstance(obj, ReferenceARI):
+        if not isinstance(obj, ARI):
+            obj = LiteralARI(value=obj)
+        elif not isinstance(obj, LiteralARI):
             # Any object reference is truthy
-            obj = True
+            return TRUE
 
         # FIXME compare Python logic with AMM requirements
-        return LiteralARI(bool(obj), StructType.BOOL)
+        return LiteralARI(bool(obj.value), StructType.BOOL)
 
 
 class NumericType(BuiltInType):
@@ -540,24 +540,26 @@ class TypeUse(SemType):
 
     def get(self, obj: ARI) -> Optional[ARI]:
         # extract the value before checks
-        got = self.base.get(obj)
-        if got is not None:
-            invalid = self._constrain(got)
+        if self.base:
+            obj = self.base.get(obj)
+        if obj is not None:
+            invalid = self._constrain(obj)
             if invalid:
                 err = ', '.join(invalid)
                 LOGGER.debug('TypeUse.get() invalid constraints: %s', err)
                 return None
-        return got
+        return obj
 
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        got = self.base.convert(obj)
-        invalid = self._constrain(got)
+        if self.base:
+            obj = self.base.convert(obj)
+        invalid = self._constrain(obj)
         if invalid:
             err = ', '.join(invalid)
             raise ValueError(f'TypeUse.convert() invalid constraints: {err}')
-        return got
+        return obj
 
     def _constrain(self, obj: ARI) -> List[str]:
         ''' Check constraints on a value.
