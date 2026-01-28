@@ -1,3 +1,25 @@
+#
+# Copyright (c) 2020-2026 The Johns Hopkins University Applied Physics
+# Laboratory LLC.
+#
+# This file is part of the AMM CODEC Engine (ACE) under the
+# DTN Management Architecture (DTNMA) reference implementaton set from APL.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     http://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Portions of this work were performed for the Jet Propulsion Laboratory,
+# California Institute of Technology, sponsored by the United States Government
+# under the prime contract 80NM0018D0004 between the Caltech and NASA under
+# subcontract 1658085.
+#
 ''' The logical data model for an ARI Pattern.
 This is distinct from the encoded forms of a pattern.
 '''
@@ -14,7 +36,7 @@ from .ari import ARI, ReferenceARI, StructType
 class ARIPattern:
     ''' Base class for all forms of ARI Pattern. '''
 
-    def is_match(self, val:ARI) -> bool:
+    def is_match(self, val: ARI) -> bool:
         ''' Determine if an ARI value matches this pattern.
 
         :param func: The callable visitor for each type object.
@@ -26,14 +48,14 @@ class ARIPattern:
 class ComponentPattern:
     ''' Pattern for one reference identifier component. '''
 
-    text:Optional[Set[str]] = None
+    text: Optional[Set[str]] = None
     ''' Match specific text labels '''
-    enum:Optional[portion.Interval] = None
+    enum: Optional[portion.Interval] = None
     ''' Match specific integer range '''
-    special:Optional[bool] = None
+    special: Optional[bool] = None
     ''' The True value indicates match-all wildcard. '''
 
-    def is_match(self, id_val:Union[str, int, None]) -> bool:
+    def is_match(self, id_val: Union[str, int, None]) -> bool:
         ''' Determine if one component matches this pattern. '''
         if self.special is True:
             return id_val is not None
@@ -57,7 +79,7 @@ class ReferenceARIPattern(ARIPattern):
     type_id: ComponentPattern = field(default_factory=ComponentPattern)
     obj_id: ComponentPattern = field(default_factory=ComponentPattern)
 
-    def is_match(self, val:ARI) -> bool:
+    def is_match(self, val: ARI) -> bool:
         if not isinstance(val, ReferenceARI):
             return False
         return (
@@ -179,7 +201,7 @@ def from_text(text: str) -> ARIPattern:
         raise ValueError('invalid input')
 
 
-def _comp_from_text(text: str, ecls: Optional[enum.IntEnum]=None) -> ComponentPattern:
+def _comp_from_text(text: str, ecls: Optional[enum.IntEnum] = None) -> ComponentPattern:
     if text == '*':
         return ComponentPattern(special=True)
 
