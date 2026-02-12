@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 import enum
 import math
 import portion
+from types import NoneType
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
@@ -173,11 +174,30 @@ class ARI:
         raise NotImplementedError
 
 
+UndefinedPrimitiveType = type(cbor2.undefined)
+''' Alias to the primitive type for undefined '''
+
+LiteralPrimitiveType = Union[
+    UndefinedPrimitiveType,
+    # enumerated types
+    NoneType, bool,
+    # numbers
+    int, float,
+    # strings
+    str, bytes,
+    # times
+    numpy.datetime64, numpy.timedelta64,
+    # containers
+    list, dict, Table, ExecutionSet, ReportSet
+]
+''' Narrow primitive type for literal values '''
+
+
 @dataclass(eq=True, frozen=True)
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    value: object = field(default_factory=lambda: UNDEFINED.value)
+    value: LiteralPrimitiveType = field(default_factory=lambda: UNDEFINED.value)
     ''' Literal value specific to :attr:`type_id` '''
     type_id: Optional[StructType] = None
     ''' ADM type of this value '''
