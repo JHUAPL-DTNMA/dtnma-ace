@@ -28,7 +28,6 @@ from dataclasses import dataclass, field
 import enum
 import math
 import portion
-from types import NoneType
 from typing import Callable, Dict, List, Optional, Tuple, Union
 import cbor2
 import numpy
@@ -176,6 +175,8 @@ class ARI:
 
 UndefinedPrimitiveType = type(cbor2.undefined)
 ''' Alias to the primitive type for undefined '''
+NoneType = type(None)
+''' Alias to the type for native None value '''
 
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,
