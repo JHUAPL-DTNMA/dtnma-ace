@@ -321,7 +321,6 @@ class TimeType(BuiltInType):
                     offset = numpy.timedelta64(int(1e9 * obj.value), 'ns')
                 else:
                     offset = numpy.timedelta64(obj.value, 's')
-                print('TP', DTN_EPOCH, offset)
                 newval = DTN_EPOCH + offset
         elif self.type_id == StructType.TD:
             if not isinstance(obj.value, numpy.timedelta64):
