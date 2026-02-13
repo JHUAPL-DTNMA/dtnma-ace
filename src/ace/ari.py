@@ -370,6 +370,14 @@ class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
 
+    @staticmethod
+    def part_is_private(part: Union[str, int, None]) -> bool:
+        ''' Determine if a specific identity part is a private use value '''
+        return (
+            (isinstance(part, int) and part < 0)
+            or (isinstance(part, str) and part.startswith('!'))
+        )
+
     org_id: Union[str, int, None] = None
     ''' The None value indicates an org-relative path. '''
     model_id: Union[str, int, None] = None
