@@ -23,6 +23,7 @@
 ''' The logical data model for an ARI and associated AMP data.
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
 '''
+import copy
 import datetime
 from dataclasses import dataclass, field
 import enum
@@ -226,7 +227,8 @@ class LiteralARI(ARI):
 
             def func(item): return item.visit(visitor)
 
-            numpy.vectorize(func)(self.value)
+            if self.value.size > 0:
+                numpy.vectorize(func)(self.value)
         super().visit(visitor)
 
     def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
@@ -246,7 +248,11 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, Table):
-            rvalue = numpy.vectorize(lfunc)(self.value)
+            if self.value.size > 0:
+                rvalue = numpy.vectorize(lfunc)(self.value)
+            else:
+                # preserve column count
+                rvalue = copy.copy(self.value)
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ExecutionSet):
