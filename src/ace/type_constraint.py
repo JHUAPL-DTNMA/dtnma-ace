@@ -58,7 +58,7 @@ class StringLength(Constraint):
         if isinstance(obj.value, (str, bytes)):
             return len(obj.value) in self.ranges
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
@@ -77,7 +77,7 @@ class TextPattern(Constraint):
             got = re.fullmatch(self.pattern, obj.value)
             return got is not None
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
@@ -103,7 +103,7 @@ class NumericRange(Constraint):
         if isinstance(obj.value, (int, float)):
             return obj.value in self.ranges
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
@@ -136,7 +136,7 @@ class IntegerEnums(Constraint):
         if isinstance(obj.value, int):
             return obj.value in self.values
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
@@ -163,7 +163,7 @@ class IntegerBits(Constraint):
             # no unknown bits
             return (obj.value & ~self.mask) == 0
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
@@ -185,7 +185,7 @@ class CborCddl(Constraint):
                 return False
             return True  # FIXME: interpret CDDL
         else:
-            raise TypeError(f'limit cannot be applied to {obj}')
+            return False
 
 
 @dataclass
