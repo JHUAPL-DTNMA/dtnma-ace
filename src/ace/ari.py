@@ -23,6 +23,7 @@
 ''' The logical data model for an ARI and associated AMP data.
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
 '''
+import copy
 import datetime
 from dataclasses import dataclass, field
 import enum
@@ -173,11 +174,32 @@ class ARI:
         raise NotImplementedError
 
 
+UndefinedPrimitiveType = type(cbor2.undefined)
+''' Alias to the primitive type for undefined '''
+NoneType = type(None)
+''' Alias to the type for native None value '''
+
+LiteralPrimitiveType = Union[
+    UndefinedPrimitiveType,
+    # enumerated types
+    NoneType, bool,
+    # numbers
+    int, float,
+    # strings
+    str, bytes,
+    # times
+    numpy.datetime64, numpy.timedelta64,
+    # containers
+    list, dict, Table, ExecutionSet, ReportSet
+]
+''' Narrow primitive type for literal values '''
+
+
 @dataclass(eq=True, frozen=True)
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
-    value: object = field(default_factory=lambda: UNDEFINED.value)
+    value: LiteralPrimitiveType = field(default_factory=lambda: UNDEFINED.value)
     ''' Literal value specific to :attr:`type_id` '''
     type_id: Optional[StructType] = None
     ''' ADM type of this value '''
@@ -205,7 +227,8 @@ class LiteralARI(ARI):
 
             def func(item): return item.visit(visitor)
 
-            numpy.vectorize(func)(self.value)
+            if self.value.size > 0:
+                numpy.vectorize(func)(self.value)
         super().visit(visitor)
 
     def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
@@ -225,7 +248,11 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, Table):
-            rvalue = numpy.vectorize(lfunc)(self.value)
+            if self.value.size > 0:
+                rvalue = numpy.vectorize(lfunc)(self.value)
+            else:
+                # preserve column count
+                rvalue = copy.copy(self.value)
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ExecutionSet):
@@ -342,6 +369,14 @@ def as_bool(val: ARI) -> bool:
 class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
+
+    @staticmethod
+    def part_is_private(part: Union[str, int, None]) -> bool:
+        ''' Determine if a specific identity part is a private use value '''
+        return (
+            (isinstance(part, int) and part < 0)
+            or (isinstance(part, str) and part.startswith('!'))
+        )
 
     org_id: Union[str, int, None] = None
     ''' The None value indicates an org-relative path. '''

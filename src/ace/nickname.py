@@ -77,6 +77,11 @@ class Converter:
             adm = find_adm(ari.ident.org_id, ari.ident.model_id, ari.ident.model_rev, self._db_sess)
         LOGGER.debug('ARI for %s resolved to ADM %s, obj %s', ari.ident, adm, obj)
 
+        ns_is_private = Identity.part_is_private(ari.ident.org_id) or Identity.part_is_private(ari.ident.model_id)
+        if adm is None and ns_is_private:
+            # Cannot do anything in this case, not really an error
+            return ari
+
         if self._mode == Mode.TO_NN:
             # Prefer nicknames
             org_id = ari.ident.org_id

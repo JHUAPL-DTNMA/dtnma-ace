@@ -482,13 +482,17 @@ class Decoder:
                         typeobj=self._get_typeobj(param_stmt)
                     )
 
-                    def_stmt = param_stmt.search_one((AMM_MOD, 'default'))
-                    if def_stmt:
-                        item.default_value = def_stmt.arg
-                        # actually check the content
-                        item.default_ari = self._get_ari(def_stmt.arg)
-                        if item.typeobj.get(item.default_ari) is not None:
-                            item.default_ari = item.typeobj.convert(item.default_ari)
+                    try:
+                        def_stmt = param_stmt.search_one((AMM_MOD, 'default'))
+                        if def_stmt:
+                            item.default_value = def_stmt.arg
+                            # actually check the content
+                            item.default_ari = self._get_ari(def_stmt.arg)
+                            if item.typeobj.get(item.default_ari) is not None:
+                                item.default_ari = item.typeobj.convert(item.default_ari)
+                    except Exception as err:
+                        raise RuntimeError(f'Failure in default value "{def_stmt.arg}": {err}') from err
+
                 except Exception as err:
                     raise RuntimeError(f'Failure handling parameter "{param_stmt.arg}": {err}') from err
 
