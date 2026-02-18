@@ -24,12 +24,21 @@ from dataclasses import dataclass
 import re
 from typing import Optional, Set, Dict
 import cbor2
-from portion import Interval
+import portion
 from sqlalchemy.orm.session import object_session
 from .ari import StructType, ARI, ReferenceARI
 from .typing import Constraint
 from .lookup import dereference
 from .models import Ident
+
+
+class IntInterval(portion.AbstractDiscreteInterval):
+    ''' An integer-domain interval class '''
+    _step = 1
+
+
+apiIntInterval = portion.create_api(IntInterval)
+''' Utility functions for :py:cls:`IntInterval` '''
 
 
 @dataclass
@@ -39,7 +48,7 @@ class StringLength(Constraint):
     count of bytes.
     '''
 
-    ranges: Interval
+    ranges: portion.Interval
     ''' The Interval representing valid lengths. '''
 
     def applicable(self) -> Set[StructType]:
@@ -76,8 +85,8 @@ class NumericRange(Constraint):
     ''' Limit the range of numeric values.
     '''
 
-    ranges: Interval
-    ''' The Interval representing valid ranges. '''
+    ranges: portion.Interval
+    ''' The Interval representing valid ranges, integers or floats. '''
 
     def applicable(self) -> Set[StructType]:
         return set([
@@ -104,6 +113,15 @@ class IntegerEnums(Constraint):
 
     values: Dict[int, str]
     ''' Named values. '''
+
+    def as_value_range(self) -> IntInterval:
+        ''' Convert the valid set of values into an numeric range,
+        ignoring names.
+        '''
+        accum = IntInterval()
+        for val in self.values.keys():
+            accum |= apiIntInterval.singleton(val)
+        return accum
 
     def applicable(self) -> Set[StructType]:
         return set([
