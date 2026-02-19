@@ -29,7 +29,8 @@ from ply import yacc
 from ace.ari import (
     is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
-    Table, ExecutionSet, ReportSet, Report
+    Table, ExecutionSet, ReportSet, Report,
+    ObjectRefPattern, apiIntInterval
 )
 from ace.typing import BUILTINS_BY_ENUM, NONCE
 from . import util
@@ -189,6 +190,55 @@ def p_report(p):
     p[0] = Report(rel_time=rel_time.value, source=source, items=p[2])
 
 
+def p_typedlit_objpat(p):
+    'typedlit : SLASH OBJPAT objpatpart objpatpart objpatpart objpatpart'
+    value = ObjectRefPattern(
+        org_pat=p[3],
+        model_pat=p[4],
+        type_pat=p[5],
+        obj_pat=p[6],
+    )
+    p[0] = LiteralARI(type_id=StructType.OBJPAT, value=value)
+
+
+def p_objpat_part(p):
+    'objpatpart : LPAREN objpatitem RPAREN'
+    p[0] = p[2]
+
+def p_objpat_item_first(p):
+    'objpatitem : objpatsub'
+    p[0] = p[1]
+
+def p_objpat_item_more(p):
+    'objpatitem : objpatitem COMMA objpatsub'
+    p[0] = p[1] | p[3]
+
+def p_objpat_sub_single(p):
+    'objpatsub : VALSEG'
+    text = p[1]
+    if text == '*':
+        val = True
+    elif '..' in text:
+        parts = text.split('..')
+        if len(parts) != 2:
+            raise ValueError('invalid interval')
+
+        if parts[0] == '':
+            parts[0] = ObjectRefPattern.DOMAIN_MIN
+        if parts[1] == '':
+            parts[1] = ObjectRefPattern.DOMAIN_MAX
+
+        val = apiIntInterval.closed(int(parts[0]), int(parts[1]))
+    else:
+        try:
+            val = apiIntInterval.singleton(int(text))
+        except (TypeError, ValueError):
+            # text is already unquoted, but should not need to have been
+            val = text
+
+    p[0] = val
+
+
 def p_typedlit_single(p):
     'typedlit : SLASH VALSEG SLASH VALSEG'
     try:
@@ -273,13 +323,14 @@ def p_objpath_with_ns(p):
         mod = (mod, None)
 
     try:
-        typ = util.get_structtype(p[7])
+        typeseg = p[7]
+        typ = util.get_structtype(typeseg)
+        # Reference are only allowed with AMM types
+        if typ >= 0 or typ == StructType.OBJECT:
+            raise RuntimeError(f"Invalid AMM type: {typeseg}")
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
-    # Reference are only allowed with AMM types
-    if typ >= 0 or typ == StructType.OBJECT:
-        raise RuntimeError("Invalid AMM type")
 
     obj = util.IDSEGMENT(p[9])
 
@@ -291,28 +342,55 @@ def p_objpath_with_ns(p):
         obj_id=obj,
     )
 
+def p_objpath_relative_ns(p):
+    '''objpath : VALSEG SLASH
+               | VALSEG SLASH VALSEG
+               | VALSEG SLASH VALSEG SLASH'''
+    got = len(p)
+    if got > 3:
+        if p[1] != '..':
+            raise RuntimeError('Relative path must start with ..')
+        mod = util.MODSEGMENT(p[3])
+        if not isinstance(mod, tuple):
+            mod = (mod, None)
+    else:
+        if p[1] != '.':
+            raise RuntimeError('Relative path must start with .')
+        mod = (None, None)
+
+    p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=None, obj_id=None)
 
 def p_objpath_relative(p):
-    '''objpath : DOT SLASH VALSEG SLASH VALSEG
-               | DOT DOT SLASH VALSEG SLASH VALSEG SLASH VALSEG'''
+    '''objpath : VALSEG SLASH VALSEG SLASH VALSEG
+               | VALSEG SLASH VALSEG SLASH VALSEG SLASH VALSEG'''
     got = len(p)
     if got > 6:
+        if p[1] != '..':
+            raise RuntimeError('Relative path must start with ..')
         mod = util.MODSEGMENT(p[got - 5])
         if not isinstance(mod, tuple):
             mod = (mod, None)
     else:
+        if p[1] != '.':
+            raise RuntimeError('Relative path must start with .')
         mod = (None, None)
 
+    typeseg = p[got - 3]
     try:
-        typ = util.get_structtype(p[got - 3])
+        typ = util.get_structtype(typeseg)
+        # Reference are only allowed with AMM types
+        if typ >= 0 or typ == StructType.OBJECT:
+            raise RuntimeError(f"Invalid AMM type: {typeseg}")
     except Exception as err:
         LOGGER.error('Object type invalid: %s', err)
         raise RuntimeError(err) from err
-    # Reference are only allowed with AMM types
-    if typ >= 0 or typ == StructType.OBJECT:
-        raise RuntimeError("Invalid AMM type")
 
-    obj = util.IDSEGMENT(p[got - 1])
+    objseg = p[got - 1]
+    try:
+        obj = util.IDSEGMENT(objseg)
+    except Exception as err:
+        LOGGER.error('Object ID invalid: %s', err)
+        raise RuntimeError(err) from err
 
     p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)
 

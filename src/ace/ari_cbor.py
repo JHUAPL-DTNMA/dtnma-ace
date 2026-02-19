@@ -25,11 +25,11 @@
 import datetime
 import logging
 import numpy
-from typing import BinaryIO
+from typing import Any, BinaryIO, Optional
 import cbor2
 from ace.ari import (
     DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
-    Table, ExecutionSet, ReportSet, Report
+    Table, ExecutionSet, ReportSet, Report, ObjectRefPattern, apiIntInterval
 )
 from ace.typing import NONCE
 
@@ -132,9 +132,49 @@ class Decoder:
 
         return res
 
-    def _item_to_val(self, item, type_id):
+    def _item_to_val(self, item: Any, type_id: Optional[int]):
         ''' Decode a CBOR item into an ARI value. '''
-        if type_id == StructType.AC:
+        if type_id == StructType.NULL:
+            if item is not None:
+                raise ValueError(f"Invalid NULL value: {item}")
+            value = item
+        elif type_id == StructType.BOOL:
+            if not isinstance(item, bool):
+                raise TypeError(f"Invalid BOOL value: {item}")
+            value = item
+        elif type_id in {StructType.BYTE, StructType.INT, StructType.UINT, StructType.VAST, StructType.UVAST}:
+            if not isinstance(item, int):
+                raise TypeError(f"Invalid integer value: {item}")
+            value = item
+        elif type_id in {StructType.REAL32, StructType.REAL64}:
+            if not isinstance(item, float):
+                raise TypeError(f"Invalid float value: {item}")
+            value = item
+        elif type_id == StructType.TEXTSTR:
+            if not isinstance(item, str):
+                raise TypeError(f"Invalid TEXTSTR value: {item}")
+            value = item
+        elif type_id == StructType.BYTESTR:
+            if not isinstance(item, bytes):
+                raise TypeError(f"Invalid BYTESTR value: {item}")
+            value = item
+        elif type_id == StructType.TP:
+            value = self._item_to_timeval(item) + DTN_EPOCH
+        elif type_id == StructType.TD:
+            value = self._item_to_timeval(item)
+        elif type_id == StructType.LABEL:
+            if not isinstance(item, (str, int)):
+                raise TypeError(f'Invalid LABEL: {item} should be text or int')
+            value = item
+        elif type_id == StructType.CBOR:
+            if not isinstance(item, bytes):
+                raise TypeError(f'Invalid CBOR: {item} should be bytes')
+            value = item
+        elif type_id == StructType.ARITYPE:
+            if not isinstance(item, (str, int)):
+                raise TypeError(f'Invalid ARITYPE: {item} should be text or int')
+            value = item
+        elif type_id == StructType.AC:
             value = [self._item_to_ari(sub_item) for sub_item in item]
         elif type_id == StructType.AM:
             value = {self._item_to_ari(key): self._item_to_ari(sub_item) for key, sub_item in item.items()}
@@ -158,14 +198,6 @@ class Decoder:
                 for col_ix in range(ncol):
                     value[row_ix, col_ix] = self._item_to_ari(next(item_it))
 
-        elif type_id == StructType.TP:
-            value = self._item_to_timeval(item) + DTN_EPOCH
-        elif type_id == StructType.TD:
-            value = self._item_to_timeval(item)
-        elif type_id == StructType.LABEL:
-            if not isinstance(item, str) and not isinstance(item, int):
-                raise TypeError(f'invalid label: {item} shoud be string or int')
-            value = item
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
@@ -195,16 +227,25 @@ class Decoder:
                 ref_time=ref_time,
                 reports=rpts
             )
-        else:
+        elif type_id == StructType.OBJPAT:
+            value = ObjectRefPattern(
+                org_pat=self._pattern_part(item[0]),
+                model_pat=self._pattern_part(item[1]),
+                type_pat=self._pattern_part(item[2]),
+                obj_pat=self._pattern_part(item[3]),
+            )
+        elif type_id is None:
             # any other type or untyped primitive value
+            if isinstance(item, int):
+                if item not in INT_ENVELOPE:
+                    raise ValueError(f"Integer value {item} is outside valid envelope {INT_ENVELOPE}")
             value = item
-            if isinstance(value, int):
-                if value not in INT_ENVELOPE:
-                    raise ValueError(f"Integer value {value} is outside valid envelope {INT_ENVELOPE}")
+        else:
+            raise ValueError(f'Unhandled literal type: {type_id}')
 
         return value
 
-    def _item_to_timeval(self, item) -> numpy.timedelta64:
+    def _item_to_timeval(self, item: Any) -> numpy.timedelta64:
         ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
             return numpy.timedelta64(item, 's')
@@ -216,6 +257,37 @@ class Decoder:
             return numpy.timedelta64(total_nsec, 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
+
+    def _pattern_part(self, item: Any) -> ObjectRefPattern.PartType:
+        if item is True or isinstance(item, str):
+            return item
+        elif isinstance(item, int):
+            return apiIntInterval.singleton(item)
+        elif isinstance(item, list):
+            # mutable buffer
+            buf = list(item)
+
+            value = apiIntInterval.empty()
+            pos = buf.pop(0)
+            if pos is None:
+                pos = ObjectRefPattern.DOMAIN_MIN
+
+            while len(buf) > 1:
+                incl = buf.pop(0)
+                value |= apiIntInterval.closed(pos, pos + incl)
+                pos += incl + 1  # one past the interval
+
+                excl = buf.pop(0)
+                pos += excl + 1  # one past the interval
+            
+            incl = buf.pop(0)
+            if incl is None:
+                incl = ObjectRefPattern.DOMAIN_MAX - pos
+            value |= apiIntInterval.closed(pos, pos + incl)
+            
+            return value
+        else:
+            raise TypeError(f'Bad pattern part type: {item} is type {type(item)}')
 
 
 class Encoder:
@@ -303,6 +375,13 @@ class Encoder:
                 self._ari_to_item(value.nonce),
                 self._val_to_item(value.ref_time)
             ] + rpts_item
+        elif isinstance(value, ObjectRefPattern):
+            item = [
+                self._pattern_part(value.org_pat),
+                self._pattern_part(value.model_pat),
+                self._pattern_part(value.type_pat),
+                self._pattern_part(value.obj_pat),
+            ]
         else:
             item = value
         return item
@@ -322,3 +401,39 @@ class Encoder:
         else:
             item = mant
         return item
+
+    def _pattern_part(self, part: ObjectRefPattern.PartType) -> Any:
+        if part is True or isinstance(part, str):
+            return part
+        else:
+            # singleton case
+            if part.lower == part.upper:
+                return part.lower
+
+            items = []
+
+            pos = None
+            for intvl in part:
+                if pos is None:
+                    pos = intvl.lower
+
+                # first item is least value
+                if not items:
+                    # because IntInterval is normalized this can only happen once
+                    if intvl.lower == ObjectRefPattern.DOMAIN_MIN:
+                        items.append(None)
+                    else:
+                        items.append(intvl.lower)
+                else:
+                    # excluded interval
+                    items.append((intvl.lower - 1) - pos)
+                pos = intvl.lower
+                
+                # because IntInterval is normalized this can only happen once
+                if intvl.upper == ObjectRefPattern.DOMAIN_MAX:
+                    items.append(None)
+                else:
+                    items.append(intvl.upper - pos)
+                pos = intvl.upper + 1
+            
+            return items
