@@ -26,6 +26,7 @@ import logging
 import unittest
 from ace.ari import (
     ARI, Identity, ReferenceARI, LiteralARI, StructType,
+    ObjectRefPattern, apiIntInterval
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class TestAri(unittest.TestCase):
 
     def test_visit_params_list(self):
         ari = ReferenceARI(
-            ident=Identity('hi', StructType.EDD, 'there'),
+            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
             params=[
                 LiteralARI(3),
                 LiteralARI('hello'),
@@ -76,7 +77,7 @@ class TestAri(unittest.TestCase):
 
     def test_visit_params_map(self):
         ari = ReferenceARI(
-            ident=Identity('hi', StructType.EDD, 'there'),
+            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
             params={
                 LiteralARI(3): LiteralARI('hello'),
             }
@@ -92,7 +93,7 @@ class TestAri(unittest.TestCase):
 
     def test_map_params_list(self):
         ari = ReferenceARI(
-            ident=Identity('hi', StructType.EDD, 'there'),
+            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
             params=[
                 LiteralARI(3),
                 LiteralARI('hello'),
@@ -103,10 +104,45 @@ class TestAri(unittest.TestCase):
 
     def test_map_params_map(self):
         ari = ReferenceARI(
-            ident=Identity('hi', StructType.EDD, 'there'),
+            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
             params={
                 LiteralARI(3): LiteralARI('hello'),
             }
         )
         got = ari.map(IdentityMapper())
         self.assertEqual(ari, got)
+
+
+class TestPatternLogic(unittest.TestCase):
+    ''' Simple verification of OBJPAT internal logic '''
+
+    def test_match_any(self):
+        pat = ObjectRefPattern(
+            org_pat=True,
+            model_pat=True,
+            type_pat=True,
+            obj_pat=True,
+        )
+
+        ident = Identity(org_id=65535, model_id=10, type_id=StructType.EDD, obj_id=1234)
+        self.assertTrue(pat.is_match(ident))
+
+    def test_match_ranges(self):
+        pat = ObjectRefPattern(
+            org_pat=apiIntInterval.singleton(65535),
+            model_pat=(apiIntInterval.closed(ObjectRefPattern.DOMAIN_MIN, -1) | apiIntInterval.singleton(1)),
+            type_pat=True,
+            obj_pat=apiIntInterval.closed(10, 100),
+        )
+
+        ident = Identity(org_id=65535, model_id=1, type_id=StructType.EDD, obj_id=12)
+        self.assertTrue(pat.is_match(ident))
+
+        ident = Identity(org_id=65536, model_id=1, type_id=StructType.EDD, obj_id=12)
+        self.assertFalse(pat.is_match(ident))
+
+        ident = Identity(org_id=65535, model_id=0, type_id=StructType.EDD, obj_id=12)
+        self.assertFalse(pat.is_match(ident))
+
+        ident = Identity(org_id=65535, model_id=1, type_id=StructType.EDD, obj_id=9)
+        self.assertFalse(pat.is_match(ident))

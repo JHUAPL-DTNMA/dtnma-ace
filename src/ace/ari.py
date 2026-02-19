@@ -145,6 +145,27 @@ class ObjectRefPattern:
     obj_pat: PartType
     ''' Object ID matching '''
 
+    def is_match(self, ident: 'Identity') -> bool:
+        ''' Determine if an identity with numeric parts matches this pattern. '''
+        return (
+            self._part_match(self.org_pat, ident.org_id)
+            and self._part_match(self.model_pat, ident.model_id)
+            and self._part_match(self.type_pat, ident.type_id)
+            and self._part_match(self.obj_pat, ident.obj_id)
+        )
+
+    @staticmethod
+    def _part_match(pat: PartType, ident: 'Identity.PartType') -> bool:
+        if pat is True:
+            # wildcard
+            return True
+        elif isinstance(pat, str):
+            return pat == ident
+        elif isinstance(pat, IntInterval):
+            return ident in pat
+        else:
+            raise TypeError('bad internal state')
+
 
 @enum.unique
 class StructType(enum.IntEnum):
