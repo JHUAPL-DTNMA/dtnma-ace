@@ -279,12 +279,12 @@ class Decoder:
 
                 excl = buf.pop(0)
                 pos += excl + 1  # one past the interval
-            
+
             incl = buf.pop(0)
             if incl is None:
                 incl = ObjectRefPattern.DOMAIN_MAX - pos
             value |= apiIntInterval.closed(pos, pos + incl)
-            
+
             return value
         else:
             raise TypeError(f'Bad pattern part type: {item} is type {type(item)}')
@@ -428,12 +428,12 @@ class Encoder:
                     # excluded interval
                     items.append((intvl.lower - 1) - pos)
                 pos = intvl.lower
-                
+
                 # because IntInterval is normalized this can only happen once
                 if intvl.upper == ObjectRefPattern.DOMAIN_MAX:
                     items.append(None)
                 else:
                     items.append(intvl.upper - pos)
                 pos = intvl.upper + 1
-            
+
             return items

@@ -30,9 +30,8 @@ import math
 import numpy
 from ace.ari import (
     apiIntInterval,
-    ReferenceARI, LiteralARI, StructType, Identity, 
-    ExecutionSet, ReportSet,
-    ObjectRefPattern
+    ReferenceARI, LiteralARI, StructType, Identity,
+    ReportSet, ObjectRefPattern
 )
 from ace.cborutil import to_diag
 from ace import ari_cbor
@@ -66,7 +65,7 @@ class TestAriCbor(unittest.TestCase):
         (cbor2.dumps([StructType.TP, [3, 1]]), (ari_cbor.DTN_EPOCH + numpy.timedelta64(1000, 's'))),
         (cbor2.dumps([StructType.TD, 18]), numpy.timedelta64(18, 's')),
         (cbor2.dumps([StructType.TD, -18]), -numpy.timedelta64(18, 's')),
-        # REFPAT
+        # OBJPAT
         (bytes.fromhex('82181884F5F5F5F5'), ObjectRefPattern(True, True, True, True)),
         (
             bytes.fromhex('8218188419FFFF84F61A7FFFFFFF0000F5820A185A'),

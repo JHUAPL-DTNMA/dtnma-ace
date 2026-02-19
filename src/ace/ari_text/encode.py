@@ -31,7 +31,7 @@ import urllib.parse
 import cbor2
 from ace.ari import (
     StructType, IntInterval, ARI, LiteralARI, ReferenceARI,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH, apiIntInterval
+    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
 )
 from ace.cborutil import to_diag
 from .util import t_identity, SINGLETONS
@@ -206,7 +206,7 @@ class Encoder:
                 self._encode_list(buf, obj.value.reports)
             elif isinstance(obj.value, ObjectRefPattern):
 
-                def encode_part(part: ObjectRefPattern.PartType)->str:
+                def encode_part(part: ObjectRefPattern.PartType) -> str:
                     if part is True:
                         enc = '*'
                     elif isinstance(part, IntInterval):

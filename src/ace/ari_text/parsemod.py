@@ -205,13 +205,16 @@ def p_objpat_part(p):
     'objpatpart : LPAREN objpatitem RPAREN'
     p[0] = p[2]
 
+
 def p_objpat_item_first(p):
     'objpatitem : objpatsub'
     p[0] = p[1]
 
+
 def p_objpat_item_more(p):
     'objpatitem : objpatitem COMMA objpatsub'
     p[0] = p[1] | p[3]
+
 
 def p_objpat_sub_single(p):
     'objpatsub : VALSEG'
@@ -342,6 +345,7 @@ def p_objpath_with_ns(p):
         obj_id=obj,
     )
 
+
 def p_objpath_relative_ns(p):
     '''objpath : VALSEG SLASH
                | VALSEG SLASH VALSEG
@@ -359,6 +363,7 @@ def p_objpath_relative_ns(p):
         mod = (None, None)
 
     p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=None, obj_id=None)
+
 
 def p_objpath_relative(p):
     '''objpath : VALSEG SLASH VALSEG SLASH VALSEG

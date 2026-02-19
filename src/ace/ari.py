@@ -130,7 +130,7 @@ class ObjectRefPattern:
         IntInterval,
     ]
     ''' Type for each pattern part '''
-    
+
     DOMAIN_MIN: ClassVar[int] = -(2 ** 31)
     ''' Minimum id-int value '''
     DOMAIN_MAX: ClassVar[int] = (2 ** 31) - 1
