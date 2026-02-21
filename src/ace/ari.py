@@ -29,14 +29,23 @@ from dataclasses import dataclass, field
 import enum
 import math
 import portion
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 import cbor2
 import numpy
 
 DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
 ''' Reference for absolute time points '''
 
-INT_ENVELOPE = portion.closedopen(-(2 ** 63), 2 ** 64)
+
+class IntInterval(portion.AbstractDiscreteInterval):
+    ''' An integer-domain interval class '''
+    _step = 1
+
+
+apiIntInterval = portion.create_api(IntInterval)
+''' Utility functions for :py:cls:`IntInterval` '''
+
+INT_ENVELOPE = apiIntInterval.closedopen(-(2 ** 63), 2 ** 64)
 ''' Envelope for union of all valid integer types '''
 
 
@@ -108,6 +117,56 @@ class ReportSet:
     ''' The contained Reports '''
 
 
+@dataclass
+class ObjectRefPattern:
+    ''' Container for object reference patterns '''
+
+    PartType: ClassVar = Union[
+        # wildcard
+        Literal[True],
+        # single name
+        str,
+        # integer range
+        IntInterval,
+    ]
+    ''' Type for each pattern part '''
+
+    DOMAIN_MIN: ClassVar[int] = -(2 ** 31)
+    ''' Minimum id-int value '''
+    DOMAIN_MAX: ClassVar[int] = (2 ** 31) - 1
+    ''' Maximum id-int value '''
+
+    org_pat: PartType
+    ''' Organization ID matching '''
+    model_pat: PartType
+    ''' Model ID matching '''
+    type_pat: PartType
+    ''' Object Type matching '''
+    obj_pat: PartType
+    ''' Object ID matching '''
+
+    def is_match(self, ident: 'Identity') -> bool:
+        ''' Determine if an identity with numeric parts matches this pattern. '''
+        return (
+            self._part_match(self.org_pat, ident.org_id)
+            and self._part_match(self.model_pat, ident.model_id)
+            and self._part_match(self.type_pat, ident.type_id)
+            and self._part_match(self.obj_pat, ident.obj_id)
+        )
+
+    @staticmethod
+    def _part_match(pat: PartType, ident: 'Identity.PartType') -> bool:
+        if pat is True:
+            # wildcard
+            return True
+        elif isinstance(pat, str):
+            return pat == ident
+        elif isinstance(pat, IntInterval):
+            return ident in pat
+        else:
+            raise TypeError('bad internal state')
+
+
 @enum.unique
 class StructType(enum.IntEnum):
     ''' The enumeration of ARI value types from Section 10.3 of ARI draft.
@@ -138,6 +197,7 @@ class StructType(enum.IntEnum):
     # Specialized containers
     EXECSET = 20
     RPTSET = 21
+    OBJPAT = 24
 
     OBJECT = -256
     NAMESPACE = -255
@@ -190,7 +250,7 @@ LiteralPrimitiveType = Union[
     # times
     numpy.datetime64, numpy.timedelta64,
     # containers
-    list, dict, Table, ExecutionSet, ReportSet
+    list, dict, Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]
 ''' Narrow primitive type for literal values '''
 
@@ -370,23 +430,26 @@ class Identity:
     ''' The identity of an object reference as a unique identifer-set.
     '''
 
+    PartType: ClassVar = Union[str, int, None]
+    ''' Type for each part '''
+
     @staticmethod
-    def part_is_private(part: Union[str, int, None]) -> bool:
+    def part_is_private(part: PartType) -> bool:
         ''' Determine if a specific identity part is a private use value '''
         return (
             (isinstance(part, int) and part < 0)
             or (isinstance(part, str) and part.startswith('!'))
         )
 
-    org_id: Union[str, int, None] = None
+    org_id: PartType = None
     ''' The None value indicates an org-relative path. '''
-    model_id: Union[str, int, None] = None
+    model_id: PartType = None
     ''' The None value indicates an model-relative path. '''
     model_rev: Optional[datetime.date] = None
     ''' For the text-form ARI a specific ADM revision date. '''
     type_id: Optional[StructType] = None
     ''' ADM type of the referenced object '''
-    obj_id: Union[str, int, None] = None
+    obj_id: PartType = None
     ''' Name with the type removed '''
 
     @property

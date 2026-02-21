@@ -69,6 +69,7 @@ class Decoder:
         lexer = new_lexer()
         parser = new_parser(
             debug=False,
+            errorlog=LOGGER,
             outputdir=self._cache_path,
             picklefile=self._pickle_path
         )
