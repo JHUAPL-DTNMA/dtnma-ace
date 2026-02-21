@@ -238,7 +238,7 @@ class Decoder:
             # any other type or untyped primitive value
             if isinstance(item, int):
                 if item not in INT_ENVELOPE:
-                    raise ValueError(f"Integer value {item} is outside valid envelope {INT_ENVELOPE}")
+                    raise ValueError(f"Integer value {item} is outside valid interval {INT_ENVELOPE}")
             value = item
         else:
             raise ValueError(f'Unhandled literal type: {type_id}')
