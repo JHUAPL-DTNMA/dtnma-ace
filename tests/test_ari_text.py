@@ -30,8 +30,9 @@ import math
 import unittest
 import numpy
 from ace.ari import (
+    apiIntInterval,
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report
+    ExecutionSet, ReportSet, Report, ObjectRefPattern
 )
 from ace import ari_text
 
@@ -130,6 +131,25 @@ class TestAriText(unittest.TestCase):
         ('ari:/LABEL/null', 'null'),
         ('ari:/LABEL/undefined', 'undefined'),
         ('ari:/CBOR/h\'A164746573748203F94480\'', base64.b16decode('A164746573748203F94480')),
+        ('ari:/ARITYPE/BOOL', StructType.BOOL),
+        (
+            'ari:/OBJPAT/(65535)(..-1,1)(*)(10..100)',
+            ObjectRefPattern(
+                org_pat=apiIntInterval.singleton(65535),
+                model_pat=(apiIntInterval.closed(ObjectRefPattern.DOMAIN_MIN, -1) | apiIntInterval.singleton(1)),
+                type_pat=True,
+                obj_pat=apiIntInterval.closed(10, 100)
+            )
+        ),
+        (
+            'ari:/OBJPAT/(*)(*)(*)(*)',
+            ObjectRefPattern(
+                org_pat=True,
+                model_pat=True,
+                type_pat=True,
+                obj_pat=True
+            )
+        ),
         # Containers
         ('ari:/AC/()', []),
         ('ari:/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
@@ -323,6 +343,7 @@ class TestAriText(unittest.TestCase):
         'ari://!private/adm@2024-02-06/',
         'ari://!private/!odm/',
         'ari:./VAR/hello',
+        'ari:../adm/VAR/hello',
         'ari://ietf/bp-agent/CTRL/reset_all_counts()',
         'ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
         # Per spec:
@@ -1126,6 +1147,8 @@ class TestAriText(unittest.TestCase):
             ("ari://example/adm/const/hi", StructType.CONST),
             ("ari://example/adm/CONST/hi", StructType.CONST),
             ("ari://example/adm/-2/hi", StructType.CONST),
+            ("../adm/-2/hi", StructType.CONST),
+            ("./-2/hi", StructType.CONST),
         ]
 
         dec = ari_text.Decoder()
@@ -1185,6 +1208,7 @@ class TestAriText(unittest.TestCase):
             ("ari://example/test/execset/hi"),
             ("ari://example/test/rptset/hi"),
             ("ari://example/test/object/hi"),
+            (".../adm/-2/hi"),
         ]
 
         dec = ari_text.Decoder()
@@ -1206,6 +1230,9 @@ class TestAriText(unittest.TestCase):
             ("ari://example/adm-a@2024-06-25/"),
             ("ari://example/adm-a/"),
             ("ari://example/!odm-b/"),
+            ("../adm-b"),
+            ("../adm-b/"),
+            ("./"),
         ]
 
         dec = ari_text.Decoder()

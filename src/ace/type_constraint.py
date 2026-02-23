@@ -26,19 +26,10 @@ from typing import Optional, Set, Dict
 import cbor2
 import portion
 from sqlalchemy.orm.session import object_session
-from .ari import StructType, ARI, ReferenceARI
+from .ari import StructType, ARI, ReferenceARI, IntInterval, apiIntInterval
 from .typing import Constraint
 from .lookup import dereference
 from .models import Ident
-
-
-class IntInterval(portion.AbstractDiscreteInterval):
-    ''' An integer-domain interval class '''
-    _step = 1
-
-
-apiIntInterval = portion.create_api(IntInterval)
-''' Utility functions for :py:cls:`IntInterval` '''
 
 
 @dataclass
