@@ -86,11 +86,6 @@ An example of using the ADM parser, from the source tree, to normalize and compa
 ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
 ```
 
-An example of using the ADM parser, from the soruce tree, to normalize and compare ADMs (with meld tool) is:
-```
-ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
-```
-
 ## Contributing
 
 To contribute to this project, through issue reporting or change requests, see the [CONTRIBUTING](CONTRIBUTING.md) document.
