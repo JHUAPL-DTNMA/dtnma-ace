@@ -30,8 +30,8 @@ import numpy
 import urllib.parse
 import cbor2
 from ace.ari import (
-    StructType, ARI, LiteralARI, ReferenceARI,
-    ExecutionSet, ReportSet, Report, DTN_EPOCH
+    StructType, IntInterval, ARI, LiteralARI, ReferenceARI,
+    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
 )
 from ace.cborutil import to_diag
 from .util import t_identity, SINGLETONS
@@ -204,6 +204,36 @@ class Encoder:
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)
+            elif isinstance(obj.value, ObjectRefPattern):
+
+                def encode_part(part: ObjectRefPattern.PartType) -> str:
+                    if part is True:
+                        enc = '*'
+                    elif isinstance(part, IntInterval):
+                        # all integer patterns are handled here
+                        enc_parts = []
+                        for intvl in part:
+                            if intvl.lower == intvl.upper:
+                                enc_part = str(intvl.lower)
+                            else:
+                                enc_part = ''
+                                if intvl.lower != ObjectRefPattern.DOMAIN_MIN:
+                                    enc_part += str(intvl.lower)
+                                enc_part += '..'
+                                if intvl.upper != ObjectRefPattern.DOMAIN_MAX:
+                                    enc_part += str(intvl.upper)
+                            enc_parts.append(enc_part)
+                        enc = ','.join(enc_parts)
+                    elif isinstance(part, str):
+                        enc = str(part)
+                    else:
+                        raise TypeError(f'invalid pattern part: {part}')
+                    return '(' + enc + ')'
+
+                buf.write(encode_part(obj.value.org_pat))
+                buf.write(encode_part(obj.value.model_pat))
+                buf.write(encode_part(obj.value.type_pat))
+                buf.write(encode_part(obj.value.obj_pat))
             else:
                 if isinstance(obj.value, int) and not isinstance(obj.value, bool):
                     sign = "-" if obj.value < 0 else ""

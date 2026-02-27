@@ -66,6 +66,8 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TBL/c=3;(1,2,3)(a,b,c)',
         'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
         'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
+        'ari:/OBJPAT/(*)(*)(*)(*)',
+        'ari:/OBJPAT/(65535)(..-1,1)(*)(10..100)',
         # Reference
         'ari://65536/65536/VAR/0',
         'ari://4294967296/4294967296/VAR/2',
@@ -138,6 +140,9 @@ class TestAriRoundtrip(unittest.TestCase):
         "820d82211a00057e45820d82211a00057e45820e646e616d65820e1904d2"
         "820f42187b82100582118202048212a20102030482138502010203048519"
         "ffff01221904d2a2008419ffff02200c018419ffff022b15",  # RPTSET
+        # OBJPAT
+        "82181884F5F5F5F5",
+        "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
     )
 
     def test_cbor_text_roundtrip(self):
