@@ -81,9 +81,9 @@ which will produce a hexadecimal output:
 0x821482187B8501012205818401012301
 ```
 
-An example of using the ADM parser, from the source tree, to normalize and compare ADMs (with meld tool) is:
+An example of using the ADM parser, from the source tree, to normalize and compare ADMs (with a text difference tool like meld) is below. Note that the ADM_PATH environment is required to be set first, using `export ADM_PATH="{path-goes-here}"`. Once that is done, then run:
 ```
-ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
+ADMFILE=../adms/ietf-inet.yang; meld ${ADMFILE} <(PYTHONPATH=./src python3 -m ace.tools.ace_adm -f yang ${ADMFILE})
 ```
 
 ## Contributing
