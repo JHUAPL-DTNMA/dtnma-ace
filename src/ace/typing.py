@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from functools import reduce
 import logging
 import math
-from typing import List, Optional, Set, Type, Iterator
+from typing import Generator, List, Optional, Set, Type, Iterator, cast
 import numpy
 from .ari import (
     DTN_EPOCH, StructType, Table, ObjectRefPattern,
@@ -334,8 +334,10 @@ class TimeType(BuiltInType):
             if not isinstance(obj.value, numpy.timedelta64):
                 if isinstance(obj.value, float):
                     newval = numpy.timedelta64(int(1e9 * obj.value), 'ns')
-                else:
+                elif isinstance(obj.value, int):
                     newval = numpy.timedelta64(obj.value, 's')
+                else:
+                    raise TypeError('cannot convert to timedelta')
 
         return LiteralARI(newval, self.type_id)
 
@@ -384,7 +386,7 @@ class ContainerType(BuiltInType):
 
 class ObjRefType(BuiltInType):
 
-    def __init__(self, type_id=None):
+    def __init__(self, type_id: StructType):
         super().__init__(type_id)
 
     def get(self, obj: ARI) -> Optional[ARI]:
@@ -434,7 +436,7 @@ class AnyType(BuiltInType):
         if not isinstance(obj, self._obj_cls):
             return False
 
-        if self._obj_cls is ReferenceARI:
+        if isinstance(obj, ReferenceARI):
             # either relative or absolute reference is valid
             if obj.ident.org_id is not None and obj.ident.model_id is None:
                 return False
@@ -519,10 +521,10 @@ class SemType(BaseType):
 class TypeUse(SemType):
     ''' Use of and optional restriction on an other type. '''
 
-    type_text: str = None
+    type_text: Optional[str] = None
     ''' Original text name of the type being used. '''
 
-    type_ari: ARI = None
+    type_ari: Optional[ARI] = None
     ''' Absolute ARI for the :ivar:`base` type to bind to. '''
 
     base: Optional[BaseType] = None
@@ -544,6 +546,8 @@ class TypeUse(SemType):
         return set(self.constraints)
 
     def ari_name(self) -> ARI:
+        if self.type_ari is None:
+            raise ValueError('no typeuse name')
         return ReferenceARI(
             get_amm_ident('amm-semtype', 'use'),
             params={
@@ -553,20 +557,24 @@ class TypeUse(SemType):
 
     def get(self, obj: ARI) -> Optional[ARI]:
         # extract the value before checks
-        if self.base:
-            obj = self.base.get(obj)
-        if obj is not None:
-            invalid = self._constrain(obj)
+        if self.base is not None:
+            conv = self.base.get(obj)
+        else:
+            conv = obj
+
+        if conv is not None:
+            invalid = self._constrain(conv)
             if invalid:
                 err = ', '.join(invalid)
                 LOGGER.debug('TypeUse.get() invalid constraints: %s', err)
                 return None
-        return obj
+
+        return conv
 
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
-        if self.base:
+        if self.base is not None:
             obj = self.base.convert(obj)
         invalid = self._constrain(obj)
         if invalid:
@@ -678,16 +686,18 @@ class UniformList(SemType):
             return None
         if not isinstance(obj, LiteralARI):
             return None
-        if obj.type_id != StructType.AC:
+        if obj.type_id != StructType.AC or not isinstance(obj.value, list):
             return None
 
-        invalid = self._constrain(obj)
+        invalid = self._constrain(cast(List[ARI], obj.value))
         if invalid:
             err = ', '.join(invalid)
             LOGGER.debug('UniformList.get() invalid constraints: %s', err)
             return None
 
         for val in obj.value:
+            if not isinstance(val, ARI):
+                return None
             if self.base.get(val) is None:
                 return None
 
@@ -701,24 +711,26 @@ class UniformList(SemType):
         elif not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.AC:
-            raise TypeError(f'Value to convert is not AC, it is {obj.type_id.name}')
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
+        if not isinstance(obj.value, list):
+            raise TypeError()
 
-        invalid = self._constrain(obj)
+        invalid = self._constrain(cast(List[ARI], obj.value))
         if invalid:
             err = ', '.join(invalid)
             raise ValueError(f'UniformList.convert() invalid constraints: {err}')
 
-        rvalue = list(map(self.base.convert, obj.value))
+        rvalue = list(map(self.base.convert, cast(List[ARI], obj.value)))
         return LiteralARI(rvalue, StructType.AC)
 
-    def _constrain(self, obj: ARI) -> List[str]:
+    def _constrain(self, val: List[ARI]) -> List[str]:
         ''' Check constraints on the list.
         '''
         invalid = []
-        if self.min_elements is not None and len(obj.value) < self.min_elements:
-            invalid.append(f'Size of list {len(obj.value)} is smaller than the minimum of {self.min_elements}')
-        if self.max_elements is not None and len(obj.value) > self.max_elements:
-            invalid.append(f'Size of list {len(obj.value)} is larger than the maximum of {self.max_elements}')
+        if self.min_elements is not None and len(val) < self.min_elements:
+            invalid.append(f'Size of list {len(val)} is smaller than the minimum of {self.min_elements}')
+        if self.max_elements is not None and len(val) > self.max_elements:
+            invalid.append(f'Size of list {len(val)} is larger than the maximum of {self.max_elements}')
         return invalid
 
 
@@ -758,7 +770,14 @@ class Sequence(SemType):
         raise NotImplementedError
 
     def convert(self, obj: ARI) -> ARI:
-        rvalue = list(map(self.base.convert, obj.value))
+        if not isinstance(obj, LiteralARI):
+            raise TypeError()
+        if obj.type_id != StructType.AC:
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
+        if not isinstance(obj.value, list):
+            raise TypeError()
+
+        rvalue = list(map(self.base.convert, cast(List[ARI], obj.value)))
         return LiteralARI(rvalue, StructType.AC)
 
     def take(self, remain: List[ARI]) -> List[ARI]:
@@ -796,9 +815,10 @@ class DiverseList(SemType):
         types = []
         for part in self.parts:
             if isinstance(part, Sequence):
-                return types.append(part.base)
+                if part.base is not None:
+                    types.append(part.base)
             elif isinstance(part, BaseType):
-                return types.append(part)
+                types.append(part)
         return types
 
     def all_type_ids(self) -> Set[StructType]:
@@ -819,6 +839,8 @@ class DiverseList(SemType):
         if not isinstance(obj, LiteralARI):
             return None
         if obj.type_id != StructType.AC:
+            return None
+        if not isinstance(obj.value, list):
             return None
 
         # mutable copy of the list
@@ -852,7 +874,9 @@ class DiverseList(SemType):
         elif not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.AC:
-            raise TypeError(f'Value to convert is not AC, it is {obj.type_id.name}')
+            raise TypeError(f'Value to convert is not AC, it is {obj.type_id}')
+        if not isinstance(obj.value, list):
+            raise TypeError()
 
         rvalue = []
         # mutable copy of the list
@@ -909,8 +933,12 @@ class UniformMap(SemType):
             return None
         if obj.type_id != StructType.AM:
             return None
+        if not isinstance(obj.value, dict):
+            return None
 
         for key, val in obj.value.items():
+            if not isinstance(key, ARI) or not isinstance(val, ARI):
+                return None
             if self.kbase is not None and self.kbase.get(key) is None:
                 return None
             if self.vbase is not None and self.vbase.get(val) is None:
@@ -926,15 +954,25 @@ class UniformMap(SemType):
         elif not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.AM:
-            raise TypeError(f'Value to convert is not AM, it is {obj.type_id.name}')
+            raise TypeError(f'Value to convert is not AM, it is {obj.type_id}')
+        if not isinstance(obj.value, dict):
+            raise TypeError('Invalid AM primitive type')
 
         rvalue = {}
         for key, val in obj.value.items():
+            if not isinstance(key, ARI):
+                raise TypeError('Map key is not an ARI')
+            if not isinstance(val, ARI):
+                raise TypeError('Map value is not an ARI')
+
             if self.kbase is not None:
                 rkey = self.kbase.convert(key)
             else:
                 rkey = key
-            rkey = LiteralARI(value=rkey.value)  # enforce that AM uses untyped keys
+            # enforce that AM uses untyped keys
+            if not isinstance(rkey, LiteralARI):
+                raise ValueError(f'AM key is not a literal: {rkey}')
+            rkey = LiteralARI(rkey.value)
 
             if self.vbase is not None:
                 rval = self.vbase.convert(val)
@@ -1006,8 +1044,10 @@ class TableTemplate(SemType):
             return None
         if obj.type_id != StructType.TBL:
             return None
+        if not isinstance(obj.value, Table):
+            return None
 
-        invalid = self._constrain(obj)
+        invalid = self._constrain(obj.value)
         if invalid:
             err = ', '.join(invalid)
             LOGGER.debug('TableTemplate.get() invalid constraints: %s', err)
@@ -1028,9 +1068,11 @@ class TableTemplate(SemType):
         if not isinstance(obj, LiteralARI):
             raise TypeError()
         if obj.type_id != StructType.TBL:
-            raise TypeError(f'Value to convert is not TBL, it is {obj.type_id.name}')
+            raise TypeError(f'Value to convert is not TBL, it is {obj.type_id}')
+        if not isinstance(obj.value, Table):
+            raise TypeError('Invalid TBL primitive type')
 
-        invalid = self._constrain(obj)
+        invalid = self._constrain(obj.value)
         if invalid:
             err = ', '.join(invalid)
             raise ValueError(f'TableTemplate.convert() invalid constraints: {err}')
@@ -1051,14 +1093,14 @@ class TableTemplate(SemType):
 
         return LiteralARI(rvalue, StructType.TBL)
 
-    def _constrain(self, obj: ARI) -> List[str]:
+    def _constrain(self, val: Table) -> List[str]:
         ''' Check constraints on the shape of the table.
         '''
         invalid = []
-        if obj.value.ndim != 2:
-            invalid.append(f'TBL value must be a 2-dimensional array, is {obj.value.ndim}')
-            return
-        nrows, ncols = obj.value.shape
+        if val.ndim != 2:
+            invalid.append(f'TBL value must be a 2-dimensional array, is {val.ndim}')
+            return invalid
+        nrows, ncols = val.shape
 
         if ncols != len(self.columns):
             raise ValueError(f'TBL value has wrong number of columns: should be {len(self.columns)} is {ncols}')
@@ -1070,7 +1112,7 @@ class TableTemplate(SemType):
         return invalid
 
 
-def type_walk(root: BaseType) -> Iterator:
+def type_walk(root: BaseType) -> Iterator[BaseType]:
     ''' Walk all type objects in a tree,
     ignoring duplicates in cases of circular references.
 
@@ -1080,7 +1122,7 @@ def type_walk(root: BaseType) -> Iterator:
 
     seen = set()
 
-    def walk(typeobj: BaseType) -> None:
+    def walk(typeobj: BaseType) -> Generator[BaseType, None, None]:
         if id(typeobj) in seen:
             return
 

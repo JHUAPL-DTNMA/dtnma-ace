@@ -65,7 +65,9 @@ class Table(numpy.ndarray):
     def __new__(self, shape: tuple):
         return super().__new__(self, shape, dtype=ARI)
 
-    def __eq__(self, other: 'Table'):
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Table):
+            return False
         return numpy.array_equal(self, other)
 
     @staticmethod
@@ -97,7 +99,7 @@ class ExecutionSet:
 @dataclass(eq=True, frozen=True)
 class Report:
     ''' Internal representation of Report data. '''
-    rel_time: datetime.timedelta
+    rel_time: numpy.timedelta64
     ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
     value. '''
     source: 'ARI'
@@ -111,7 +113,7 @@ class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    ref_time: datetime.datetime
+    ref_time: numpy.datetime64
     ''' The reference time for all contained Report relative-times. '''
     reports: List['Report']
     ''' The contained Reports '''
@@ -250,7 +252,7 @@ LiteralPrimitiveType = Union[
     # times
     numpy.datetime64, numpy.timedelta64,
     # containers
-    list, dict, Table, ExecutionSet, ReportSet, ObjectRefPattern
+    List[ARI], Dict[ARI,ARI], Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]
 ''' Narrow primitive type for literal values '''
 
@@ -264,7 +266,7 @@ class LiteralARI(ARI):
     type_id: Optional[StructType] = None
     ''' ADM type of this value '''
 
-    def __eq__(self, other: 'LiteralARI') -> bool:
+    def __eq__(self, other: object) -> bool:
         # check attributes in specific order
         return (
             isinstance(other, LiteralARI)
@@ -278,10 +280,16 @@ class LiteralARI(ARI):
     def visit(self, visitor: Callable[['ARI'], None]) -> None:
         if isinstance(self.value, list):
             for item in self.value:
+                if not isinstance(item, ARI):
+                    raise TypeError()
                 item.visit(visitor)
         elif isinstance(self.value, dict):
             for key, item in self.value.items():
+                if not isinstance(key, ARI):
+                    raise TypeError()
                 key.visit(visitor)
+                if not isinstance(item, ARI):
+                    raise TypeError()
                 item.visit(visitor)
         elif isinstance(self.value, Table):
 
@@ -421,7 +429,7 @@ def as_bool(val: ARI) -> bool:
     :raise ValueError: if not a boolean value.
     '''
     if isinstance(val, LiteralARI) and val.value in {True, False}:
-        return val.value
+        return bool(val.value)
     raise ValueError('as_bool given non-boolean value')
 
 

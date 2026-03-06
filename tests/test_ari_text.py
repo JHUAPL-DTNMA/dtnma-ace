@@ -32,7 +32,7 @@ import numpy
 from ace.ari import (
     apiIntInterval,
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern
+    Table, ExecutionSet, ReportSet, Report, ObjectRefPattern
 )
 from ace import ari_text
 
@@ -166,11 +166,11 @@ class TestAriText(unittest.TestCase):
         ('ari:/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
         (
             'ari:/TBL/c=3;',
-            numpy.ndarray((0, 3))
+            Table((0, 3))
         ),
         (
             'ari:/TBL/c=3;(1,2,3)(a,b,c)',
-            numpy.array([
+            Table.from_rows([
                 [LiteralARI(1), LiteralARI(2), LiteralARI(3)],
                 [LiteralARI('a'), LiteralARI('b'), LiteralARI('c')],
             ])

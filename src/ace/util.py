@@ -30,7 +30,7 @@ LOGGER = logging.getLogger(__name__)
 
 def is_printable(name: bytes) -> bool:
     return (
-        name and name[:1].isalpha()
+        bool(name) and name[:1].isalpha()
         and all([chr(char) in string.printable for char in name])
     )
 

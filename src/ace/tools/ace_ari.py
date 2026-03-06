@@ -33,6 +33,7 @@ import argparse
 import io
 import logging
 import sys
+from typing import BinaryIO
 from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
 
 LOGGER = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def decode(args: argparse.Namespace):
     '''
     # pylint: disable=consider-using-with
     if args.inform == 'text':
-        infile = sys.stdin if args.input == '-' else open(args.input, 'r', encoding="utf-8")
+        infile: BinaryIO = sys.stdin if args.input == '-' else open(args.input, 'r', encoding="utf-8")
         # Assume that each line is a new ARI, but handle cases where line breaks are present in text literals
         buffer = io.StringIO()
         last_err = None

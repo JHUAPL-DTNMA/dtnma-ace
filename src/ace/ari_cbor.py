@@ -25,7 +25,7 @@
 import datetime
 import logging
 import numpy
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO, Optional, cast
 import cbor2
 from ace.ari import (
     DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
@@ -62,7 +62,7 @@ class Decoder:
 
         return res
 
-    def _item_to_ari(self, item: object):
+    def _item_to_ari(self, item: object) -> ARI:
         LOGGER.debug('Got ARI item: %s', item)
 
         if isinstance(item, list):
@@ -72,7 +72,7 @@ class Decoder:
                     if len(item) < 5:
                         raise ParseError(f'Invalid ARI CBOR item containing model revision, too few segments: {item}')
 
-                    model_rev = item[idx]
+                    model_rev = cast(datetime.date, item[idx])
                     idx += 1
                 else:
                     model_rev = None
@@ -82,24 +82,25 @@ class Decoder:
                         raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
 
                 ident = Identity(
-                    org_id=item[0],
-                    model_id=item[1],
+                    org_id=cast(Identity.PartType, item[0]),
+                    model_id=cast(Identity.PartType, item[1]),
                     model_rev=model_rev,
                     type_id=StructType(item[idx]) if item[idx] else None,
-                    obj_id=item[idx + 1],
+                    obj_id=cast(Identity.PartType, item[idx + 1]),
                 )
                 idx += 2
 
                 params = None
                 if len(item) == idx + 1:
-                    if isinstance(item[idx], list):
+                    params_item = item[idx]
+                    if isinstance(params_item, list):
                         params = [
                             self._item_to_ari(param_item)
-                            for param_item in item[idx]
+                            for param_item in params_item
                         ]
-                    elif isinstance(item[idx], dict):
+                    elif isinstance(params_item, dict):
                         mapobj = {}
-                        for key, val in item[idx].items():
+                        for key, val in params_item.items():
                             k = self._item_to_ari(key)
                             v = self._item_to_ari(val)
                             mapobj[k] = v
@@ -200,7 +201,7 @@ class Decoder:
 
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
-            if nonce is None:
+            if not isinstance(nonce, LiteralARI):
                 raise ValueError(f'invalid nonce: {item[0]}')
             value = ExecutionSet(
                 nonce=nonce,
@@ -208,7 +209,7 @@ class Decoder:
             )
         elif type_id == StructType.RPTSET:
             nonce = NONCE.get(LiteralARI(item[0]))
-            if nonce is None:
+            if not isinstance(nonce, LiteralARI):
                 raise ValueError(f'invalid nonce: {item[0]}')
 
             ref_time = (DTN_EPOCH + self._item_to_timeval(item[1]))

@@ -29,11 +29,12 @@ import logging
 import math
 import optparse
 import os
-from typing import TextIO, Tuple, Union
+from typing import Optional, TextIO, Tuple, Union
 import portion
 import pyang.plugin
 import pyang.context
 import pyang.repository
+import pyang.statements
 import pyang.syntax
 import pyang.translators.yang
 from ace import ari_text
@@ -89,7 +90,7 @@ def range_from_text(text: str) -> portion.Interval:
     '''
     parts = [part.strip() for part in text.split('|')]
 
-    def from_num(text: str):
+    def from_num(text: str) -> Union[int, float]:
         try:
             return int(text)
         except (ValueError, OverflowError):
@@ -101,10 +102,15 @@ def range_from_text(text: str) -> portion.Interval:
             lower, upper = part.split('..', 2)
             if lower == 'min':
                 lower = -float('inf')
+            else:
+                lower = from_num(lower)
             if upper == 'max':
                 upper = float('inf')
-            ranges |= portion.closed(from_num(lower), from_num(upper))
+            else:
+                upper = from_num(upper)
+            ranges |= portion.closed(lower, upper)
         else:
+            # single value
             ranges |= portion.singleton(from_num(part))
 
     return ranges
@@ -313,7 +319,7 @@ class TypingDecoder:
                 base=self.decode(col_stmt)
             )
             if col.name in col_names:
-                LOGGER.warn('A duplicate column name is present: %s', col)
+                LOGGER.warning('A duplicate column name is present: %s', col)
 
             typeobj.columns.append(col)
             col_names.add(col.name)
@@ -323,11 +329,7 @@ class TypingDecoder:
             typeobj.key = key_stmt.arg
 
         for unique_stmt in stmt.search((AMM_MOD, 'unique')):
-            col_names = [
-                name.strip()
-                for name in unique_stmt.arg.split(',')
-            ]
-            typeobj.unique.append(col_names)
+            typeobj.unique.append(unique_stmt.arg)
 
         size_stmt = stmt.search_one('min-elements')
         if size_stmt:
@@ -894,7 +896,7 @@ class Encoder:
             prefix = self._denorm_prefixes[prefix]
         return (prefix, name)
 
-    def _add_substmt(self, parent: pyang.statements.Statement, keyword: str, arg: str = None) -> pyang.statements.Statement:
+    def _add_substmt(self, parent: pyang.statements.Statement, keyword: Union[str, Tuple[str,str]], arg: Optional[str] = None) -> pyang.statements.Statement:
         sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
         parent.substmts.append(sub_stmt)
         return sub_stmt

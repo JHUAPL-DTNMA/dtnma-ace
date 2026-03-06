@@ -25,12 +25,12 @@
 from dataclasses import dataclass
 import logging
 import math
-from typing import List, Dict, TextIO
+from typing import List, Optional, Dict, TextIO, Union, cast
 import numpy
 import urllib.parse
 import cbor2
 from ace.ari import (
-    StructType, IntInterval, ARI, LiteralARI, ReferenceARI,
+    StructType, IntInterval, Table, ARI, LiteralARI, ReferenceARI,
     ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
 )
 from ace.cborutil import to_diag
@@ -131,7 +131,7 @@ class EncodeOptions:
 class Encoder:
     ''' The encoder portion of this CODEC. '''
 
-    def __init__(self, options: EncodeOptions = None, **kwargs):
+    def __init__(self, options: Optional[EncodeOptions] = None, **kwargs):
         self._options = options or EncodeOptions(**kwargs)
 
     def encode(self, obj: ARI, buf: TextIO):
@@ -142,7 +142,7 @@ class Encoder:
         '''
         self._encode_obj(buf, obj, prefix=self._options.scheme_prefix)
 
-    def _encode_obj(self, buf: TextIO, obj: ARI, prefix: bool = False):
+    def _encode_obj(self, buf: TextIO, obj: Union[ARI, Report], prefix: bool = False):
         if isinstance(obj, LiteralARI):
             LOGGER.debug('Encode literal %s', obj)
             if prefix:
@@ -153,12 +153,20 @@ class Encoder:
                 buf.write('/')
 
             if obj.type_id is StructType.AC:
-                self._encode_list(buf, obj.value)
+                if not isinstance(obj.value, list):
+                    raise TypeError()
+                self._encode_list(buf, cast(List[Union[ARI, Report]], obj.value))
             elif obj.type_id is StructType.AM:
-                self._encode_map(buf, obj.value)
+                if not isinstance(obj.value, dict):
+                    raise TypeError()
+                self._encode_map(buf, cast(Dict[ARI, ARI], obj.value))
             elif obj.type_id is StructType.TBL:
+                if not isinstance(obj.value, Table):
+                    raise TypeError()
                 self._encode_tbl(buf, obj.value)
             elif obj.type_id is StructType.TP:
+                if not isinstance(obj.value, numpy.datetime64):
+                    raise TypeError()
                 if self._options.time_text:
                     text = encode_datetime(obj.value)
                     buf.write(percent_encode(text))
@@ -167,6 +175,8 @@ class Encoder:
                     text = f'{diff:.9f}'.rstrip('0')
                     buf.write(text)
             elif obj.type_id is StructType.TD:
+                if not isinstance(obj.value, numpy.timedelta64):
+                    raise TypeError()
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(percent_encode(text))
@@ -178,6 +188,8 @@ class Encoder:
                 # no need to percent_encode identity
                 buf.write(str(obj.value))
             elif obj.type_id is StructType.CBOR:
+                if not isinstance(obj.value, bytes):
+                    raise TypeError()
                 if self._options.cbor_diag:
                     buf.write(percent_encode('<<'))
                     buf.write(percent_encode(to_diag(cbor2.loads(obj.value))))
@@ -190,20 +202,20 @@ class Encoder:
                     buf.write(StructType(obj.value).name)
                 except ValueError:
                     # unknown type
-                    buf.write(str(int(obj.value)))
+                    buf.write(str(obj.value))
             elif isinstance(obj.value, ExecutionSet):
                 params = {
                     'n': obj.value.nonce,
                 }
                 self._encode_struct(buf, params)
-                self._encode_list(buf, obj.value.targets)
+                self._encode_list(buf, cast(List[Union[ARI, Report]], obj.value.targets))
             elif isinstance(obj.value, ReportSet):
                 params = {
                     'n': obj.value.nonce,
                     'r': LiteralARI(obj.value.ref_time, StructType.TP),
                 }
                 self._encode_struct(buf, params)
-                self._encode_list(buf, obj.value.reports)
+                self._encode_list(buf, cast(List[Union[ARI, Report]], obj.value.reports))
             elif isinstance(obj.value, ObjectRefPattern):
 
                 def encode_part(part: ObjectRefPattern.PartType) -> str:
@@ -296,9 +308,9 @@ class Encoder:
                 buf.write('/')
                 buf.write(str(obj.ident.obj_id))
                 if isinstance(obj.params, list):
-                    self._encode_list(buf, obj.params)
+                    self._encode_list(buf, cast(List[Union[ARI, Report]], obj.params))
                 elif isinstance(obj.params, dict):
-                    self._encode_map(buf, obj.params)
+                    self._encode_map(buf, cast(Dict[ARI, ARI], obj.params))
 
         elif isinstance(obj, Report):
             params = {
@@ -306,7 +318,7 @@ class Encoder:
                 's': obj.source,
             }
             self._encode_struct(buf, params)
-            self._encode_list(buf, obj.items)
+            self._encode_list(buf, cast(List[Union[ARI, Report]], obj.items))
 
         else:
             raise TypeError(f'Unhandled object type {type(obj)} instance: {obj}')
@@ -315,7 +327,7 @@ class Encoder:
         # already guaranteed URL safe
         buf.write(f"h'{value.hex().upper()}'")
 
-    def _encode_list(self, buf: TextIO, items: List):
+    def _encode_list(self, buf: TextIO, items: List[Union[ARI, Report]]):
         buf.write('(')
 
         first = True
@@ -328,7 +340,7 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_map(self, buf: TextIO, mapobj: Dict):
+    def _encode_map(self, buf: TextIO, mapobj: Dict[ARI, ARI]):
         buf.write('(')
 
         first = True
@@ -344,15 +356,15 @@ class Encoder:
 
         buf.write(')')
 
-    def _encode_tbl(self, buf: TextIO, array: 'numpy.ndarray'):
+    def _encode_tbl(self, buf: TextIO, array: Table):
         params = {
             'c': LiteralARI(array.shape[1]),
         }
         self._encode_struct(buf, params)
         for row_ix in range(array.shape[0]):
-            self._encode_list(buf, array[row_ix, :].flat)
+            self._encode_list(buf, list(array[row_ix, :].flat))
 
-    def _encode_struct(self, buf, obj: ARI):
+    def _encode_struct(self, buf, obj: Dict[str, ARI]):
         for key, val in obj.items():
             buf.write(key)
             buf.write('=')

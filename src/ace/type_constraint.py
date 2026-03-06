@@ -186,7 +186,7 @@ class IdentRefBase(Constraint):
 
     base_text: str
     ''' Original required base text. '''
-    base_ari: ReferenceARI
+    base_ari: ARI
     ''' The  base object reference. '''
     base_ident: Optional[Ident] = None
     ''' ADM object lookup session '''

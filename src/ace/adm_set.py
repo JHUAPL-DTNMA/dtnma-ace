@@ -26,9 +26,9 @@ a cache database.
 import logging
 import os
 import traceback
-from typing import BinaryIO, List, Set, Union
+from typing import Callable, List, Optional, FrozenSet, TextIO, Union
 from pyang.repository import Repository
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Engine
 from sqlalchemy.orm import sessionmaker, Session
 try:
     import xdg_base_dirs
@@ -42,7 +42,7 @@ LOGGER = logging.getLogger(__name__)
 
 class DbRepository(Repository):
 
-    def __init__(self, db_sess, file_entries: List[os.DirEntry] = None):
+    def __init__(self, db_sess, file_entries: Optional[List[os.DirEntry]] = None):
         self._db_sess = db_sess
         self._file_entries = file_entries or []
 
@@ -101,7 +101,7 @@ class AdmSet:
         If False, the cache is kept in-memory.
     '''
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         if cache_dir is False:
             self.cache_path = None
         else:
@@ -111,7 +111,12 @@ class AdmSet:
                 os.makedirs(cache_dir)
             self.cache_path = os.path.join(cache_dir, 'adms.sqlite')
 
+        self._db_eng: Optional[Engine] = None
+        self._sessmake: Optional[Callable[[], Session]] = None
+        self._db_sess: Optional[Session] = None
         self._db_open()
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
 
         cur_vers = models.CURRENT_SCHEMA_VERSION
         row = self._db_sess.query(models.SchemaVersion.version_num).one_or_none()
@@ -162,11 +167,15 @@ class AdmSet:
 
         :return: The session object, which should not be used in a ``with`` context.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
         return self._db_sess
 
     def __len__(self):
         ''' Get the total number of known ADMs.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
         query = self._db_sess.query(models.AdmModule.id)
         return query.count()
 
@@ -175,14 +184,18 @@ class AdmSet:
         :return: List of ADMs.
         :rtype: list of :class:`models.AdmModule`
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
         query = self._db_sess.query(models.AdmModule)
         return iter(query.all())
 
-    def names(self) -> Set[str]:
+    def names(self) -> FrozenSet[str]:
         ''' Get all loaded ADM normalized names.
 
         :return: A set of names.
         '''
+        if not self._db_sess:
+            return frozenset()
         query = self._db_sess.query(models.AdmModule.norm_name).filter(
             models.AdmModule.norm_name.is_not(None)
         )
@@ -192,6 +205,8 @@ class AdmSet:
         ''' Determine if a specific ADM normalized name is known.
         :return: True if the name s present.
         '''
+        if not self._db_sess:
+            return False
         query = self._db_sess.query(models.AdmModule.norm_name).filter(
             models.AdmModule.norm_name == name
         )
@@ -212,6 +227,9 @@ class AdmSet:
         :return: The ADM
         :raise KeyError: If the name is not present.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         name = name.casefold()
 
         query = self._db_sess.query(models.AdmModule).filter(
@@ -229,6 +247,9 @@ class AdmSet:
         :return: The ADM
         :raise KeyError: If the enum is not present.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         enum = int(enum)
 
         query = self._db_sess.query(models.AdmModule).filter(
@@ -273,6 +294,9 @@ class AdmSet:
         :param dir_paths: One or more directory paths to scan.
         :return: The number of ADMs read from that directory.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         LOGGER.debug('Loading from directories %s', dir_paths)
         if isinstance(dir_paths, str):
             dir_paths = [dir]
@@ -310,6 +334,9 @@ class AdmSet:
         :raise Exception: if the load fails or if the file does
             not have a "name" metadata object.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         file_path = os.path.realpath(file_path)
         LOGGER.debug('Loading from file %s', file_path)
         try:
@@ -322,7 +349,7 @@ class AdmSet:
             self._db_sess.rollback()
             raise
 
-    def load_from_data(self, buf: BinaryIO, del_dupe: bool = True) -> models.AdmModule:
+    def load_from_data(self, buf: TextIO, del_dupe: bool = True) -> models.AdmModule:
         ''' Load an ADM definition from file content.
 
         :param buf: The file-like object to read from.
@@ -331,6 +358,9 @@ class AdmSet:
         :raise Exception: if the load fails or if the file does
             not have a "name" metadata object.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         try:
             dec = adm_yang.Decoder(DbRepository(self._db_sess))
             self._db_sess.expire_on_commit = False
@@ -350,6 +380,9 @@ class AdmSet:
         :param file_path: The file to open and read from.
         :return: The associated :cls:`AdmModule` object if successful.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
+
         # skip loading the file_text field
         src_existing = (
             self._db_sess.query(
@@ -391,8 +424,10 @@ class AdmSet:
         :param adm_new: The loaded ADM.
         :param del_dupe: Remove any pre-existing ADMs with the same `norm_name`.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
         if not adm_new.norm_name:
-            raise RuntimeError('ADM has no "name" mdat object')
+            raise RuntimeError('ADM has no "name" metadata')
         LOGGER.debug('Loaded AdmModule name "%s"', adm_new.norm_name)
 
         # if dependant adm not added yet
@@ -425,9 +460,11 @@ class AdmSet:
                 else:
                     self._db_sess.add(adm)
 
-    def get_child(self, adm: models.AdmModule, cls: type, norm_name: str = None, enum: int = None):
+    def get_child(self, adm: models.AdmModule, cls: type, norm_name: Optional[str] = None, enum: Optional[int] = None) -> object:
         ''' Get one of the :class:`AdmObjMixin` -derived child objects.
         '''
+        if not self._db_sess:
+            raise RuntimeError('no DB session')
         query = self._db_sess.query(cls).filter(cls.module == adm)
         if norm_name is not None:
             query = query.filter(cls.norm_name == norm_name.casefold())
