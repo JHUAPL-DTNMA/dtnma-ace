@@ -67,3 +67,20 @@ jobs:
         run: pip3 install -e '.[flake8]'
       - name: Run flake8
         run: flake8 src tests
+
+  typing:
+    name: Check typing
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install
+      run: pip3 install .[ty]
+    - name: Check with ty
+      run: ty check --python ${Python3_ROOT_DIR} --exclude src/ace/adm_set.py --exclude src/ace/adm_yang.py --exclude src/ace/pyang/ .
+

@@ -48,6 +48,9 @@ flake8 = [
   "flake8_pyproject",
   "flake8_formatter_junit_xml",
 ]
+ty = [
+  "ty",
+]
 docs = [
   "sphinx <6",
   "sphinx_rtd_theme",
@@ -56,12 +59,13 @@ docs = [
 
 [tool.pytest.ini_options]
 addopts = [
-    "--log-cli-level=critical",
     "--import-mode=importlib",
 ]
 testpaths = [
     "tests",
 ]
+log_cli="True"
+log_cli_level="critical"
 
 [tool.pylint.MAIN]
 load-plugins="pylint_junit"
