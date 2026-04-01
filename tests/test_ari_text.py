@@ -1121,6 +1121,22 @@ class TestAriText(unittest.TestCase):
                 self.assertIsInstance(ari.value.nonce.value, nonce_prim)
                 self.assertEqual(len(ari.value.reports), expect)
 
+    def test_empty_rptset_parsing(self):
+        TEST_CASE = [
+            ("ari:/RPTSET/n=1234;r=/TP/20000101T001640Z;()", int, 0),
+        ]
+        dec = ari_text.Decoder()
+        for text, nonce_prim, expect in TEST_CASE:
+            with self.subTest(text):
+                # 1. Decode the string into an ARI object
+                ari = dec.decode(io.StringIO(text))
+                LOGGER.info('Got ARI %s', ari)
+                
+                # 2. Perform assertions consistent with your suite
+                self.assertIsInstance(ari, ARI)
+                self.assertIsInstance(ari.value.nonce.value, nonce_prim)
+                self.assertEqual(len(ari.value.reports), expect)
+
     def test_ari_text_decode_objref(self):
         TEST_CASE = [
             ("ari://example/test/const/hi", StructType.CONST),
