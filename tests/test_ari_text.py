@@ -1130,7 +1130,7 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
                 LOGGER.info('Got ARI %s', ari)
-                
+
                 self.assertIsInstance(ari, ARI)
                 self.assertIsInstance(ari.value.nonce.value, nonce_prim)
                 self.assertEqual(len(ari.value.reports), expect)

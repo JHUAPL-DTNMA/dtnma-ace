@@ -159,9 +159,9 @@ def p_reportbracket(p):
     '''reportbracket : LPAREN RPAREN
                      | LPAREN reportlist RPAREN'''
     if len(p) == 3:
-        p[0] = []  #empty reports list for ()
+        p[0] = []  # empty reports list for ()
     else:
-        p[0] = p[2]  #use reportlist when present
+        p[0] = p[2]  # use reportlist when present
 
 
 def p_reportlist_join(p):
