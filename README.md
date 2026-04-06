@@ -56,10 +56,7 @@ To install the project itself from source run:
 pip3 install .
 ```
 
-If you are still encountering installation errors, you may need to update the submodules:
-```
-git submodule update --init --recursive
-```
+If you are still encountering installation errors, please refer to the Troubleshooting section below. 
 
 ### Testing
 
@@ -81,12 +78,23 @@ pip3 install .[docs]
 ./build_docs.sh
 ```
 
-### Using ACE
+### Troubleshooting
 
-NOTE: If you get a database error running ACE at any point, you may need to remove the outdated database file: 
+For certain installation errors, you may need to update the submodules with this command:
+```
+git submodule update --init --recursive
+```
+
+If you get a database error running ACE at any point, you may need to remove the outdated database file: 
 ```
 rm ~/.cache/ace/adms.sqlite
 ```
+
+As previously mentioned, it can be beneficial to include `PYTHONPATH=src/` at the start of a command to avoid accidentally using an older version of ACE. 
+
+It can also be beneficial to run `pip install .` every time before running unit tests with pytest. 
+
+### Using ACE
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
 ```
