@@ -56,21 +56,45 @@ To install the project itself from source run:
 pip3 install .
 ```
 
+If you are still encountering installation errors, please refer to the Troubleshooting section below. 
+
+### Testing
+
 If you are a developer seeking to do unit testing, you can run the following two commands to install the dependencies for unit tests and then run said unit tests to see if any are failing:
 ```
 pip3 install -e '.[test]'
 python3 -m pytest -v --cov=ace tests
 ```
+You can also run this command to only run one unit test within a test file, which can save time:
+```
+python3 -m pytest -v tests/<file name>.py -k '<unit test name>'
+```
+
+When running either of the pytest commands above, it is ideal to include the explicit environment variable `PYTHONPATH=src/` at the start of the command. It is not always necessary, but if you have an older version of ACE somewhere in your paths, it can negatively affect importing modules/packages.
+
 Likewise, if you wish to update our Sphinx documentation and then see your changes, you can run the following two commands to install and build the docs, and then open the generated html files in a web browser:
 ```
 pip3 install .[docs]
 ./build_docs.sh
 ```
 
-If you are still encountering installation errors, you may need to update the submodules:
+### Troubleshooting
+
+For certain installation errors, you may need to update the submodules with this command:
 ```
 git submodule update --init --recursive
 ```
+
+If you get a database error running ACE at any point, you may need to remove the outdated database file: 
+```
+rm ~/.cache/ace/adms.sqlite
+```
+
+As previously mentioned, it can be beneficial to include `PYTHONPATH=src/` at the start of a command to avoid accidentally using an older version of ACE. 
+
+It can also be beneficial to run `pip install .` every time before running unit tests with pytest. 
+
+### Using ACE
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
 ```
