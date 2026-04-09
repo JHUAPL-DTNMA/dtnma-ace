@@ -887,47 +887,6 @@ class TestAdmContents(BaseYang):
     }
   }
 ''', False),
-       """  # test INTEGER union for 'range' (BYTE, UINT, INT, UVAST, VAST)
-        ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    amm:type "/ARITYPE/BYTE" { range "0..255"; }
-  }
-''', True),
-        ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    amm:type "/ARITYPE/UVAST" { range "0..100"; }
-  }
-''', True),
-
-        # test length for CBOR
-        ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    amm:type "/ARITYPE/CBOR" { length "1..500"; }
-  }
-''', True),
-
-        # test 'amm:int-labels' must be INTEGER (BYTE, etc)
-        ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    amm:type "/ARITYPE/UINT" {
-      amm:int-labels { enum "test" { value 1; } }
-    }
-  }
-''', True),
-
-        # negative test: 'amm:base' on something other than IDENT
-        ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    amm:type "/ARITYPE/FLOAT" {
-      amm:base "//ietf/amm/IDENT/foo";
-    }
-  }
-''', False),''' """
     )
 
     def test_type_constraint(self):
