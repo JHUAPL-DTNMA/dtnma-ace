@@ -745,7 +745,7 @@ class TestAdmContents(BaseYang):
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" {
-      length "1..10";
+      length "10..40";
     }
   }
 ''', True),
@@ -765,7 +765,7 @@ class TestAdmContents(BaseYang):
     description
       "";
     amm:type "/ARITYPE/INT" {
-      length "1..10";
+      length "10..40";
     }
   }
 ''', False),
