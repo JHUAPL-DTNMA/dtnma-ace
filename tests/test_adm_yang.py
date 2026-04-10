@@ -790,7 +790,7 @@ class TestAdmContents(BaseYang):
     }
   }
 ''', False),
-('''\
+        ('''\
   amm:typedef typeobj {
     amm:enum 1;
     description
