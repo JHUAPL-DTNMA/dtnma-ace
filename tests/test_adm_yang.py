@@ -745,7 +745,7 @@ class TestAdmContents(BaseYang):
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" {
-      length "10..40";
+      length "1..10";
     }
   }
 ''', True),
@@ -765,7 +765,7 @@ class TestAdmContents(BaseYang):
     description
       "";
     amm:type "/ARITYPE/INT" {
-      length "10..40";
+      length "1..10";
     }
   }
 ''', False),
@@ -788,6 +788,22 @@ class TestAdmContents(BaseYang):
     amm:type "/ARITYPE/BYTESTR" {
       pattern "hello";
     }
+  }
+''', False),
+('''\
+  amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
+    amm:type "/ARITYPE/TEXTSTR" { pattern "a.*"; }
+  }
+''', True),
+        ('''\
+  amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
+    amm:type "/ARITYPE/BYTESTR" { pattern "a.*"; }
   }
 ''', False),
         ('''\
