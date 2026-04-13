@@ -903,6 +903,29 @@ class TestAdmContents(BaseYang):
     }
   }
 ''', False),
+        # new CBOR length case 
+        ('''\
+  amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
+    amm:type "/ARITYPE/CBOR" {
+      length "1..1024";
+    }
+  }
+''', True),
+
+        # verification for range (already should be True for INT) 
+        ('''\
+  amm:typedef typeobj {
+    amm:enum 1;
+    description
+      "";
+    amm:type "/ARITYPE/UINT" {
+      range "0..255";
+    }
+  }
+''', True),
     )
 
     def test_type_constraint(self):
