@@ -691,200 +691,188 @@ module example-empty {
 class TestAdmContents(BaseYang):
 
     TYPE_CONSTRAINT = (
+        # RANGE (Allowed: INTEGER, FLOAT)
         ('''\
   amm:typedef typeobj {
     amm:enum 1;
     description
       "";
-    amm:type "/ARITYPE/INT" {
-      range "10..40";
-    }
+    amm:type "/ARITYPE/INT" { range "10..40"; }
   }
 ''', True),
         ('''\
-  amm:typedef typeobj {
-    amm:enum 1;
-    description
-      "";
-    amm:type "/ARITYPE/REAL64" {
-      range "10..40";
-    }
-  }
-''', True),
-        ('''\
-  amm:typedef base {
-    amm:enum 1;
-    description
-      "";
-    amm:type "/ARITYPE/INT";
-  }
-  // derived from unrestricted
   amm:typedef typeobj {
     amm:enum 2;
     description
       "";
-    amm:type "./TYPEDEF/base" {
-      range "10..40";
-    }
+    amm:type "/ARITYPE/REAL64" { range "10..40"; }
   }
 ''', True),
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 3;
     description
       "";
-    amm:type "/ARITYPE/TEXTSTR" {
-      range "10..40";
-    }
+    amm:type "/ARITYPE/UINT" { range "0..255"; }
+  }
+''', True),
+        ('''\
+  amm:typedef base {
+    amm:enum 4;
+    description
+      "";
+    amm:type "/ARITYPE/INT";
+  }
+  amm:typedef typeobj {
+    amm:enum 5;
+    description
+      "";
+    amm:type "./TYPEDEF/base" { range "10..40"; }
+  }
+''', True),
+        # Negative: range on TEXTSTR
+        ('''\
+  amm:typedef typeobj {
+    amm:enum 6;
+    description
+      "";
+    amm:type "/ARITYPE/TEXTSTR" { range "10..40"; }
   }
 ''', False),
 
+        # LENGTH (Allowed: TEXTSTR, BYTESTR, CBOR)
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 7;
     description
       "";
-    amm:type "/ARITYPE/TEXTSTR" {
-      length "10..40";
-    }
+    amm:type "/ARITYPE/TEXTSTR" { length "10..40"; }
   }
 ''', True),
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 8;
     description
       "";
-    amm:type "/ARITYPE/BYTESTR" {
-      length "10..40";
-    }
+    amm:type "/ARITYPE/BYTESTR" { length "10..40"; }
   }
 ''', True),
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 9;
     description
       "";
-    amm:type "/ARITYPE/INT" {
-      length "10..40";
-    }
+    amm:type "/ARITYPE/CBOR" { length "1..1024"; }
+  }
+''', True),
+        # Negative: length on INT
+        ('''\
+  amm:typedef typeobj {
+    amm:enum 10;
+    description
+      "";
+    amm:type "/ARITYPE/INT" { length "10..40"; }
   }
 ''', False),
 
+        # PATTERN (Allowed: TEXTSTR only)
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 11;
     description
       "";
-    amm:type "/ARITYPE/TEXTSTR" {
-      pattern "hello";
-    }
+    amm:type "/ARITYPE/TEXTSTR" { pattern "a.*"; }
   }
 ''', True),
+        # Negative: pattern on BYTESTR or INT
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 12;
     description
       "";
-    amm:type "/ARITYPE/BYTESTR" {
-      pattern "hello";
-    }
+    amm:type "/ARITYPE/BYTESTR" { pattern "a.*"; }
   }
 ''', False),
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 13;
     description
       "";
-    amm:type "/ARITYPE/INT" {
-      pattern "hello";
-    }
+    amm:type "/ARITYPE/INT" { pattern "hello"; }
   }
 ''', False),
 
+        # AMM:INT-LABELS (Allowed: INTEGER only)
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 14;
     description
       "";
     amm:type "/ARITYPE/INT" {
       amm:int-labels {
-        enum "first" {
-          value -3;
-        }
-        enum "second" {
-          value 10;
-        }
+        enum "first" { value -3; }
+        enum "second" { value 10; }
       }
     }
   }
 ''', True),
+        # Negative: int-labels on TEXTSTR
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 15;
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" {
       amm:int-labels {
-        enum "first" {
-          value -3;
-        }
-        enum "second" {
-          value 10;
-        }
+        enum "first" { value -3; }
       }
     }
   }
 ''', False),
 
+        # AMM:CDDL (Allowed: CBOR only)
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 16;
     description
       "";
-    amm:type "/ARITYPE/CBOR" {
-      amm:cddl "hi";
-    }
+    amm:type "/ARITYPE/CBOR" { amm:cddl "hi"; }
   }
 ''', True),
+        # Negative: cddl on INT or BYTESTR
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 17;
     description
       "";
-    amm:type "/ARITYPE/INT" {
-      amm:cddl "hi";
-    }
+    amm:type "/ARITYPE/INT" { amm:cddl "hi"; }
   }
 ''', False),
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 18;
     description
       "";
-    amm:type "/ARITYPE/BYTESTR" {
-      amm:cddl "hi";
-    }
+    amm:type "/ARITYPE/BYTESTR" { amm:cddl "hi"; }
   }
 ''', False),
 
+        # AMM:BASE (Allowed: IDENT only)
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 19;
     description
       "";
-    amm:type "/ARITYPE/IDENT" {
-      amm:base "//ietf/amm/IDENT/somename";
-    }
+    amm:type "/ARITYPE/IDENT" { amm:base "//ietf/amm/IDENT/somename"; }
   }
 ''', True),
+        # Negative: base on TEXTSTR
         ('''\
   amm:typedef typeobj {
-    amm:enum 1;
+    amm:enum 20;
     description
       "";
-    amm:type "/ARITYPE/TEXTSTR" {
-      amm:base "//ietf/amm/IDENT/somename";
-    }
+    amm:type "/ARITYPE/TEXTSTR" { amm:base "//ietf/amm/IDENT/somename"; }
   }
 ''', False),
     )
