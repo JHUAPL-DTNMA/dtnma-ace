@@ -26,10 +26,10 @@ from dataclasses import dataclass, field
 from functools import reduce
 import logging
 import math
-from typing import List, Optional, Set, Iterator
+from typing import List, Optional, Set, Type, Iterator
 import numpy
 from .ari import (
-    DTN_EPOCH, StructType, Table,
+    DTN_EPOCH, StructType, Table, ObjectRefPattern,
     ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 import struct
@@ -192,8 +192,9 @@ class NumericType(BuiltInType):
         StructType.REAL64: float,
     }
 
-    def __init__(self, type_id, dom_min, dom_max):
+    def __init__(self, type_id: StructType, dom_min, dom_max):
         super().__init__(type_id)
+        self._value_cls = self.VALUE_CLS[type_id]
         self.dom_min = dom_min
         self.dom_max = dom_max
 
@@ -202,7 +203,7 @@ class NumericType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]) or isinstance(obj.value, bool):
+        if not isinstance(obj.value, self._value_cls) or isinstance(obj.value, bool):
             return None
         if not self._in_domain(obj.value):
             return None
@@ -225,14 +226,14 @@ class NumericType(BuiltInType):
             raise ValueError(f'Numeric value outside domain [{self.dom_min},{self.dom_max}]: {obj.value}')
         # force the specific type wanted
         return LiteralARI(
-            value=self.VALUE_CLS[self.type_id](obj.value),
+            value=self._value_cls(obj.value),
             type_id=self.type_id
         )
 
     def _in_domain(self, value):
         if not isinstance(value, (int, float)):
             return False
-        if self.VALUE_CLS[self.type_id] is float:
+        if self._value_cls is float:
             if math.isnan(value) or math.isinf(value):
                 return True
 
@@ -250,6 +251,10 @@ class StringType(BuiltInType):
     }
     ''' Required value type for target string type. '''
 
+    def __init__(self, type_id: StructType):
+        super().__init__(type_id)
+        self._value_cls = self.VALUE_CLS[type_id]
+
     def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
@@ -257,7 +262,7 @@ class StringType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+        if not isinstance(obj.value, self._value_cls):
             return None
         return obj
 
@@ -272,7 +277,7 @@ class StringType(BuiltInType):
         if obj.type_id is not None and obj.type_id != self.type_id:
             # something besides text string
             raise TypeError
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+        if not isinstance(obj.value, self._value_cls):
             raise TypeError
 
         return LiteralARI(obj.value, self.type_id)
@@ -288,6 +293,10 @@ class TimeType(BuiltInType):
     }
     ''' Required value type for target time type. '''
 
+    def __init__(self, type_id: StructType):
+        super().__init__(type_id)
+        self._value_cls = self.VALUE_CLS[type_id]
+
     def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
             return None
@@ -295,7 +304,7 @@ class TimeType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+        if not isinstance(obj.value, self._value_cls):
             return None
         return obj
 
@@ -309,8 +318,7 @@ class TimeType(BuiltInType):
 
         if obj.type_id is not None and obj.type_id != self.type_id:
             raise TypeError
-        typlist = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj.value, typlist):
+        if not isinstance(obj.value, self._value_cls):
             raise TypeError
 
         # coerce to native value class
@@ -337,9 +345,14 @@ class ContainerType(BuiltInType):
     VALUE_CLS = {
         StructType.AC: list,
         StructType.AM: dict,
-        StructType.TBL: numpy.ndarray
+        StructType.TBL: numpy.ndarray,
+        StructType.OBJPAT: ObjectRefPattern,
     }
     ''' Required value type for target time type. '''
+
+    def __init__(self, type_id: StructType):
+        super().__init__(type_id)
+        self._value_cls = self.VALUE_CLS[type_id]
 
     def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -348,7 +361,7 @@ class ContainerType(BuiltInType):
             return None
         if obj.type_id is not None and obj.type_id != self.type_id:
             return None
-        if not isinstance(obj.value, self.VALUE_CLS[self.type_id]):
+        if not isinstance(obj.value, self._value_cls):
             return None
         return obj
 
@@ -363,8 +376,8 @@ class ContainerType(BuiltInType):
         if obj.type_id is not None and obj.type_id != self.type_id:
             # something besides text string
             raise TypeError
-        typ = self.VALUE_CLS[self.type_id]
-        value = typ(obj.value)
+
+        value = self._value_cls(obj.value)
 
         return LiteralARI(value, self.type_id)
 
@@ -393,14 +406,15 @@ class ObjRefType(BuiltInType):
 
 
 class AnyType(BuiltInType):
-    ''' Special non-union aggregation built-in types. '''
+    ''' Special non-union aggregation built-in types.
 
-    VALUE_CLS = {
-        StructType.LITERAL: LiteralARI,
-        StructType.OBJECT: ReferenceARI,
-        StructType.NAMESPACE: ReferenceARI,
-    }
-    ''' Required value type for target time type. '''
+    :param type_id: The :cls:`StructType` value related to the instance.
+    :param obj_cls: The overall ARI class related to the instance.
+    '''
+
+    def __init__(self, type_id: StructType, obj_cls: Type[ARI]):
+        super().__init__(type_id)
+        self._obj_cls = obj_cls
 
     def get(self, obj: ARI) -> Optional[ARI]:
         if is_undefined(obj):
@@ -417,11 +431,10 @@ class AnyType(BuiltInType):
         return obj
 
     def _match(self, obj: ARI) -> bool:
-        typ = self.VALUE_CLS[self.type_id]
-        if not isinstance(obj, typ):
+        if not isinstance(obj, self._obj_cls):
             return False
 
-        if typ is ReferenceARI:
+        if self._obj_cls is ReferenceARI:
             # either relative or absolute reference is valid
             if obj.ident.org_id is not None and obj.ident.model_id is None:
                 return False
@@ -467,6 +480,7 @@ LITERALS = {
     'ac': ContainerType(StructType.AC),
     'am': ContainerType(StructType.AM),
     'tbl': ContainerType(StructType.TBL),
+    'objpat': ContainerType(StructType.OBJPAT),  # handled specially by parser
 }
 ''' Literal types, including ARI containers. '''
 OBJREFS = {
@@ -482,9 +496,9 @@ OBJREFS = {
 }
 ''' Object reference types. '''
 ANY = {
-    'literal': AnyType(StructType.LITERAL),
-    'object': AnyType(StructType.OBJECT),
-    'namespace': AnyType(StructType.NAMESPACE),
+    'literal': AnyType(StructType.LITERAL, LiteralARI),
+    'object': AnyType(StructType.OBJECT, ReferenceARI),
+    'namespace': AnyType(StructType.NAMESPACE, ReferenceARI),
 }
 ''' Special reserved types and behavior. '''
 BUILTINS = LITERALS | OBJREFS | ANY
