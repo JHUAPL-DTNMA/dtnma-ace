@@ -241,7 +241,7 @@ NoneType = type(None)
 
 AriListType = Tuple[ARI]
 ''' Type for AC, parameter list, and similar values '''
-AriMapType = Dict[LiteralARI, ARI]
+AriMapType = Dict['LiteralARI', ARI]
 ''' Type for AM, parameter map, and similar values '''
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,

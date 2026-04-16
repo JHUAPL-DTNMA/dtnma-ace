@@ -107,12 +107,12 @@ def p_typedlit_tbl_rows(p):
 
 def p_rowlist_join(p):
     'rowlist : rowlist acbracket'
-    p[0] = p[1] + [p[2]]
+    p[0] = p[1] + (p[2],)
 
 
 def p_rowlist_end(p):
     'rowlist : acbracket'
-    p[0] = [p[1]]
+    p[0] = (p[1],)
 
 
 def p_typedlit_execset(p):
@@ -158,17 +158,17 @@ def p_typedlit_rptset(p):
 def p_reportbracket(p):
     '''reportbracket : LPAREN RPAREN
                      | LPAREN reportlist RPAREN'''
-    p[0] = p[2] if len(p) == 4 else []
+    p[0] = p[2] if len(p) == 4 else tuple()
 
 
 def p_reportlist_join(p):
     'reportlist : reportlist COMMA report'
-    p[0] = p[1] + [p[3]]
+    p[0] = p[1] + (p[3],)
 
 
 def p_reportlist_end(p):
     'reportlist : report'
-    p[0] = [p[1]]
+    p[0] = (p[1],)
 
 
 def p_report(p):

@@ -295,7 +295,8 @@ class TestAriCbor(unittest.TestCase):
                 rptset = ReportSet(
                     nonce=LiteralARI(nonce),
                     ref_time=tval,
-                    reports=[])
+                    reports=tuple()
+                )
 
                 ari = LiteralARI(value=rptset, type_id=StructType.RPTSET)
                 loop = io.BytesIO()

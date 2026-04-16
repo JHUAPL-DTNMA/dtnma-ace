@@ -66,10 +66,10 @@ class TestAri(unittest.TestCase):
     def test_visit_params_list(self):
         ari = ReferenceARI(
             ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
-            params=[
+            params=(
                 LiteralARI(3),
                 LiteralARI('hello'),
-            ]
+            )
         )
         ctr = Counter()
         ari.visit(ctr)
@@ -94,10 +94,10 @@ class TestAri(unittest.TestCase):
     def test_map_params_list(self):
         ari = ReferenceARI(
             ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
-            params=[
+            params=(
                 LiteralARI(3),
                 LiteralARI('hello'),
-            ]
+            )
         )
         got = ari.map(IdentityMapper())
         self.assertEqual(ari, got)

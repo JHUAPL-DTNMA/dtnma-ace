@@ -295,15 +295,21 @@ class ActualParameterSet:
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
 
+        # manipulate the input in place
+        mutable = None
+        if isinstance(gparams, (tuple, list)):
+            mutable = list(gparams)
+        elif isinstance(gparams, dict):
+            mutable = dict(gparams)
+        elif gparams is not None:
+            raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
+
         for fparam in fparams:
-            mutable = None
-            if gparams is None:
+            if mutable is None:
                 # no parameters at all
                 gparam = UNDEFINED
 
-            elif isinstance(gparams, (tuple, list)):
-                # manipulate the list in place
-                mutable = list(gparams)
+            elif isinstance(mutable, list):
                 if isinstance(fparam.typeobj, Sequence):
                     # special handling of greedy formal parameter
                     glist = mutable[fparam.index:]
@@ -323,9 +329,7 @@ class ActualParameterSet:
                     except IndexError:
                         gparam = UNDEFINED
 
-            elif isinstance(gparams, dict):
-                # manipulate the list in place
-                mutable = dict(gparams)
+            elif isinstance(mutable, dict):
                 # Try both numeric and text keys
                 keys = (
                     LiteralARI(fparam.index),
@@ -339,8 +343,6 @@ class ActualParameterSet:
                     gparam = gparam[0]
                 else:
                     gparam = UNDEFINED
-            else:
-                raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
 
             self._add_val(gparam, fparam)
 
