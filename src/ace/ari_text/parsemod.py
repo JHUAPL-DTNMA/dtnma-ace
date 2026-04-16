@@ -285,12 +285,12 @@ def p_ssp_objref_params(p):
 
 def p_params_empty(p):
     'params : LPAREN RPAREN'
-    p[0] = []
+    p[0] = tuple()
 
 
 def p_params_aclist(p):
     'params : LPAREN aclist RPAREN'
-    p[0] = p[2]
+    p[0] = tuple(p[2])
 
 
 def p_params_amlist(p):
@@ -403,23 +403,23 @@ def p_objpath_relative(p):
 def p_acbracket(p):
     '''acbracket : LPAREN RPAREN
                  | LPAREN aclist RPAREN'''
-    p[0] = p[2] if len(p) == 4 else []
+    p[0] = p[2] if len(p) == 4 else tuple()
 
 
 def p_aclist_join(p):
     'aclist : aclist COMMA ari'
-    p[0] = p[1] + [p[3]]
+    p[0] = p[1] + (p[3],)
 
 
 def p_aclist_end(p):
     'aclist : ari'
-    p[0] = [p[1]]
+    p[0] = (p[1],)
 
 
 def p_ambracket(p):
     '''ambracket : LPAREN RPAREN
                  | LPAREN amlist RPAREN'''
-    p[0] = p[2] if len(p) == 4 else {}
+    p[0] = p[2] if len(p) == 4 else dict()
 
 
 def p_amlist_join(p):

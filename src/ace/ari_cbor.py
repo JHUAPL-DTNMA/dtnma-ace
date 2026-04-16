@@ -93,10 +93,10 @@ class Decoder:
                 params = None
                 if len(item) == idx + 1:
                     if isinstance(item[idx], list):
-                        params = [
+                        params = tuple(
                             self._item_to_ari(param_item)
                             for param_item in item[idx]
-                        ]
+                        )
                     elif isinstance(item[idx], dict):
                         mapobj = {}
                         for key, val in item[idx].items():
@@ -175,7 +175,7 @@ class Decoder:
                 raise TypeError(f'Invalid ARITYPE: {item} should be text or int')
             value = item
         elif type_id == StructType.AC:
-            value = [self._item_to_ari(sub_item) for sub_item in item]
+            value = tuple(self._item_to_ari(sub_item) for sub_item in item)
         elif type_id == StructType.AM:
             value = {self._item_to_ari(key): self._item_to_ari(sub_item) for key, sub_item in item.items()}
         elif type_id == StructType.TBL:
@@ -204,7 +204,7 @@ class Decoder:
                 raise ValueError(f'invalid nonce: {item[0]}')
             value = ExecutionSet(
                 nonce=nonce,
-                targets=[self._item_to_ari(sub) for sub in item[1:]]
+                targets=tuple(self._item_to_ari(sub) for sub in item[1:])
             )
         elif type_id == StructType.RPTSET:
             nonce = NONCE.get(LiteralARI(item[0]))
@@ -218,14 +218,14 @@ class Decoder:
                 rpt = Report(
                     rel_time=self._item_to_timeval(rpt_item[0]),
                     source=self._item_to_ari(rpt_item[1]),
-                    items=list(map(self._item_to_ari, rpt_item[2:]))
+                    items=tuple(map(self._item_to_ari, rpt_item[2:]))
                 )
                 rpts.append(rpt)
 
             value = ReportSet(
                 nonce=nonce,
                 ref_time=ref_time,
-                reports=rpts
+                reports=tuple(rpts)
             )
         elif type_id == StructType.OBJPAT:
             value = ObjectRefPattern(
@@ -322,7 +322,7 @@ class Encoder:
                 obj.ident.obj_id,
             ]
 
-            if isinstance(obj.params, list):
+            if isinstance(obj.params, (tuple, list)):
                 item.append([
                     self._ari_to_item(param)
                     for param in obj.params
@@ -348,7 +348,7 @@ class Encoder:
 
     def _val_to_item(self, value):
         ''' Convert a non-typed value into a CBOR item. '''
-        if isinstance(value, list):
+        if isinstance(value, (tuple, list)):
             item = [self._ari_to_item(obj) for obj in value]
         elif isinstance(value, dict):
             item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}

@@ -295,7 +295,7 @@ class Encoder:
                 buf.write(obj.ident.type_id.name)
                 buf.write('/')
                 buf.write(str(obj.ident.obj_id))
-                if isinstance(obj.params, list):
+                if isinstance(obj.params, (tuple, list)):
                     self._encode_list(buf, obj.params)
                 elif isinstance(obj.params, dict):
                     self._encode_map(buf, obj.params)

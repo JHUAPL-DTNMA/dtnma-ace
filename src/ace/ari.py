@@ -90,7 +90,7 @@ class ExecutionSet:
     ''' Internal representation of Execution-Set data. '''
     nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    targets: List['ARI']
+    targets: Tuple['ARI']
     ''' The targets to execute '''
 
 
@@ -102,22 +102,22 @@ class Report:
     value. '''
     source: 'ARI'
     ''' Source of the report, either a RPTT or CTRL. '''
-    items: List['ARI']
+    items: Tuple['ARI']
     ''' Items of the report. '''
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce: 'LiteralARI'
     ''' Optional nonce value '''
     ref_time: datetime.datetime
     ''' The reference time for all contained Report relative-times. '''
-    reports: List['Report']
+    reports: Tuple['Report']
     ''' The contained Reports '''
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ObjectRefPattern:
     ''' Container for object reference patterns '''
 
@@ -250,7 +250,7 @@ LiteralPrimitiveType = Union[
     # times
     numpy.datetime64, numpy.timedelta64,
     # containers
-    list, dict, Table, ExecutionSet, ReportSet, ObjectRefPattern
+    tuple, dict, Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]
 ''' Narrow primitive type for literal values '''
 
@@ -276,7 +276,7 @@ class LiteralARI(ARI):
         )
 
     def visit(self, visitor: Callable[['ARI'], None]) -> None:
-        if isinstance(self.value, list):
+        if isinstance(self.value, (tuple, list)):
             for item in self.value:
                 item.visit(visitor)
         elif isinstance(self.value, dict):
@@ -296,8 +296,8 @@ class LiteralARI(ARI):
         def lfunc(item): return item.map(func)
 
         result = None
-        if isinstance(self.value, list):
-            rvalue = list(map(lfunc, self.value))
+        if isinstance(self.value, (tuple, list)):
+            rvalue = tuple(map(lfunc, self.value))
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, dict):
@@ -316,7 +316,7 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ExecutionSet):
-            rtargets = list(map(lfunc, self.value.targets))
+            rtargets = tuple(map(lfunc, self.value.targets))
             rvalue = ExecutionSet(
                 nonce=self.value.nonce,
                 targets=rtargets
@@ -328,10 +328,10 @@ class LiteralARI(ARI):
             def rpt_func(ireport): return Report(
                 rel_time=ireport.rel_time,
                 source=lfunc(ireport.source),
-                items=list(map(lfunc, ireport.items))
+                items=tuple(map(lfunc, ireport.items))
             )
 
-            rreports = list(map(rpt_func, self.value.reports))
+            rreports = tuple(map(rpt_func, self.value.reports))
             rvalue = ReportSet(
                 nonce=self.value.nonce,
                 ref_time=self.value.ref_time,
@@ -488,17 +488,17 @@ class Identity:
         return text
 
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class ReferenceARI(ARI):
     ''' The data content of an ARI.
     '''
     ident: Identity
     ''' Identity of the referenced object '''
-    params: Union[List[ARI], Dict[LiteralARI, ARI], None] = None
+    params: Union[Tuple[ARI], Dict[LiteralARI, ARI], None] = None
     ''' Optional paramerization, None is different than empty list '''
 
     def visit(self, visitor: Callable[['ARI'], None]) -> None:
-        if isinstance(self.params, list):
+        if isinstance(self.params, (tuple, list)):
             for val in self.params:
                 val.visit(visitor)
         elif isinstance(self.params, dict):
@@ -512,8 +512,8 @@ class ReferenceARI(ARI):
         def lfunc(item): return item.map(func)
 
         rparams = None
-        if isinstance(self.params, list):
-            rparams = list(map(lfunc, self.params))
+        if isinstance(self.params, (tuple, list)):
+            rparams = tuple(map(lfunc, self.params))
         elif isinstance(self.params, dict):
             rparams = {
                 lfunc(key): lfunc(val)

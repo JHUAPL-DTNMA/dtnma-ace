@@ -164,7 +164,8 @@ class Converter:
             )
 
         LOGGER.debug('got ident %s', new_ident)
-        return ReferenceARI(
+        ari = ReferenceARI(
             ident=new_ident,
             params=ari.params
         )
+        return ari

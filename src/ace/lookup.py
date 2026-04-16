@@ -27,7 +27,7 @@ import copy
 from dataclasses import dataclass
 import datetime
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 from sqlalchemy.orm.session import Session, object_session
 from .util import normalize_ident
 from .ari import (
@@ -68,11 +68,16 @@ class RelativeResolver:
             if ari.ident.org_id is None or ari.ident.model_id is None:
                 out_org_id = ari.ident.org_id if ari.ident.org_id is not None else self._org_id
                 out_mod_id = ari.ident.model_id if ari.ident.model_id is not None else self._model_id
-                ari.ident = Identity(
-                    org_id=out_org_id,
-                    model_id=out_mod_id,
-                    type_id=ari.ident.type_id,
-                    obj_id=ari.ident.obj_id,
+
+                # keep object-id and parameters
+                ari = ReferenceARI(
+                    ident=Identity(
+                        org_id=out_org_id,
+                        model_id=out_mod_id,
+                        type_id=ari.ident.type_id,
+                        obj_id=ari.ident.obj_id,
+                    ),
+                    params=ari.params
                 )
         return ari
 
@@ -285,7 +290,7 @@ class ActualParameterSet:
     :param fparams: The formal parameters from an ADM.
     '''
 
-    def __init__(self, gparams: Union[List[ARI], Dict[ARI, ARI]],
+    def __init__(self, gparams: Union[Tuple[ARI], Dict[ARI, ARI]],
                  fparams: List['FormalParameter']):
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
@@ -297,7 +302,7 @@ class ActualParameterSet:
             if gparams is None:
                 # no parameters at all
                 gparam = UNDEFINED
-            elif isinstance(gparams, list):
+            elif isinstance(gparams, (tuple, list)):
                 if isinstance(fparam.typeobj, Sequence):
                     # special handling of greedy formal parameter
                     glist = gparams[fparam.index:]
@@ -335,7 +340,7 @@ class ActualParameterSet:
 
             self._add_val(gparam, fparam)
 
-        if isinstance(gparams, list):
+        if isinstance(gparams, (tuple, list)):
             unused = [val for val in gparams if val is not None]
             if unused:
                 raise ParameterError(f'Too many given parameters, unused: {unused}')
