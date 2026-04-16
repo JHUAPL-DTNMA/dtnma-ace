@@ -295,39 +295,43 @@ class ActualParameterSet:
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
 
-        # manipulate the list/dict in place
-        gparams = copy.copy(gparams)
-
         for fparam in fparams:
+            mutable = None
             if gparams is None:
                 # no parameters at all
                 gparam = UNDEFINED
+
             elif isinstance(gparams, (tuple, list)):
+                # manipulate the list in place
+                mutable = list(gparams)
                 if isinstance(fparam.typeobj, Sequence):
                     # special handling of greedy formal parameter
-                    glist = gparams[fparam.index:]
+                    glist = mutable[fparam.index:]
                     got = fparam.typeobj.take(glist)
                     if glist:
                         LOGGER.warning('seq parameter type left %d unused given parameters', len(glist))
 
                     # indicate all are used
                     for g_ix in range(fparam.index, fparam.index + len(got)):
-                        gparams[g_ix] = None
+                        mutable[g_ix] = None
 
                     gparam = LiteralARI(got, StructType.AC)
                 else:
                     try:
-                        gparam = gparams[fparam.index]
-                        gparams[fparam.index] = None  # mark as used
+                        gparam = mutable[fparam.index]
+                        mutable[fparam.index] = None  # mark as used
                     except IndexError:
                         gparam = UNDEFINED
+
             elif isinstance(gparams, dict):
+                # manipulate the list in place
+                mutable = dict(gparams)
                 # Try both numeric and text keys
                 keys = (
                     LiteralARI(fparam.index),
                     LiteralARI(fparam.name),
                 )
-                gparam = tuple(filter(None, [gparams.pop(key, None) for key in keys]))
+                gparam = tuple(filter(None, [mutable.pop(key, None) for key in keys]))
                 if len(gparam) > 1:
                     keys = [str(key.value) for key in keys]
                     raise ParameterError(f'Duplicate given parameters for: {",".join(keys)}')
@@ -340,13 +344,14 @@ class ActualParameterSet:
 
             self._add_val(gparam, fparam)
 
-        if isinstance(gparams, (tuple, list)):
-            unused = [val for val in gparams if val is not None]
-            if unused:
-                raise ParameterError(f'Too many given parameters, unused: {unused}')
-        if isinstance(gparams, dict) and gparams:
-            keys = [str(key.value) for key in gparams.keys()]
-            raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
+        if mutable:
+            if isinstance(mutable, (tuple, list)):
+                unused = [val for val in mutable if val is not None]
+                if unused:
+                    raise ParameterError(f'Too many given parameters, unused: {unused}')
+            elif isinstance(mutable, dict):
+                keys = [str(key.value) for key in mutable.keys()]
+                raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
 
     def _add_val(self, gparam: ARI, fparam: 'FormalParameter'):
         if is_undefined(gparam):

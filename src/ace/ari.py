@@ -239,6 +239,10 @@ UndefinedPrimitiveType = type(cbor2.undefined)
 NoneType = type(None)
 ''' Alias to the type for native None value '''
 
+AriListType = Tuple[ARI]
+''' Type for AC, parameter list, and similar values '''
+AriMapType = Dict[LiteralARI, ARI]
+''' Type for AM, parameter map, and similar values '''
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,
     # enumerated types
@@ -250,7 +254,7 @@ LiteralPrimitiveType = Union[
     # times
     numpy.datetime64, numpy.timedelta64,
     # containers
-    tuple, dict, Table, ExecutionSet, ReportSet, ObjectRefPattern
+    AriListType, AriMapType, Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]
 ''' Narrow primitive type for literal values '''
 
@@ -275,7 +279,7 @@ class LiteralARI(ARI):
             )
         )
 
-    def __hash__(self)->int:
+    def __hash__(self) -> int:
         # ensure that bool is hashed differently than int
         return hash((self.type_id, type(self.value), self.value))
 
@@ -498,7 +502,7 @@ class ReferenceARI(ARI):
     '''
     ident: Identity
     ''' Identity of the referenced object '''
-    params: Union[Tuple[ARI], Dict[LiteralARI, ARI], None] = None
+    params: Union[AriListType, AriMapType, None] = None
     ''' Optional paramerization, None is different than empty list '''
 
     def visit(self, visitor: Callable[['ARI'], None]) -> None:
