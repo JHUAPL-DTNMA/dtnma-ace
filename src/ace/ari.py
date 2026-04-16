@@ -85,7 +85,7 @@ class Table(numpy.ndarray):
         return obj
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class ExecutionSet:
     ''' Internal representation of Execution-Set data. '''
     nonce: 'LiteralARI'
@@ -94,7 +94,7 @@ class ExecutionSet:
     ''' The targets to execute '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class Report:
     ''' Internal representation of Report data. '''
     rel_time: datetime.timedelta
@@ -106,7 +106,7 @@ class Report:
     ''' Items of the report. '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce: 'LiteralARI'
@@ -117,7 +117,7 @@ class ReportSet:
     ''' The contained Reports '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class ObjectRefPattern:
     ''' Container for object reference patterns '''
 
@@ -255,7 +255,7 @@ LiteralPrimitiveType = Union[
 ''' Narrow primitive type for literal values '''
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(eq=False, frozen=True)
 class LiteralARI(ARI):
     ''' A literal value in the form of an ARI.
     '''
@@ -274,6 +274,10 @@ class LiteralARI(ARI):
                 or (_is_nan(self.value) and _is_nan(other.value))
             )
         )
+
+    def __hash__(self)->int:
+        # ensure that bool is hashed differently than int
+        return hash((self.type_id, type(self.value), self.value))
 
     def visit(self, visitor: Callable[['ARI'], None]) -> None:
         if isinstance(self.value, (tuple, list)):
@@ -488,7 +492,7 @@ class Identity:
         return text
 
 
-@dataclass(eq=True, frozen=True)
+@dataclass(frozen=True)
 class ReferenceARI(ARI):
     ''' The data content of an ARI.
     '''
