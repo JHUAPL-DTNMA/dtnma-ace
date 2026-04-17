@@ -27,7 +27,7 @@ import copy
 from dataclasses import dataclass
 import datetime
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 from sqlalchemy.orm.session import Session, object_session
 from .util import normalize_ident
 from .ari import (
@@ -68,11 +68,16 @@ class RelativeResolver:
             if ari.ident.org_id is None or ari.ident.model_id is None:
                 out_org_id = ari.ident.org_id if ari.ident.org_id is not None else self._org_id
                 out_mod_id = ari.ident.model_id if ari.ident.model_id is not None else self._model_id
-                ari.ident = Identity(
-                    org_id=out_org_id,
-                    model_id=out_mod_id,
-                    type_id=ari.ident.type_id,
-                    obj_id=ari.ident.obj_id,
+
+                # keep object-id and parameters
+                ari = ReferenceARI(
+                    ident=Identity(
+                        org_id=out_org_id,
+                        model_id=out_mod_id,
+                        type_id=ari.ident.type_id,
+                        obj_id=ari.ident.obj_id,
+                    ),
+                    params=ari.params
                 )
         return ari
 
@@ -285,44 +290,52 @@ class ActualParameterSet:
     :param fparams: The formal parameters from an ADM.
     '''
 
-    def __init__(self, gparams: Union[List[ARI], Dict[ARI, ARI]],
+    def __init__(self, gparams: Union[Tuple[ARI], Dict[ARI, ARI]],
                  fparams: List['FormalParameter']):
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
 
-        # manipulate the list/dict in place
-        gparams = copy.copy(gparams)
+        # manipulate the input in place
+        mutable = None
+        if isinstance(gparams, (tuple, list)):
+            mutable = list(gparams)
+        elif isinstance(gparams, dict):
+            mutable = dict(gparams)
+        elif gparams is not None:
+            raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
 
         for fparam in fparams:
-            if gparams is None:
+            if mutable is None:
                 # no parameters at all
                 gparam = UNDEFINED
-            elif isinstance(gparams, list):
+
+            elif isinstance(mutable, list):
                 if isinstance(fparam.typeobj, Sequence):
                     # special handling of greedy formal parameter
-                    glist = gparams[fparam.index:]
+                    glist = mutable[fparam.index:]
                     got = fparam.typeobj.take(glist)
                     if glist:
                         LOGGER.warning('seq parameter type left %d unused given parameters', len(glist))
 
                     # indicate all are used
                     for g_ix in range(fparam.index, fparam.index + len(got)):
-                        gparams[g_ix] = None
+                        mutable[g_ix] = None
 
                     gparam = LiteralARI(got, StructType.AC)
                 else:
                     try:
-                        gparam = gparams[fparam.index]
-                        gparams[fparam.index] = None  # mark as used
+                        gparam = mutable[fparam.index]
+                        mutable[fparam.index] = None  # mark as used
                     except IndexError:
                         gparam = UNDEFINED
-            elif isinstance(gparams, dict):
+
+            elif isinstance(mutable, dict):
                 # Try both numeric and text keys
                 keys = (
                     LiteralARI(fparam.index),
                     LiteralARI(fparam.name),
                 )
-                gparam = tuple(filter(None, [gparams.pop(key, None) for key in keys]))
+                gparam = tuple(filter(None, [mutable.pop(key, None) for key in keys]))
                 if len(gparam) > 1:
                     keys = [str(key.value) for key in keys]
                     raise ParameterError(f'Duplicate given parameters for: {",".join(keys)}')
@@ -330,18 +343,17 @@ class ActualParameterSet:
                     gparam = gparam[0]
                 else:
                     gparam = UNDEFINED
-            else:
-                raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
 
             self._add_val(gparam, fparam)
 
-        if isinstance(gparams, list):
-            unused = [val for val in gparams if val is not None]
-            if unused:
-                raise ParameterError(f'Too many given parameters, unused: {unused}')
-        if isinstance(gparams, dict) and gparams:
-            keys = [str(key.value) for key in gparams.keys()]
-            raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
+        if mutable:
+            if isinstance(mutable, (tuple, list)):
+                unused = [val for val in mutable if val is not None]
+                if unused:
+                    raise ParameterError(f'Too many given parameters, unused: {unused}')
+            elif isinstance(mutable, dict):
+                keys = [str(key.value) for key in mutable.keys()]
+                raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
 
     def _add_val(self, gparam: ARI, fparam: 'FormalParameter'):
         if is_undefined(gparam):

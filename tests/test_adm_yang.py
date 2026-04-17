@@ -1278,7 +1278,7 @@ class TestAdmContents(BaseYang):
             adm = self._adm_dec.decode(buf)
         # Build expected ARI structure
         expected_ari = ari.LiteralARI(
-            value=[
+            value=(
                 ari.ReferenceARI(
                     ident=ari.Identity(
                         org_id='example',
@@ -1299,7 +1299,7 @@ class TestAdmContents(BaseYang):
                     ),
                     params=None
                 )
-            ],
+            ),
             type_id=ari.StructType.AC
         )
 

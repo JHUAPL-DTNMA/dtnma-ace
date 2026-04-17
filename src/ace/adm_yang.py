@@ -89,7 +89,7 @@ def range_from_text(text: str) -> portion.Interval:
     '''
     parts = [part.strip() for part in text.split('|')]
 
-    def from_num(text: str):
+    def from_num(text: str) -> Union[int, float]:
         try:
             return int(text)
         except (ValueError, OverflowError):
@@ -101,10 +101,15 @@ def range_from_text(text: str) -> portion.Interval:
             lower, upper = part.split('..', 2)
             if lower == 'min':
                 lower = -float('inf')
+            else:
+                lower = from_num(lower)
             if upper == 'max':
                 upper = float('inf')
-            ranges |= portion.closed(from_num(lower), from_num(upper))
+            else:
+                upper = from_num(upper)
+            ranges |= portion.closed(lower, upper)
         else:
+            # single value
             ranges |= portion.singleton(from_num(part))
 
     return ranges

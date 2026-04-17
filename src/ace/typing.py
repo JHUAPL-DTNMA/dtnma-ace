@@ -29,7 +29,7 @@ import math
 from typing import List, Optional, Set, Type, Iterator
 import numpy
 from .ari import (
-    DTN_EPOCH, StructType, Table, ObjectRefPattern,
+    DTN_EPOCH, StructType, Table, ObjectRefPattern, ExecutionSet, ReportSet,
     ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 import struct
@@ -343,10 +343,12 @@ class TimeType(BuiltInType):
 class ContainerType(BuiltInType):
     ''' ARI containers. '''
     VALUE_CLS = {
-        StructType.AC: list,
+        StructType.AC: tuple,
         StructType.AM: dict,
         StructType.TBL: numpy.ndarray,
         StructType.OBJPAT: ObjectRefPattern,
+        StructType.EXECSET: ExecutionSet,
+        StructType.RPTSET: ReportSet,
     }
     ''' Required value type for target time type. '''
 

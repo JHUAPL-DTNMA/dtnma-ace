@@ -151,11 +151,11 @@ class TestAriText(unittest.TestCase):
             )
         ),
         # Containers
-        ('ari:/AC/()', []),
-        ('ari:/AC/(1,2)', [LiteralARI(1), LiteralARI(2)]),
+        ('ari:/AC/()', tuple()),
+        ('ari:/AC/(1,2)', (LiteralARI(1), LiteralARI(2))),
         (
             'ari:/AC/(1,/UVAST/2)',
-            [LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST)]
+            (LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST))
         ),
         ('ari:/AM/()', {}),
         ('ari:/AM/(1=1,2=3)', {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
@@ -177,47 +177,47 @@ class TestAriText(unittest.TestCase):
         ),
         (
             'ari:/EXECSET/n=null;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(None), targets=[
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
-            ])
+            ExecutionSet(nonce=LiteralARI(None), targets=(
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+            ))
         ),
         (
             'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(1234), targets=[
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
-            ])
+            ExecutionSet(nonce=LiteralARI(1234), targets=(
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+            ))
         ),
         (
             'ari:/EXECSET/n=h\'6869\';(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(b'hi'), targets=[
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name'))
-            ])
+            ExecutionSet(nonce=LiteralARI(b'hi'), targets=(
+                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
+            ))
         ),
         (
             'ari:/EXECSET/n=null;()',
-            ExecutionSet(nonce=LiteralARI(None), targets=[])
+            ExecutionSet(nonce=LiteralARI(None), targets=tuple())
         ),
         (
             'ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)',
-            ExecutionSet(nonce=LiteralARI(None), targets=[
+            ExecutionSet(nonce=LiteralARI(None), targets=(
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
                 ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-            ])
+            ))
         ),
         (
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
-                reports=[
+                reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
                         rel_time=numpy.timedelta64(0, 's'),
-                        items=[
-                            LiteralARI(None)
-                        ]
-                    )
-                ]
+                        items=(
+                            LiteralARI(None),
+                        )
+                    ),
+                )
             )
         ),
         (
@@ -225,15 +225,15 @@ class TestAriText(unittest.TestCase):
             ReportSet(
                 nonce=LiteralARI(1234),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
-                reports=[
+                reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
                         rel_time=numpy.timedelta64(0, 's'),
-                        items=[
-                            LiteralARI(None)
-                        ]
-                    )
-                ]
+                        items=(
+                            LiteralARI(None),
+                        )
+                    ),
+                )
             )
         ),
         (
@@ -241,7 +241,7 @@ class TestAriText(unittest.TestCase):
             ReportSet(
                 nonce=LiteralARI(None),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
-                reports=[]
+                reports=tuple()
             )
         ),
         (
@@ -249,22 +249,22 @@ class TestAriText(unittest.TestCase):
             ReportSet(
                 nonce=LiteralARI(None),
                 ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
-                reports=[
+                reports=(
                     Report(
                         rel_time=numpy.timedelta64(0, 's'),
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-                        items=[
-                            LiteralARI(None)
-                        ]
+                        items=(
+                            LiteralARI(None),
+                        )
                     ),
                     Report(
                         rel_time=numpy.timedelta64(1, 's'),
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-                        items=[
-                            UNDEFINED
-                        ]
+                        items=(
+                            UNDEFINED,
+                        )
                     ),
-                ]
+                )
             )
         ),
     ]
