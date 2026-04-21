@@ -62,6 +62,12 @@ class BaseTest(unittest.TestCase):
     def _from_text(self, text: str) -> ari.ARI:
         return self._ari_dec.decode(io.StringIO(text))
 
+    def _get_typeuse(self, text: str) -> typing.TypeUse:
+        return typing.TypeUse(
+            type_text=text,
+            type_ari=self._from_text(text),
+        )
+
     def _add_mod(self, abs_file_path, org_name, org_enum, model_name, model_enum):
         src = models.AdmSource(
             abs_file_path=abs_file_path,
@@ -217,7 +223,7 @@ class TestConstraintsBasic(BaseTest):
         val = 'ari:/AC/(//example/adm-a/CTRL/control_a,//example/adm-a/CTRL/control_c,//example/adm-c/CTRL/control_a)'
         adm_b.const.append(models.Const(
             name='macro',
-            typeobj=typing.TypeUse(type_ari=ari.LiteralARI(ari.StructType.AC, ari.StructType.ARITYPE)),
+            typeobj=self._get_typeuse('/aritype/ac'),
             init_value=val,
             init_ari=self._from_text(val),
         ))
@@ -245,4 +251,48 @@ class TestConstraintsBasic(BaseTest):
             check_name='ace.constraints.basic.valid_reference_ari',
             obj_ref=adm_b.const[0],
             detail_re=r'Within the object named "macro" the reference ARI for .*\bcontrol_a\b.* is not resolvable',
+        )
+
+    def test_default_value_match_type(self):
+        adm_a = self._add_mod(
+            abs_file_path='example-adm-a.yang',
+            org_name='example',
+            org_enum=65535,
+            model_name='adm-a',
+            model_enum=200,
+        )
+
+        ctrl = models.Ctrl(name='control_a', norm_name='control_a')
+        adm_a.ctrl.append(ctrl)
+        # value is int, paramA type is textstr
+        default_val = '123'
+        ctrl.parameters = models.TypeNameList(
+            items=[
+                models.TypeNameItem(
+                    name='paramA',
+                    typeobj=self._get_typeuse('/aritype/textstr'),
+                    default_value=default_val,
+                    default_ari=self._from_text(default_val),
+                ),
+                models.TypeNameItem(
+                    name='paramB',
+                    typeobj=self._get_typeuse('/aritype/uint'),
+                    default_value=default_val,
+                    default_ari=self._from_text(default_val),
+                ),
+            ]
+        )
+
+        self._db_sess.commit()
+
+        eng = constraints.Checker(self._db_sess)
+        issues = eng.check(adm_a)
+        LOGGER.warning(issues)
+        self.assertEqual(1, len(issues), msg=issues)
+        self.assertIssuePattern(
+            issues[0],
+            module_name='example-adm-a',
+            check_name='ace.constraints.basic.default_value_type_match',
+            obj_ref=ctrl,
+            detail_re=r'Within the object named "control_a" the default value "123" does not match the associated type',
         )
