@@ -390,6 +390,7 @@ class Typedef(Base, AdmObjMixin, TypeUseMixin):
     module = relationship("AdmModule", back_populates="typedef")
     ''' Relationship to the :class:`AdmModule` '''
 
+
 class Ident(Base, AdmObjMixin, ParamMixin):
     ''' Identity object (named, derived object) '''
     __tablename__ = "ident"
