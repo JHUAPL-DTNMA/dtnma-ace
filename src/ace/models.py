@@ -22,6 +22,7 @@
 #
 ''' ORM models for the ADM and its contents.
 '''
+from typing import Optional
 from sqlalchemy import (
     Column, ForeignKey, Boolean, Integer, String, Date, DateTime,
     Text, PickleType
@@ -57,8 +58,9 @@ class CommonMixin:
 class MetadataItem(Base):
     ''' A single item of module, object, or substatement metadata. '''
     __tablename__ = "metadata_item"
-    # Unique ID of the row
+
     id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
 
     # Containing list
     list_id = Column(Integer, ForeignKey('metadata_list.id'))
@@ -150,6 +152,7 @@ class AdmSource(Base):
 class Organization(Base):
     ''' A namespace organization. '''
     __tablename__ = 'ns_org'
+
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
 
@@ -162,6 +165,7 @@ class Organization(Base):
 class AdmModule(Base):
     ''' The ADM itself with relations to its attributes and objects '''
     __tablename__ = "adm_module"
+
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
 
@@ -267,20 +271,20 @@ class AdmRevision(Base, CommonMixin):
     __tablename__ = "adm_revision"
     id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="revisions")
-    # ordinal of this item in the list
+    ''' Relationship to the :class:`AdmModule` '''
     position = Column(Integer)
+    ''' ordinal of this item in the list '''
 
-    # Original exact text, indexed for sorting
     name = Column(String, index=True)
-    # Parsed date
+    ''' Original exact text, indexed for sorting '''
     date = Column(Date, index=True)
+    ''' Parsed date '''
 
 
 class AdmImport(Base, CommonMixin):
@@ -288,35 +292,36 @@ class AdmImport(Base, CommonMixin):
     __tablename__ = "adm_import"
     id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="imports")
-    # ordinal of this item in the list
+    ''' Relationship to the :class:`AdmModule` '''
     position = Column(Integer)
+    ''' ordinal of this item in the list '''
 
-    # Original exact text
     name = Column(String)
-    # Prefix within the module
+    ''' Original exact text '''
     prefix = Column(String)
+    ''' Prefix within the module '''
 
 
 class Feature(Base, CommonMixin):
     ''' Feature definition, which is a module-only object not an AMM object. '''
     __tablename__ = "feature"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="feature")
+    ''' Relationship to the :class:`AdmModule` '''
     # ordinal of this item in the module
     position = Column(Integer)
 
@@ -327,16 +332,22 @@ class Feature(Base, CommonMixin):
 @declarative_mixin
 class AdmObjMixin(CommonMixin):
     ''' Common attributes of an ADM-defined object. '''
-    # ordinal of this item in the module
+
+    __tablename__: Optional[str] = None
+    ''' Placeholder for derived class overload attribute '''
+    module: Optional[AdmModule] = None
+    ''' Placeholder for derived class overload attribute '''
+
     position = Column(Integer)
+    ''' ordinal of this item in the module (within each object type) '''
 
-    # Unique name (within a section)
     name = Column(String, nullable=False)
-    # Normalized object name (for searching)
+    ''' Unique name (within each object type) '''
     norm_name = Column(String, index=True)
+    ''' Normalized object name (for searching) '''
 
-    # Enumeration for this ADM
     enum = Column(Integer, index=True)
+    ''' Enumeration for this object '''
 
     if_feature_expr = Column(PickleType)
     ''' Feature-matching parsed expression.
@@ -367,29 +378,29 @@ class ParamMixin:
 class Typedef(Base, AdmObjMixin, TypeUseMixin):
     ''' Type definition (named semantic type) '''
     __tablename__ = "typedef"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
-    @declared_attr
-    def module_id(self):
-        return Column(Integer, ForeignKey('adm_module.id'))
-
-    # Relationship to the :class:`AdmModule`
-    module = relationship("AdmModule", back_populates="typedef")
-
-
-class Ident(Base, AdmObjMixin, ParamMixin):
-    ''' Identity object (named, derived object) '''
-    __tablename__ = "ident"
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
 
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    ''' ID of the file from which this came '''
+    module = relationship("AdmModule", back_populates="typedef")
+    ''' Relationship to the :class:`AdmModule` '''
+
+class Ident(Base, AdmObjMixin, ParamMixin):
+    ''' Identity object (named, derived object) '''
+    __tablename__ = "ident"
+
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
+    @declared_attr
+    def module_id(self):
+        ''' ID of the file from which this came '''
+        return Column(Integer, ForeignKey('adm_module.id'))
 
     module = relationship("AdmModule", back_populates="ident")
     ''' Relationship to the :class:`AdmModule` '''
@@ -408,6 +419,7 @@ class Ident(Base, AdmObjMixin, ParamMixin):
 class IdentBase(Base):
     ''' Each Identity base reference '''
     __tablename__ = "ident_base"
+
     id = Column(Integer, primary_key=True)
     ''' Unique ID of the row '''
 
@@ -417,7 +429,7 @@ class IdentBase(Base):
 
     ''' ID of the file from which this came '''
     ident = relationship("Ident", back_populates="bases")
-    ''' Relationship to the :class:`AdmModule` '''
+    ''' Relationship to the :class:`Ident` '''
     position = Column(Integer)
     ''' ordinal of this item in a :class:`TypeNameList` '''
 
@@ -430,31 +442,33 @@ class IdentBase(Base):
 class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' Externally Defined Data (EDD) '''
     __tablename__ = "edd"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="edd")
+    ''' Relationship to the :class:`AdmModule` '''
 
 
 class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' Constant value (CONST) '''
     __tablename__ = "const"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="const")
+    ''' Relationship to the :class:`AdmModule` '''
 
     init_value = Column(String)
     ''' The initial and constant value as text ARI '''
@@ -465,16 +479,17 @@ class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
 class Ctrl(Base, AdmObjMixin, ParamMixin):
     ''' Control '''
     __tablename__ = "ctrl"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="ctrl")
+    ''' Relationship to the :class:`AdmModule` '''
 
     result_id = Column(Integer, ForeignKey('typename_item.id'))
     result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
@@ -484,16 +499,17 @@ class Ctrl(Base, AdmObjMixin, ParamMixin):
 class Oper(Base, AdmObjMixin, ParamMixin):
     ''' Operator (Oper) used in EXPR postfix '''
     __tablename__ = "oper"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="oper")
+    ''' Relationship to the :class:`AdmModule` '''
 
     operands_id = Column(Integer, ForeignKey('typename_list.id'), nullable=False)
     operands = relationship("TypeNameList",
@@ -507,16 +523,17 @@ class Oper(Base, AdmObjMixin, ParamMixin):
 class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
     ''' Variable value (VAR)'''
     __tablename__ = "var"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="var")
+    ''' Relationship to the :class:`AdmModule` '''
 
     init_value = Column(String)
     ''' The initial value as text ARI '''
@@ -525,18 +542,19 @@ class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
 
 
 class Sbr(Base, AdmObjMixin):
-    ''' State Based Rule '''
+    ''' State Based Rule (SBR) '''
     __tablename__ = "sbr"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="sbr")
+    ''' Relationship to the :class:`AdmModule` '''
 
     action_value = Column(String)
     ''' The action as text ARI '''
@@ -558,18 +576,19 @@ class Sbr(Base, AdmObjMixin):
 
 
 class Tbr(Base, AdmObjMixin):
-    ''' Time Based Rule '''
+    ''' Time Based Rule (TBR) '''
     __tablename__ = "tbr"
-    # Unique ID of the row
-    id = Column(Integer, primary_key=True)
 
-    # ID of the file from which this came
+    id = Column(Integer, primary_key=True)
+    ''' Unique ID of the row '''
+
     @declared_attr
     def module_id(self):
+        ''' ID of the file from which this came '''
         return Column(Integer, ForeignKey('adm_module.id'))
 
-    # Relationship to the :class:`AdmModule`
     module = relationship("AdmModule", back_populates="tbr")
+    ''' Relationship to the :class:`AdmModule` '''
 
     action_value = Column(String)
     ''' The action as text ARI '''
