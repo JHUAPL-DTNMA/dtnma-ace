@@ -32,6 +32,7 @@ import portion
 from typing import Callable, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 import cbor2
 import numpy
+from fractions import Fraction
 
 DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
 ''' Reference for absolute time points '''
@@ -432,6 +433,26 @@ def as_bool(val: ARI) -> bool:
         return val.value
     raise ValueError('as_bool given non-boolean value')
 
+def check_decfrac(val):
+    """
+    Validates decimal fraction bounds for TP and TD types.
+    Limits: -2^63 / 10^9 to (2^63 - 1) / 10^9
+    """
+    # Convert input to Fraction if it isn't one
+    f_val = Fraction(val)
+    
+    # Define exact bounds based on nanosecond precision (10^-9)
+    # The limit is effectively the range of a signed 64-bit integer
+    MIN_NS = -9223372036854775808
+    MAX_NS = 9223372036854775807
+    
+    # Calculate current value in nanoseconds
+    val_ns = f_val * 1_000_000_000
+    
+    if not (MIN_NS <= val_ns <= MAX_NS):
+        raise ValueError("Decimal fraction out of 64-bit nanosecond range")
+        
+    return f_val
 
 @dataclass(frozen=True)
 class Identity:

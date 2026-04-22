@@ -34,6 +34,7 @@ import io
 import logging
 import sys
 from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
+from fractions import Fraction
 
 LOGGER = logging.getLogger(__name__)
 
