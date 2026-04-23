@@ -393,6 +393,10 @@ class Decoder:
         for p in pyang.plugin.plugins:
             p.add_opts(optparser)
         (opts, _args) = optparser.parse_args([])
+        opts.ignore_error_tags = [
+            'UNUSED_IMPORT',
+            'LINT_BAD_NAMESPACE_VALUE',
+        ]
 
         self._ctx = pyang.context.Context(repos)
         self._ctx.strict = True
@@ -711,6 +715,8 @@ class Decoder:
         # LOGGER.debug('errors: %s', [(e[0].ref, e[0].line) for e in self._ctx.errors])
         self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
+            if etag in self._ctx.opts.ignore_error_tags:
+                continue
             elevel = pyang.error.err_level(etag)
             if pyang.error.is_warning(elevel):
                 kind = logging.WARNING
