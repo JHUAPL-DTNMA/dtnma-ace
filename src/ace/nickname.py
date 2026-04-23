@@ -109,18 +109,19 @@ class Converter:
                 model_id = adm.ns_model_enum
 
             obj_id = ari.ident.obj_id
-            if obj is None or obj.enum is None:
-                if self._must:
-                    if obj is None:
-                        err = 'does not exist'
-                    else:
-                        err = 'does not have an enumeration'
-                    msg = f'The ADM object named {obj_id} {err}'
-                    raise RuntimeError(msg)
-            else:
-                obj_id = obj.enum
+            if obj_id is not None:
+                if obj is None or obj.enum is None:
+                    if self._must:
+                        if obj is None:
+                            err = 'does not exist'
+                        else:
+                            err = 'does not have an enumeration'
+                        msg = f'The ADM object named {obj_id} {err}'
+                        raise RuntimeError(msg)
+                else:
+                    obj_id = obj.enum
 
-            # ARI IDs from enums
+            # ARI IDs from integer enum
             new_ident = Identity(
                 org_id=org_id,
                 model_id=model_id,
