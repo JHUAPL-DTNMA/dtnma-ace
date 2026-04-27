@@ -51,7 +51,7 @@ def percent_encode(text):
 TP_TRANS = str.maketrans({'-': '', ':': ''})
 
 
-def encode_datetime(value):
+def encode_datetime(value: numpy.datetime64) -> str:
     text = str(value).translate(TP_TRANS)
     text = text.split('.')
     if len(text) > 1:
@@ -61,7 +61,7 @@ def encode_datetime(value):
     return text
 
 
-def encode_timedelta(value):
+def encode_timedelta(value: numpy.timedelta64) -> str:
     if value == 0:
         return 'PT0S'
     neg = value < 0

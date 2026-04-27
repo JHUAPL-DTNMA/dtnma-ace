@@ -1492,10 +1492,10 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     dec.decode(io.StringIO(text))
-    
+
     def test_invalid_decimal_fractions(self):
         decoder = ari_text.Decoder()
-        
+
         invalid_cases = [
             # Magnitude errors (1ns beyond the 64-bit signed limit)
             'ari:/TD/9223372036.854775808',

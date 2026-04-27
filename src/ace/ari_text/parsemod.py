@@ -235,10 +235,10 @@ def p_objpat_sub_single(p):
         if parts[1] == '':
             parts[1] = ObjectRefPattern.DOMAIN_MAX
 
-        val = apiIntInterval.closed(decimal.Decimal(parts[0]), decimal.Decimal(parts[1]))
+        val = apiIntInterval.closed(int(parts[0]), int(parts[1]))
     else:
         try:
-            val = apiIntInterval.singleton(decimal.Decimal(text))
+            val = apiIntInterval.singleton(int(text))
         except (TypeError, ValueError):
             # text is already unquoted, but should not need to have been
             val = text

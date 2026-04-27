@@ -433,20 +433,21 @@ def as_bool(val: ARI) -> bool:
         return val.value
     raise ValueError('as_bool given non-boolean value')
 
+
 def check_decfrac(val: decimal.Decimal) -> int:
     """
     Validates decimal fraction bounds for TP and TD types.
     Limits: -2^63 / 10^9 to (2^63 - 1) / 10^9
-    
+
     :param val: The value to check.
     :return: The value converted to scale 10^-9 (nanoseconds)
     """
     # 64-bit Signed Nano-range
     MIN_NS = -(2**63)
     MAX_NS = 2**63 - 1
-    
+
     val_ns = val.scaleb(9)
-    
+
     # Precision Check: Ensure no sub-nanosecond remainders
     if val_ns != val_ns.to_integral_value():
         raise ValueError("Sub-nanosecond precision not allowed")

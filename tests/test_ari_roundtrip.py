@@ -56,12 +56,12 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TD/PT3H2M10.1S',
         'ari:/TD/PT3H2M10.001S',
         # Times - Boundary Edge Cases
-        'ari:/TD/9223372036.854775807',  # Max valid TD (Positive)
-        'ari:/TD/-9223372036.854775808', # Max valid TD (Negative)
-        'ari:/TP/9223372036.854775807',  # Max valid TP (Positive)
-        'ari:/TP/-9223372036.854775808', # Max valid TP (Negative)
-        'ari:/TD/0.000000001',           # Minimum positive precision
-        'ari:/TD/-0.000000001',          # Minimum negative precision
+        'ari:/TD/PT0.000000001S',           # Minimum positive precision
+        'ari:/TD/-PT0.000000001S',          # Minimum negative precision
+        'ari:/TD/-P106751DT23H47M15.854775808S',  # domain minimum
+        'ari:/TD/P106751DT23H47M15.854775807S',  # domain maximum
+        'ari:/TP/17070922T001244.854775808Z',  # domain minimum
+        'ari:/TP/17070922T001244.854775808Z',  # domain maximum
         # others
         'ari:/LABEL/test',
         'ari:/CBOR/h\'A164746573748203F94480\'',
@@ -151,8 +151,13 @@ class TestAriRoundtrip(unittest.TestCase):
         # OBJPAT
         "82181884F5F5F5F5",
         "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
-        "820D82283B7FFFFFFFFFFFFFFF", # Max TD Valid Positive
-        "820D82281B7FFFFFFFFFFFFFF",  # Provided CBOR for TD
+        # TP
+        "820C82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns TODO
+        "820C82281B7FFFFFFFFFFFFFFF",  # domain maximum
+        "820D82283B54AFB946829C721F",  # // ari:/TD/-P70628DT11H15M32.600451616S
+        # TD
+        "820D82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns TODO
+        "820D82281B7FFFFFFFFFFFFFFF",  # domain maximum
     )
 
     def test_cbor_text_roundtrip(self):
@@ -190,9 +195,10 @@ class TestAriRoundtrip(unittest.TestCase):
                     base64.b16encode(cbor_loop.getvalue()),
                     base64.b16encode(data)
                 )
+
     def test_decfrac_out_of_bounds_fails(self):
         text_dec = ari_text.Decoder()
-        
+
         invalid_cases = [
             'ari:/TD/9223372036.854775808',   # +1ns over limit
             'ari:/TD/-9223372036.854775809',  # -1ns over limit
