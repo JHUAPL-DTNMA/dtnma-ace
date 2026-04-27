@@ -270,7 +270,7 @@ def p_typedlit_single(p):
         # Check if this is the "int too big" error from the C-extension/struct logic
         if "int too big to convert" in str(err):
             LOGGER.error('Literal range overflow: %s', err)
-            # Raise ValueError so your unit test catches it as an invalid fraction
+            # Raise ValueError so unit test catches it as an invalid fraction
             raise ValueError(f"Value out of range for type {typ}") from err
             
         LOGGER.error('Literal type mismatch: %s', err)

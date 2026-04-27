@@ -456,7 +456,7 @@ def check_decfrac(val):
     if not (MIN_NS <= val_ns <= MAX_NS):
         raise ValueError("Decimal fraction out of 64-bit nanosecond range")
         
-    # Return as Fraction to maintain compatibility with the rest of the app
+    # Return as Fraction to maintain compatibility
     return Fraction(val)
 
 @dataclass(frozen=True)

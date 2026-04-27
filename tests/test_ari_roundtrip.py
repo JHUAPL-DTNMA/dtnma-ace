@@ -152,7 +152,7 @@ class TestAriRoundtrip(unittest.TestCase):
         "82181884F5F5F5F5",
         "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
         "820D82283B7FFFFFFFFFFFFFFF", # Max TD Valid Positive
-        "820D82281B7FFFFFFFFFFFFFF",  # Your provided CBOR for TD
+        "820D82281B7FFFFFFFFFFFFFF",  # Provided CBOR for TD
     )
 
     def test_cbor_text_roundtrip(self):
