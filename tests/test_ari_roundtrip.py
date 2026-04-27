@@ -202,5 +202,5 @@ class TestAriRoundtrip(unittest.TestCase):
 
         for text in invalid_cases:
             with self.subTest(f"Should fail: {text}"):
-                with self.assertRaises(ValueError):
+                with self.assertRaises(RuntimeError):
                     text_dec.decode(io.StringIO(text))

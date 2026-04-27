@@ -23,13 +23,15 @@
 ''' Implementation of semantic typing logic for ADMs and ARI processing.
 '''
 from dataclasses import dataclass, field
+import decimal
 from functools import reduce
 import logging
 import math
 from typing import List, Optional, Set, Type, Iterator
 import numpy
 from .ari import (
-    DTN_EPOCH, StructType, Table, ObjectRefPattern, ExecutionSet, ReportSet,
+    DTN_EPOCH, check_decfrac,
+    StructType, Table, ObjectRefPattern, ExecutionSet, ReportSet,
     ARI, LiteralARI, ReferenceARI, Identity, is_undefined, NULL, TRUE
 )
 import struct
@@ -288,8 +290,8 @@ class TimeType(BuiltInType):
 
     # FIXME should get and convert normalize to datetime values?
     VALUE_CLS = {
-        StructType.TP: (numpy.datetime64, int, float),
-        StructType.TD: (numpy.timedelta64, int, float),
+        StructType.TP: (numpy.datetime64, int, decimal.Decimal),
+        StructType.TD: (numpy.timedelta64, int, decimal.Decimal),
     }
     ''' Required value type for target time type. '''
 
@@ -325,17 +327,20 @@ class TimeType(BuiltInType):
         newval = obj.value
         if self.type_id == StructType.TP:
             if not isinstance(obj.value, numpy.datetime64):
-                if isinstance(obj.value, float):
-                    offset = numpy.timedelta64(int(1e9 * obj.value), 'ns')
+                if isinstance(obj.value, decimal.Decimal):
+                    offset = numpy.timedelta64(check_decfrac(obj.value), 'ns')
                 else:
-                    offset = numpy.timedelta64(obj.value, 's')
+                    # must be int primitive
+                    offset = numpy.timedelta64(int(obj.value), 's')
                 newval = DTN_EPOCH + offset
+
         elif self.type_id == StructType.TD:
             if not isinstance(obj.value, numpy.timedelta64):
-                if isinstance(obj.value, float):
-                    newval = numpy.timedelta64(int(1e9 * obj.value), 'ns')
+                if isinstance(obj.value, decimal.Decimal):
+                    newval = numpy.timedelta64(check_decfrac(obj.value), 'ns')
                 else:
-                    newval = numpy.timedelta64(obj.value, 's')
+                    # must be int primitive
+                    newval = numpy.timedelta64(int(obj.value), 's')
 
         return LiteralARI(newval, self.type_id)
 

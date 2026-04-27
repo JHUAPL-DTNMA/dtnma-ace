@@ -1103,7 +1103,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_typed_rptset(self):
         TEST_CASE = [
             ("ari:/RPTSET/n=1234;r=725943845;(t=0;s=//example/test/CTRL/hi;())", int, 1),
-            ("ari:/RPTSET/n=1234;r=725943845;(t=0.0;s=//example/test/CTRL/hi;())", int, 1),
+            ("ari:/RPTSET/n=1234;r=725943845;(t=/TD/0.0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
@@ -1509,6 +1509,6 @@ class TestAriText(unittest.TestCase):
 
         for text in invalid_cases:
             with self.subTest(text=text):
-                with self.assertRaises(ValueError):
-                    decoder.decode(io.StringIO(text))
-
+                with self.assertRaises(RuntimeError):
+                    ari = decoder.decode(io.StringIO(text))
+                    LOGGER.error('Got ARI %s', ari)

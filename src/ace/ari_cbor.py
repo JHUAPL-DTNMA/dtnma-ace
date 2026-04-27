@@ -23,12 +23,14 @@
 ''' CODEC for converting ARI to and from CBOR form.
 '''
 import datetime
+import decimal
 import logging
 import numpy
 from typing import Any, BinaryIO, Optional
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
+    DTN_EPOCH, INT_ENVELOPE, check_decfrac,
+    ARI, Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report, ObjectRefPattern, apiIntInterval
 )
 from ace.typing import NONCE
@@ -250,11 +252,10 @@ class Decoder:
         if isinstance(item, int):
             return numpy.timedelta64(item, 's')
         elif isinstance(item, list):
+            # require both items are integer
             exp, mant = map(int, item)
-            if exp < -9 or exp > 9:
-                raise ValueError('Decimal fraction exponent outside valid range [-9,9]')
-            total_nsec = mant * 10 ** (exp + 9)
-            return numpy.timedelta64(total_nsec, 'ns')
+            prim = decimal.Decimal(mant).scaleb(exp)
+            return numpy.timedelta64(check_decfrac(prim), 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
 
