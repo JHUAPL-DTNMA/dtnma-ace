@@ -24,6 +24,7 @@
 ''' Parser configuration for ARI text decoding.
 '''
 
+import decimal
 import logging
 from ply import yacc
 from ace.ari import (
@@ -234,10 +235,10 @@ def p_objpat_sub_single(p):
         if parts[1] == '':
             parts[1] = ObjectRefPattern.DOMAIN_MAX
 
-        val = apiIntInterval.closed(int(parts[0]), int(parts[1]))
+        val = apiIntInterval.closed(decimal.Decimal(parts[0]), decimal.Decimal(parts[1]))
     else:
         try:
-            val = apiIntInterval.singleton(int(text))
+            val = apiIntInterval.singleton(decimal.Decimal(text))
         except (TypeError, ValueError):
             # text is already unquoted, but should not need to have been
             val = text
@@ -265,7 +266,13 @@ def p_typedlit_single(p):
             type_id=typ,
             value=value
         ))
-    except Exception as err:
+    except (OverflowError, Exception) as err:
+        # Check if this is the "int too big" error from the C-extension/struct logic
+        if "int too big to convert" in str(err):
+            LOGGER.error('Literal range overflow: %s', err)
+            # Raise ValueError so your unit test catches it as an invalid fraction
+            raise ValueError(f"Value out of range for type {typ}") from err
+            
         LOGGER.error('Literal type mismatch: %s', err)
         raise RuntimeError(err) from err
 
