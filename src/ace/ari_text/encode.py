@@ -163,16 +163,20 @@ class Encoder:
                     text = encode_datetime(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = (obj.value - DTN_EPOCH) / numpy.timedelta64(1, 's')
-                    text = f'{diff:.9f}'.rstrip('0')
+                    diff_ns = (obj.value - DTN_EPOCH) // numpy.timedelta64(1, 'ns')
+                    digits_ns = str(diff_ns)
+                    subsec = digits_ns[-9:].rstrip('0')
+                    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
                     buf.write(text)
             elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = obj.value / numpy.timedelta64(1, 's')
-                    text = f'{diff:.9f}'.rstrip('0')
+                    diff_ns = obj.value // numpy.timedelta64(1, 'ns')
+                    digits_ns = str(diff_ns)
+                    subsec = digits_ns[-9:].rstrip('0')
+                    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
                     buf.write(text)
             elif obj.type_id is StructType.LABEL:
                 # no need to percent_encode identity

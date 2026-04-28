@@ -211,7 +211,9 @@ def part_to_int(digits):
 
 
 def subsec_to_nanoseconds(digits: str) -> int:
-    ''' Convert subseconds text into nanoseconds, defaulting to zero. '''
+    ''' Convert sub-seconds text (after decimal point) into nanoseconds, 
+    defaulting to zero if the text is empty.
+    '''
     if digits:
         length = len(digits)
         if length > 9:
@@ -227,14 +229,18 @@ def t_timepoint(found):
     nsec = subsec_to_nanoseconds(found.group('SS'))
     if nsec:
         exp += ".{0:09d}".format(nsec)
+    LOGGER.critical('groups %s', found.groups())
 
     value = numpy.datetime64(exp)
+    LOGGER.critical('value %s', value)
+    if numpy.isnat(value):
+        raise ValueError('Got not-a-time')
     return value
 
 
 @TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d+))?S)?')
 def t_timeperiod(found):
-    neg = found.group('sign') == '-'
+    neg = (found.group('sign') == '-')
     day = part_to_int(found.group('D'))
     hour = part_to_int(found.group('H'))
     minute = part_to_int(found.group('M'))
@@ -247,8 +253,15 @@ def t_timeperiod(found):
         + numpy.timedelta64(second, 's')
         + numpy.timedelta64(nsec, 'ns')
     )
+    if value < 0:
+        # internal overflow
+        raise ValueError('Got overflow')
+
     if neg:
         value = -value
+
+    if numpy.isnat(value):
+        raise ValueError('Got not-a-time')
     return value
 
 

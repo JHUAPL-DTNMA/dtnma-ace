@@ -56,12 +56,13 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TD/PT3H2M10.1S',
         'ari:/TD/PT3H2M10.001S',
         # Times - Boundary Edge Cases
-        'ari:/TD/PT0.000000001S',           # Minimum positive precision
-        'ari:/TD/-PT0.000000001S',          # Minimum negative precision
-        'ari:/TD/-P106751DT23H47M15.854775808S',  # domain minimum
-        'ari:/TD/P106751DT23H47M15.854775807S',  # domain maximum
+        'ari:/TP/20240102T030405.123456789Z',
         'ari:/TP/17070922T001244.854775808Z',  # domain minimum
-        'ari:/TP/17070922T001244.854775808Z',  # domain maximum
+        'ari:/TP/22920410T234716.854775807Z',  # domain maximum
+        'ari:/TD/PT0.123456789S',  # Minimum positive precision
+        'ari:/TD/-PT0.123456789S',  # Minimum negative precision
+        'ari:/TD/-P106751DT23H47M16.854775807S',  # domain minimum
+        'ari:/TD/P106751DT23H47M16.854775807S',  # domain maximum
         # others
         'ari:/LABEL/test',
         'ari:/CBOR/h\'A164746573748203F94480\'',
@@ -200,13 +201,19 @@ class TestAriRoundtrip(unittest.TestCase):
         text_dec = ari_text.Decoder()
 
         invalid_cases = [
+            'ari:/TP/17070922T001243.145224192Z',  # domain minimum
+            'ari:/TP/22920410T234716.854775807Z',  # domain maximum
+            'ari:/TP/10000000000.0',          # Magnitude too large
+            'ari:/TP/0.0000000001',           # Too much precision (10th decimal)
+            'ari:/TD/-P106751DT23H47M16.854775808S',  # domain minimum
+            'ari:/TD/P106751DT23H47M16.854775808S',  # domain maximum
             'ari:/TD/9223372036.854775808',   # +1ns over limit
             'ari:/TD/-9223372036.854775809',  # -1ns over limit
             'ari:/TD/0.0000000001',           # Too much precision (10th decimal)
-            'ari:/TP/10000000000.0',          # Magnitude too large
         ]
 
         for text in invalid_cases:
             with self.subTest(f"Should fail: {text}"):
                 with self.assertRaises(RuntimeError):
-                    text_dec.decode(io.StringIO(text))
+                    ari = text_dec.decode(io.StringIO(text))
+                    LOGGER.error('Got ARI %s', ari)

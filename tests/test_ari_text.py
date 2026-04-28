@@ -126,6 +126,8 @@ class TestAriText(unittest.TestCase):
         ('ari:/TD/-PT3H', -numpy.timedelta64(3, 'h')),
         ('ari:/TD/100', numpy.timedelta64(100, 's'), 'ari:/TD/PT1M40S'),
         ('ari:/TD/1.5', numpy.timedelta64(1500, 'ms'), 'ari:/TD/PT1.5S'),
+        ('ari:/TD/-P106751DT23H47M16.854775807S', numpy.timedelta64(-(2**63 - 1), 'ns')),  # domain minimum
+        ('ari:/TD/P106751DT23H47M16.854775807S', numpy.timedelta64(2**63 - 1, 'ns')),  # domain maximum
         # Extras
         ('ari:/LABEL/test', 'test'),
         ('ari:/LABEL/null', 'null'),
@@ -296,8 +298,12 @@ class TestAriText(unittest.TestCase):
     LITERAL_OPTIONS = (
         ('1000', dict(int_base=2), 'ari:0b1111101000'),
         ('1000', dict(int_base=16), 'ari:0x3E8'),
-        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845.'),
-        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800.'),
+        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845'),
+        ('/TP/17070922T001243.145224193Z', dict(time_text=False), 'ari:/TP/-9223372036.854775807'),  # domain minimum
+        ('/TP/22920410T234716.854775807Z', dict(time_text=False), 'ari:/TP/9223372036.854775807'),  # domain maximum
+        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800'),
+        ('ari:/TD/-P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/-9223372036.854775807'),  # domain minimum
+        ('ari:/TD/P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/9223372036.854775807'),  # domain maximum
         ('1e3', dict(float_form='g'), 'ari:1000.0'),
         ('1e3', dict(float_form='f'), 'ari:1000.000000'),
         ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
