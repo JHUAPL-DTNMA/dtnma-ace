@@ -48,6 +48,13 @@ def percent_encode(text):
     return urllib.parse.quote(text, safe="'")
 
 
+def encode_decfrac(value: numpy.timedelta64) -> str:
+    diff_ns = value // numpy.timedelta64(1, 'ns')
+    digits_ns = str(diff_ns)
+    subsec = digits_ns[-9:].rstrip('0')
+    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
+    return text
+
 TP_TRANS = str.maketrans({'-': '', ':': ''})
 
 
@@ -163,20 +170,14 @@ class Encoder:
                     text = encode_datetime(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff_ns = (obj.value - DTN_EPOCH) // numpy.timedelta64(1, 'ns')
-                    digits_ns = str(diff_ns)
-                    subsec = digits_ns[-9:].rstrip('0')
-                    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
+                    text = encode_decfrac(obj.value - DTN_EPOCH)
                     buf.write(text)
             elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff_ns = obj.value // numpy.timedelta64(1, 'ns')
-                    digits_ns = str(diff_ns)
-                    subsec = digits_ns[-9:].rstrip('0')
-                    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
+                    text = encode_decfrac(obj.value)
                     buf.write(text)
             elif obj.type_id is StructType.LABEL:
                 # no need to percent_encode identity
