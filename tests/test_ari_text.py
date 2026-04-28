@@ -23,7 +23,6 @@
 ''' Verify behavior of the ace.ari_text module tree.
 '''
 import base64
-import datetime
 import io
 import logging
 import math

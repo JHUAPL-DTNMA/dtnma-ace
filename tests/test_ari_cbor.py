@@ -29,7 +29,7 @@ import cbor2
 import math
 import numpy
 from ace.ari import (
-    DTN_EPOCH, apiIntInterval,
+    apiIntInterval,
     ReferenceARI, LiteralARI, StructType, Identity,
     ReportSet, ObjectRefPattern
 )
