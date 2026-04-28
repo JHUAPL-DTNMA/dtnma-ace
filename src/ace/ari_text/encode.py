@@ -57,6 +57,7 @@ def encode_decfrac(value: numpy.timedelta64) -> str:
     text = digits_ns[:-9] + ('.' + subsec if subsec else '')
     return text
 
+
 def encode_datetime(value: numpy.timedelta64) -> str:
     ''' Encode a human-friendly offset from DTN_EPOCH. '''
     delta_secs = int(value // numpy.timedelta64(1, 's'))
