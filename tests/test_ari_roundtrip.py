@@ -153,7 +153,7 @@ class TestAriRoundtrip(unittest.TestCase):
         "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
         # TP
         "820C82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
-        "820C82281B72DCB330ADBCFFFF",  # domain maximum - DTN_EPOCH offset
+        "820C82281B7FFFFFFFFFFFFFFF",  # domain maximum
         # TD
         "820D82283B54AFB946829C721F",  # // ari:/TD/-P70628DT11H15M32.600451616S
         "820D82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
