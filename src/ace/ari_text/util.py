@@ -30,7 +30,7 @@ import re
 from typing import List
 import numpy
 import cbor_diag
-from ace.ari import INT_ENVELOPE, UNDEFINED, StructType
+from ace.ari import INT_ENVELOPE, UNDEFINED, DTN_EPOCH, StructType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -229,12 +229,14 @@ def t_timepoint(found):
     nsec = subsec_to_nanoseconds(found.group('SS'))
     if nsec:
         exp += ".{0:09d}".format(nsec)
-    LOGGER.critical('groups %s', found.groups())
 
     value = numpy.datetime64(exp)
-    LOGGER.critical('value %s', value)
     if numpy.isnat(value):
         raise ValueError('Got not-a-time')
+    # the lower end is based on 64-bit signed offset from DTN epoch
+    # the upper end is limited by the internal logic of datetime64
+    if value < DTN_EPOCH - numpy.timedelta64(2**63 - 1, 'ns'):
+        raise ValueError('out of domain')
     return value
 
 

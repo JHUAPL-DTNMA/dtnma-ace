@@ -58,7 +58,7 @@ class TestAriRoundtrip(unittest.TestCase):
         # Times - Boundary Edge Cases
         'ari:/TP/20240102T030405.123456789Z',
         'ari:/TP/17070922T001244.854775808Z',  # domain minimum
-        'ari:/TP/22920410T234716.854775807Z',  # domain maximum
+        'ari:/TP/22620411T234716.854775807Z',  # domain maximum
         'ari:/TD/PT0.123456789S',  # Minimum positive precision
         'ari:/TD/-PT0.123456789S',  # Minimum negative precision
         'ari:/TD/-P106751DT23H47M16.854775807S',  # domain minimum
@@ -153,11 +153,11 @@ class TestAriRoundtrip(unittest.TestCase):
         "82181884F5F5F5F5",
         "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
         # TP
-        "820C82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns TODO
-        "820C82281B7FFFFFFFFFFFFFFF",  # domain maximum
-        "820D82283B54AFB946829C721F",  # // ari:/TD/-P70628DT11H15M32.600451616S
+        "820C82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
+        "820C82281B72DCB330ADBCFFFF",  # domain maximum - DTN_EPOCH offset
         # TD
-        "820D82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns TODO
+        "820D82283B54AFB946829C721F",  # // ari:/TD/-P70628DT11H15M32.600451616S
+        "820D82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
         "820D82281B7FFFFFFFFFFFFFFF",  # domain maximum
     )
 
@@ -196,24 +196,3 @@ class TestAriRoundtrip(unittest.TestCase):
                     base64.b16encode(cbor_loop.getvalue()),
                     base64.b16encode(data)
                 )
-
-    def test_decfrac_out_of_bounds_fails(self):
-        text_dec = ari_text.Decoder()
-
-        invalid_cases = [
-            'ari:/TP/17070922T001243.145224192Z',  # domain minimum
-            'ari:/TP/22920410T234716.854775807Z',  # domain maximum
-            'ari:/TP/10000000000.0',          # Magnitude too large
-            'ari:/TP/0.0000000001',           # Too much precision (10th decimal)
-            'ari:/TD/-P106751DT23H47M16.854775808S',  # domain minimum
-            'ari:/TD/P106751DT23H47M16.854775808S',  # domain maximum
-            'ari:/TD/9223372036.854775808',   # +1ns over limit
-            'ari:/TD/-9223372036.854775809',  # -1ns over limit
-            'ari:/TD/0.0000000001',           # Too much precision (10th decimal)
-        ]
-
-        for text in invalid_cases:
-            with self.subTest(f"Should fail: {text}"):
-                with self.assertRaises(RuntimeError):
-                    ari = text_dec.decode(io.StringIO(text))
-                    LOGGER.error('Got ARI %s', ari)

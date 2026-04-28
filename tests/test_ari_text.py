@@ -300,7 +300,7 @@ class TestAriText(unittest.TestCase):
         ('1000', dict(int_base=16), 'ari:0x3E8'),
         ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845'),
         ('/TP/17070922T001243.145224193Z', dict(time_text=False), 'ari:/TP/-9223372036.854775807'),  # domain minimum
-        ('/TP/22920410T234716.854775807Z', dict(time_text=False), 'ari:/TP/9223372036.854775807'),  # domain maximum
+        ('/TP/22620411T234716.854775807Z', dict(time_text=False), 'ari:/TP/8276687236.854775807'),  # domain maximum
         ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800'),
         ('ari:/TD/-P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/-9223372036.854775807'),  # domain minimum
         ('ari:/TD/P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/9223372036.854775807'),  # domain maximum
@@ -1029,6 +1029,28 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
+
+    def test_decfrac_out_of_bounds_fails(self):
+        invalid_cases = [
+            'ari:/TP/17070922T001243.145224192Z',  # domain minimum
+            'ari:/TP/22620411T234716.854775808Z',  # domain maximum
+            'ari:/TP/9223372036.854775808',   # +1ns over limit
+            'ari:/TP/-9223372036.854775809',  # -1ns over limit
+            'ari:/TP/10000000000.0',          # Magnitude too large
+            'ari:/TP/0.0000000001',           # Too much precision (10th decimal)
+            'ari:/TD/-P106751DT23H47M16.854775808S',  # domain minimum
+            'ari:/TD/P106751DT23H47M16.854775808S',  # domain maximum
+            'ari:/TD/9223372036.854775808',   # +1ns over limit
+            'ari:/TD/-9223372036.854775809',  # -1ns over limit
+            'ari:/TD/0.0000000001',           # Too much precision (10th decimal)
+        ]
+
+        text_dec = ari_text.Decoder()
+        for text in invalid_cases:
+            with self.subTest(f"Should fail: {text}"):
+                with self.assertRaises(RuntimeError):
+                    ari = text_dec.decode(io.StringIO(text))
+                    LOGGER.error('Got ARI %s', ari)
 
     def test_ari_text_decode_lit_typed_ac(self):
         TEST_CASE = [

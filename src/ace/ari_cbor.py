@@ -26,7 +26,7 @@ import datetime
 import decimal
 import logging
 import numpy
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO, Optional, Tuple, Union
 import cbor2
 from ace.ari import (
     DTN_EPOCH, INT_ENVELOPE, check_decfrac,
@@ -250,14 +250,18 @@ class Decoder:
     def _item_to_timeval(self, item: Any) -> numpy.timedelta64:
         ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
-            return numpy.timedelta64(item, 's')
+            value = numpy.timedelta64(item, 's')
         elif isinstance(item, list):
             # require both items are integer
             exp, mant = map(int, item)
             prim = decimal.Decimal(mant).scaleb(exp)
-            return numpy.timedelta64(check_decfrac(prim), 'ns')
+            value = numpy.timedelta64(check_decfrac(prim), 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
+
+        if numpy.isnat(value):
+            raise ValueError('Got not-a-time')
+        return value
 
     def _pattern_part(self, item: Any) -> ObjectRefPattern.PartType:
         if item is True or isinstance(item, str):
@@ -387,7 +391,7 @@ class Encoder:
             item = value
         return item
 
-    def _timeval_to_item(self, diff):
+    def _timeval_to_item(self, diff: numpy.timedelta64) -> Union[int, Tuple[int, int]]:
         total_nsec = int(diff // numpy.timedelta64(1, 'ns'))
 
         mant = total_nsec
