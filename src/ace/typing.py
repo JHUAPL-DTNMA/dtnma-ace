@@ -348,7 +348,7 @@ class TimeType(BuiltInType):
 class ContainerType(BuiltInType):
     ''' ARI containers. '''
     VALUE_CLS = {
-        StructType.AC: tuple,
+        StructType.AC: (tuple, list),
         StructType.AM: dict,
         StructType.TBL: numpy.ndarray,
         StructType.OBJPAT: ObjectRefPattern,
