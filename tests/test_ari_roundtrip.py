@@ -29,7 +29,6 @@ import unittest
 from ace.ari import ARI, ReferenceARI
 from ace.cborutil import to_diag
 from ace import ari_text, ari_cbor
-from fractions import Fraction
 
 LOGGER = logging.getLogger(__name__)
 

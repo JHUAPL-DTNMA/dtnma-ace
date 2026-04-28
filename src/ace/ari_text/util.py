@@ -211,7 +211,7 @@ def part_to_int(digits):
 
 
 def subsec_to_nanoseconds(digits: str) -> int:
-    ''' Convert sub-seconds text (after decimal point) into nanoseconds, 
+    ''' Convert sub-seconds text (after decimal point) into nanoseconds,
     defaulting to zero if the text is empty.
     '''
     if digits:

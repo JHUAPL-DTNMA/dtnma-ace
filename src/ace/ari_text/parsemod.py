@@ -24,7 +24,6 @@
 ''' Parser configuration for ARI text decoding.
 '''
 
-import decimal
 import logging
 from ply import yacc
 from ace.ari import (
