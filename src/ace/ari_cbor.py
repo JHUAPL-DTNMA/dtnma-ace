@@ -161,7 +161,7 @@ class Decoder:
                 raise TypeError(f"Invalid BYTESTR value: {item}")
             value = item
         elif type_id == StructType.TP:
-            value = self._item_to_timeval(item) + DTN_EPOCH
+            value = self._item_to_timeval(item)
         elif type_id == StructType.TD:
             value = self._item_to_timeval(item)
         elif type_id == StructType.LABEL:
@@ -359,9 +359,6 @@ class Encoder:
             item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}
         elif isinstance(value, Table):
             item = [value.shape[1]] + list(map(self._ari_to_item, value.flat))
-        elif isinstance(value, numpy.datetime64):
-            diff = value - DTN_EPOCH
-            item = self._timeval_to_item(diff)
         elif isinstance(value, numpy.timedelta64):
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
@@ -378,7 +375,7 @@ class Encoder:
                 rpts_item.append(rpt_item)
             item = [
                 self._ari_to_item(value.nonce),
-                self._val_to_item(value.ref_time)
+                self._val_to_item(value.ref_time - DTN_EPOCH)
             ] + rpts_item
         elif isinstance(value, ObjectRefPattern):
             item = [

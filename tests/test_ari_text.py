@@ -32,7 +32,7 @@ import numpy
 from ace.ari import (
     apiIntInterval,
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern
+    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
 )
 from ace import ari_text
 
@@ -113,10 +113,10 @@ class TestAriText(unittest.TestCase):
         ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
         ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
         # Times
-        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05')),
-        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),  # with formatting
-        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25')),
-        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),
+        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH),
+        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),  # with formatting
+        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25') - DTN_EPOCH),
+        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),
         ('ari:/TD/PT3H', numpy.timedelta64(3, 'h')),
         ('ari:/TD/PT10.001S', numpy.timedelta64(10001, 'ms')),
         ('ari:/TD/PT10.25S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
@@ -210,7 +210,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
@@ -226,7 +226,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/other;(null))',
             ReportSet(
                 nonce=LiteralARI(1234),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
@@ -242,7 +242,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=tuple()
             )
         ),
@@ -250,7 +250,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         rel_time=numpy.timedelta64(0, 's'),
@@ -300,7 +300,7 @@ class TestAriText(unittest.TestCase):
         ('1000', dict(int_base=16), 'ari:0x3E8'),
         ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845'),
         ('/TP/17070922T001243.145224193Z', dict(time_text=False), 'ari:/TP/-9223372036.854775807'),  # domain minimum
-        ('/TP/22620411T234716.854775807Z', dict(time_text=False), 'ari:/TP/8276687236.854775807'),  # domain maximum
+        ('/TP/22920410T234716.854775807Z', dict(time_text=False), 'ari:/TP/9223372036.854775807'),  # domain maximum
         ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800'),
         ('ari:/TD/-P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/-9223372036.854775807'),  # domain minimum
         ('ari:/TD/P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/9223372036.854775807'),  # domain maximum
@@ -988,13 +988,13 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_tp(self):
         TEST_CASE = [
-            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20')),
-            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20')),
-            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001')),
-            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001')),
+            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
+            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
+            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001') - DTN_EPOCH),
+            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001') - DTN_EPOCH),
         ]
 
         dec = ari_text.Decoder()
@@ -1033,7 +1033,7 @@ class TestAriText(unittest.TestCase):
     def test_decfrac_out_of_bounds_fails(self):
         invalid_cases = [
             'ari:/TP/17070922T001243.145224192Z',  # domain minimum
-            'ari:/TP/22620411T234716.854775808Z',  # domain maximum
+            'ari:/TP/22920410T234716.854775808Z',  # domain maximum
             'ari:/TP/9223372036.854775808',   # +1ns over limit
             'ari:/TP/-9223372036.854775809',  # -1ns over limit
             'ari:/TP/10000000000.0',          # Magnitude too large

@@ -27,7 +27,7 @@
 import logging
 from ply import yacc
 from ace.ari import (
-    is_undefined,
+    DTN_EPOCH, is_undefined,
     Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report,
     ObjectRefPattern, apiIntInterval
@@ -149,7 +149,7 @@ def p_typedlit_rptset(p):
 
     value = ReportSet(
         nonce=nonce,
-        ref_time=ref_time.value,
+        ref_time=(ref_time.value + DTN_EPOCH),
         reports=p[4],
     )
     p[0] = LiteralARI(type_id=StructType.RPTSET, value=value)

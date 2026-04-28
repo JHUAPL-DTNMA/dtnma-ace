@@ -225,18 +225,24 @@ def subsec_to_nanoseconds(digits: str) -> int:
 
 @TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d+))?Z')
 def t_timepoint(found):
-    exp = f"{found.group('yr')}-{found.group('mon')}-{found.group('dom')}T{found.group('H')}:{found.group('M')}:{found.group('S')}"
+    # seconds-scale processing with datetime
+    secs = datetime.datetime(
+        year=part_to_int(found.group('yr')),
+        month=part_to_int(found.group('mon')),
+        day=part_to_int(found.group('dom')),
+        hour=part_to_int(found.group('H')),
+        minute=part_to_int(found.group('M')),
+        second=part_to_int(found.group('S')),
+    )
+    # subseconds separately
     nsec = subsec_to_nanoseconds(found.group('SS'))
-    if nsec:
-        exp += ".{0:09d}".format(nsec)
 
-    value = numpy.datetime64(exp)
+    value = numpy.timedelta64(secs - DTN_EPOCH.item())
+    if nsec:
+        value += numpy.timedelta64(nsec, 'ns')
+
     if numpy.isnat(value):
         raise ValueError('Got not-a-time')
-    # the lower end is based on 64-bit signed offset from DTN epoch
-    # the upper end is limited by the internal logic of datetime64
-    if value < DTN_EPOCH - numpy.timedelta64(2**63 - 1, 'ns'):
-        raise ValueError('out of domain')
     return value
 
 

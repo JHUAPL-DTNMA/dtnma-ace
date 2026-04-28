@@ -98,7 +98,7 @@ class ExecutionSet:
 @dataclass(frozen=True)
 class Report:
     ''' Internal representation of Report data. '''
-    rel_time: datetime.timedelta
+    rel_time: numpy.timedelta64
     ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
     value. '''
     source: 'ARI'
@@ -112,7 +112,7 @@ class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    ref_time: datetime.datetime
+    ref_time: numpy.datetime64
     ''' The reference time for all contained Report relative-times. '''
     reports: Tuple['Report']
     ''' The contained Reports '''
@@ -240,10 +240,14 @@ UndefinedPrimitiveType = type(cbor2.undefined)
 NoneType = type(None)
 ''' Alias to the type for native None value '''
 
+TimePrimitiveType = Union[numpy.timedelta64, decimal.Decimal, int]
+''' Primitive type for TP and TD values.
+TP as offset from :py:data:`DTN_EPOCH` and TD as relative offset.
+'''
 AriListType = Tuple[ARI]
-''' Type for AC, parameter list, and similar values '''
+''' Primitive type for AC, parameter list, and similar values '''
 AriMapType = Dict['LiteralARI', ARI]
-''' Type for AM, parameter map, and similar values '''
+''' Primitive type for AM, parameter map, and similar values '''
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,
     # enumerated types
@@ -252,8 +256,8 @@ LiteralPrimitiveType = Union[
     int, float,
     # primitive strings
     str, bytes,
-    # times (including primitive decimal form)
-    numpy.datetime64, numpy.timedelta64, decimal.Decimal,
+    # times values
+    TimePrimitiveType,
     # containers
     AriListType, AriMapType, Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]

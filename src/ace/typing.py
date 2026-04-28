@@ -288,10 +288,9 @@ class StringType(BuiltInType):
 class TimeType(BuiltInType):
     ''' Times as offsets from absolute or relative epochs. '''
 
-    # FIXME should get and convert normalize to datetime values?
     VALUE_CLS = {
-        StructType.TP: (numpy.datetime64, int, decimal.Decimal),
-        StructType.TD: (numpy.timedelta64, int, decimal.Decimal),
+        StructType.TP: (numpy.timedelta64, decimal.Decimal, int, numpy.datetime64),
+        StructType.TD: (numpy.timedelta64, decimal.Decimal, int),
     }
     ''' Required value type for target time type. '''
 
@@ -326,21 +325,25 @@ class TimeType(BuiltInType):
         # coerce to native value class
         newval = obj.value
         if self.type_id == StructType.TP:
-            if not isinstance(obj.value, numpy.datetime64):
-                if isinstance(obj.value, decimal.Decimal):
-                    offset = numpy.timedelta64(check_decfrac(obj.value), 'ns')
-                else:
-                    # must be int primitive
-                    offset = numpy.timedelta64(int(obj.value), 's')
-                newval = DTN_EPOCH + offset
+            if isinstance(obj.value, numpy.datetime64):
+                # internal state is an offset
+                newval = obj.value - DTN_EPOCH
+            elif isinstance(obj.value, numpy.timedelta64):
+                newval = obj.value
+            elif isinstance(obj.value, decimal.Decimal):
+                newval = numpy.timedelta64(check_decfrac(obj.value), 'ns')
+            else:
+                # must be int primitive
+                newval = numpy.timedelta64(int(obj.value), 's')
 
         elif self.type_id == StructType.TD:
-            if not isinstance(obj.value, numpy.timedelta64):
-                if isinstance(obj.value, decimal.Decimal):
-                    newval = numpy.timedelta64(check_decfrac(obj.value), 'ns')
-                else:
-                    # must be int primitive
-                    newval = numpy.timedelta64(int(obj.value), 's')
+            if isinstance(obj.value, numpy.timedelta64):
+                newval = obj.value
+            elif isinstance(obj.value, decimal.Decimal):
+                newval = numpy.timedelta64(check_decfrac(obj.value), 'ns')
+            else:
+                # must be int primitive
+                newval = numpy.timedelta64(int(obj.value), 's')
 
         return LiteralARI(newval, self.type_id)
 

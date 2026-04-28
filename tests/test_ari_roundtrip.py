@@ -56,8 +56,8 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TD/PT3H2M10.001S',
         # Times - Boundary Edge Cases
         'ari:/TP/20240102T030405.123456789Z',
-        'ari:/TP/17070922T001244.854775808Z',  # domain minimum
-        'ari:/TP/22620411T234716.854775807Z',  # domain maximum
+        'ari:/TP/17070922T001243.145224193Z',  # domain minimum
+        'ari:/TP/22920410T234716.854775807Z',  # domain maximum
         'ari:/TD/PT0.123456789S',  # Minimum positive precision
         'ari:/TD/-PT0.123456789S',  # Minimum negative precision
         'ari:/TD/-P106751DT23H47M16.854775807S',  # domain minimum
