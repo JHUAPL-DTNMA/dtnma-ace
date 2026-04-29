@@ -25,6 +25,7 @@
 import logging
 import os
 from sqlalchemy import inspect, orm, func
+from typing import Optional
 from ace import models, ari
 from ace.lookup import dereference, TypeResolver, TypeResolverError
 from .core import register, Issue
@@ -224,4 +225,58 @@ class valid_reference_ari:  # pylint: disable=invalid-name
         count = 0
         for obj in container:
             count += self(issuelist, obj, *args, **kwargs)
+        return count
+
+
+@register
+class default_value_type_match:  # pylint: disable=invalid-name
+    ''' Ensure that all ARIs as default values actually match their
+    associated type.
+    Default values are contained in object parameters
+    '''
+
+    def __call__(self, issuelist, obj, db_sess, top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
+        ''' Entrypoint for this functor. '''
+        count = 0
+        if isinstance(obj, models.AdmModule):
+            # object types which have parameters
+            count += self._iter_call(issuelist, obj.ident, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.const, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.var, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.ctrl, db_sess, adm=obj)
+            count += self._iter_call(issuelist, obj.oper, db_sess, adm=obj)
+        if isinstance(obj, models.ParamMixin):
+            if obj.parameters:
+                for param in obj.parameters.items:
+                    count += self(issuelist, param, db_sess, top_obj=obj, adm=adm)
+        if isinstance(obj, models.Ctrl):
+            count += self(issuelist, obj.result, db_sess, top_obj=obj, adm=adm)
+        elif isinstance(obj, models.TypeNameItem):
+            # actual check
+            if obj.default_ari is not None:
+
+                try:
+                    TypeResolver().resolve(obj.typeobj, adm)
+                except TypeResolverError:
+                    # treat as separate error
+                    pass
+
+                if obj.typeobj.get(obj.default_ari) is None:
+                    issuelist.append(Issue(
+                        obj=top_obj,
+                        detail=(
+                            f'Within the object named "{top_obj.name}" '
+                            f'the default value "{obj.default_value}" does not match '
+                            f'the associated type'
+                        ),
+                    ))
+
+            count += 1
+
+        return count
+
+    def _iter_call(self, issuelist, container, db_sess, adm):
+        count = 0
+        for obj in container:
+            count += self(issuelist, obj, db_sess, top_obj=obj, adm=adm)
         return count
