@@ -1,4 +1,3 @@
-#!/bin/bash
 ##
 ## Copyright (c) 2020-2026 The Johns Hopkins University Applied Physics
 ## Laboratory LLC.
@@ -21,31 +20,34 @@
 ## under the prime contract 80NM0018D0004 between the Caltech and NASA under
 ## subcontract 1658085.
 ##
+name: SonarQube
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
 
-# Apply copyright and license markings to source files.
-#
-# Requires installation of:
-#  pip3 install licenseheaders
-# Run as:
-#  ./apply_license.sh {specific dir}
-#
-set -e
-
-SELFDIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
-
-LICENSEOPTS="${LICENSEOPTS} --tmpl ${SELFDIR}/apply_license.tmpl"
-LICENSEOPTS="${LICENSEOPTS} --years 2020-2026"
-# Excludes only apply to directory (--dir) mode and not file mode
-#LICENSEOPTS="${LICENSEOPTS} --exclude *.yml *.yaml *.min. "
-
-
-# Specific paths
-if [[ "$#" -gt 0 ]]
-then
-    echo "Applying markings to selected $@ ..."
-    licenseheaders ${LICENSEOPTS} --dir $@
-    exit 0
-fi
-
-echo "Applying markings to source..."
-licenseheaders ${LICENSEOPTS} --dir ${SELFDIR}
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+          submodules: recursive
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prep
+        run: pip3 install -e '.[test]'
+      - name: Test
+        run: python3 -m pytest -v --junitxml=testresults.xml --cov=ace --cov-report=xml
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
+        env:
+          SONAR_TOKEN: ${{secrets.SONAR_TOKEN}}
