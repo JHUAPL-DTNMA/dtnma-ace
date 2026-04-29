@@ -32,7 +32,7 @@ from sqlalchemy.orm import (
 )
 from sqlalchemy.ext.orderinglist import ordering_list
 
-CURRENT_SCHEMA_VERSION = 23
+CURRENT_SCHEMA_VERSION = 24
 ''' Value of :attr:`SchemaVersion.version_num` '''
 
 Base = declarative_base()
