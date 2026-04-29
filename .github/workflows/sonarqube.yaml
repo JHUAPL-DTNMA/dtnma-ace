@@ -44,10 +44,10 @@ jobs:
         with:
           python-version: '3.12'
       - name: Prep
-        run: pip3 install '.[test]'
+        run: pip3 install -e '.[test]'
       - name: Test
         run: python3 -m pytest -v --cov=ace --cov-report=xml
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7.2.1
         env:
           SONAR_TOKEN: ${{secrets.SONAR_TOKEN}}
