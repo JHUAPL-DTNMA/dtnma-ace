@@ -235,7 +235,7 @@ class valid_reference_ari:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _do_check(self, issuelist:List[Issue], _value: str, val_ari: Optional[ari.ARI], top_obj:models.AdmObjMixin, adm:models.AdmModule, db_sess: orm.Session) -> int:
+    def _do_check(self, issuelist: List[Issue], _value: str, val_ari: Optional[ari.ARI], top_obj: models.AdmObjMixin, adm: models.AdmModule, db_sess: orm.Session) -> int:
         ''' Walk the ARI for any internal references '''
         if val_ari is None:
             return 0
@@ -277,8 +277,8 @@ class default_value_type_match:  # pylint: disable=invalid-name
             count += self._iter_call(issuelist, obj.var, db_sess, adm=obj)
 
         if isinstance(obj, models.ParamMixin) and obj.parameters:
-                for param in obj.parameters.items:
-                    count += self(issuelist, param, db_sess, top_obj=obj, adm=adm)
+            for param in obj.parameters.items:
+                count += self(issuelist, param, db_sess, top_obj=obj, adm=adm)
 
         if isinstance(obj, models.Ctrl):
             count += self(issuelist, obj.result, db_sess, top_obj=obj, adm=adm)
@@ -292,13 +292,13 @@ class default_value_type_match:  # pylint: disable=invalid-name
 
         return count
 
-    def _iter_call(self, issuelist:List[Issue], container: Iterable, db_sess: orm.Session, adm) -> int:
+    def _iter_call(self, issuelist: List[Issue], container: Iterable, db_sess: orm.Session, adm) -> int:
         count = 0
         for obj in container:
             count += self(issuelist, obj, db_sess, top_obj=obj, adm=adm)
         return count
 
-    def _do_check(self, issuelist:List[Issue], value: str, val_ari: Optional[ari.ARI], typeobj: typing.BaseType, top_obj:models.AdmObjMixin, adm:models.AdmModule) -> int:
+    def _do_check(self, issuelist: List[Issue], value: str, val_ari: Optional[ari.ARI], typeobj: typing.BaseType, top_obj: models.AdmObjMixin, adm: models.AdmModule) -> int:
         ''' Check the root ARI against its needed type '''
         if val_ari is None:
             return 0
