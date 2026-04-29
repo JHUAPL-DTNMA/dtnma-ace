@@ -54,6 +54,14 @@ class TestAriRoundtrip(unittest.TestCase):
         'ari:/TD/PT3H2M10S',
         'ari:/TD/PT3H2M10.1S',
         'ari:/TD/PT3H2M10.001S',
+        # Times - Boundary Edge Cases
+        'ari:/TP/20240102T030405.123456789Z',
+        'ari:/TP/17070922T001243.145224193Z',  # domain minimum
+        'ari:/TP/22920410T234716.854775807Z',  # domain maximum
+        'ari:/TD/PT0.123456789S',  # Minimum positive precision
+        'ari:/TD/-PT0.123456789S',  # Minimum negative precision
+        'ari:/TD/-P106751DT23H47M16.854775807S',  # domain minimum
+        'ari:/TD/P106751DT23H47M16.854775807S',  # domain maximum
         # others
         'ari:/LABEL/test',
         'ari:/CBOR/h\'A164746573748203F94480\'',
@@ -143,6 +151,13 @@ class TestAriRoundtrip(unittest.TestCase):
         # OBJPAT
         "82181884F5F5F5F5",
         "8218188419FFFF84F61A7FFFFFFF0000F5820A185A",
+        # TP
+        "820C82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
+        "820C82281B7FFFFFFFFFFFFFFF",  # domain maximum
+        # TD
+        "820D82283B54AFB946829C721F",  # // ari:/TD/-P70628DT11H15M32.600451616S
+        "820D82283B7FFFFFFFFFFFFFFE",  # domain minimum + 1ns
+        "820D82281B7FFFFFFFFFFFFFFF",  # domain maximum
     )
 
     def test_cbor_text_roundtrip(self):

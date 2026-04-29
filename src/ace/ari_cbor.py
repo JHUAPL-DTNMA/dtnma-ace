@@ -23,12 +23,14 @@
 ''' CODEC for converting ARI to and from CBOR form.
 '''
 import datetime
+import decimal
 import logging
 import numpy
-from typing import Any, BinaryIO, Optional
+from typing import Any, BinaryIO, Optional, Tuple, Union
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, INT_ENVELOPE, ARI, Identity, ReferenceARI, LiteralARI, StructType,
+    DTN_EPOCH, INT_ENVELOPE, check_decfrac,
+    ARI, Identity, ReferenceARI, LiteralARI, StructType,
     Table, ExecutionSet, ReportSet, Report, ObjectRefPattern, apiIntInterval
 )
 from ace.typing import NONCE
@@ -159,7 +161,7 @@ class Decoder:
                 raise TypeError(f"Invalid BYTESTR value: {item}")
             value = item
         elif type_id == StructType.TP:
-            value = self._item_to_timeval(item) + DTN_EPOCH
+            value = self._item_to_timeval(item)
         elif type_id == StructType.TD:
             value = self._item_to_timeval(item)
         elif type_id == StructType.LABEL:
@@ -248,15 +250,18 @@ class Decoder:
     def _item_to_timeval(self, item: Any) -> numpy.timedelta64:
         ''' Extract a time offset value from CBOR item. '''
         if isinstance(item, int):
-            return numpy.timedelta64(item, 's')
+            value = numpy.timedelta64(item, 's')
         elif isinstance(item, list):
+            # require both items are integer
             exp, mant = map(int, item)
-            if exp < -9 or exp > 9:
-                raise ValueError('Decimal fraction exponent outside valid range [-9,9]')
-            total_nsec = mant * 10 ** (exp + 9)
-            return numpy.timedelta64(total_nsec, 'ns')
+            prim = decimal.Decimal(mant).scaleb(exp)
+            value = numpy.timedelta64(check_decfrac(prim), 'ns')
         else:
             raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
+
+        if numpy.isnat(value):
+            raise ValueError('Got not-a-time')
+        return value
 
     def _pattern_part(self, item: Any) -> ObjectRefPattern.PartType:
         if item is True or isinstance(item, str):
@@ -354,9 +359,6 @@ class Encoder:
             item = {self._ari_to_item(key): self._ari_to_item(obj) for key, obj in value.items()}
         elif isinstance(value, Table):
             item = [value.shape[1]] + list(map(self._ari_to_item, value.flat))
-        elif isinstance(value, numpy.datetime64):
-            diff = value - DTN_EPOCH
-            item = self._timeval_to_item(diff)
         elif isinstance(value, numpy.timedelta64):
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
@@ -373,7 +375,7 @@ class Encoder:
                 rpts_item.append(rpt_item)
             item = [
                 self._ari_to_item(value.nonce),
-                self._val_to_item(value.ref_time)
+                self._val_to_item(value.ref_time - DTN_EPOCH)
             ] + rpts_item
         elif isinstance(value, ObjectRefPattern):
             item = [
@@ -386,7 +388,7 @@ class Encoder:
             item = value
         return item
 
-    def _timeval_to_item(self, diff):
+    def _timeval_to_item(self, diff: numpy.timedelta64) -> Union[int, Tuple[int, int]]:
         total_nsec = int(diff // numpy.timedelta64(1, 'ns'))
 
         mant = total_nsec
