@@ -565,6 +565,9 @@ class TypeUse(SemType):
         # extract the value before checks
         if self.base:
             obj = self.base.get(obj)
+        else:
+            LOGGER.warning('Unbound type use for %s', self.type_text)
+
         if obj is not None:
             invalid = self._constrain(obj)
             if invalid:
@@ -576,8 +579,12 @@ class TypeUse(SemType):
     def convert(self, obj: ARI) -> ARI:
         if is_undefined(obj):
             return obj
+
         if self.base:
             obj = self.base.convert(obj)
+        else:
+            LOGGER.warning('Unbound type use for %s', self.type_text)
+
         invalid = self._constrain(obj)
         if invalid:
             err = ', '.join(invalid)
