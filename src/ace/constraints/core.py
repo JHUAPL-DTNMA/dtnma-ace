@@ -24,6 +24,7 @@
 '''
 from dataclasses import dataclass
 import logging
+from typing import Callable, List
 from ace import models
 
 LOGGER = logging.getLogger(__name__)
@@ -110,7 +111,7 @@ class Checker:
                     check_count, len(allissues))
         return allissues
 
-    def _add_result(self, issuelist, check_count, cst_name, cst, adm):
+    def _add_result(self, issuelist: List[Issue], check_count: int, cst_name:str, cst:Callable, adm: models.AdmModule):
         LOGGER.debug('Running constraint check: %s', cst_name)
         count = cst(issuelist, adm, self._db_sess) or 0
         check_count += count
