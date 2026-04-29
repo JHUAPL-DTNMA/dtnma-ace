@@ -77,7 +77,7 @@ jobs:
       - name: Prep
         run: pip3 install '.[test]'
       - name: Test
-        run: python3 -m pytest -v --cov=ace tests
+        run: python3 -m pytest -v --cov=ace
 
   release:
     needs: [unit-test]

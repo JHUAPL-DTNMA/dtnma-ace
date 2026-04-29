@@ -38,14 +38,14 @@ jobs:
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
           submodules: recursive
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.12'
       - name: Prep
         run: pip3 install '.[test]'
       - name: Test
-        run: python3 -m pytest -v --cov=ace tests
+        run: python3 -m pytest -v --cov=ace
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v7
         env:
