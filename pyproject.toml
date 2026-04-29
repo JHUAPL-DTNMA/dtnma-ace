@@ -60,7 +60,7 @@ addopts = [
     "--import-mode=importlib",
 ]
 testpaths = [
-    "tests",
+    "test",
 ]
 
 [tool.coverage.run]
