@@ -491,10 +491,8 @@ class Decoder:
                         def_stmt = param_stmt.search_one((AMM_MOD, 'default'))
                         if def_stmt:
                             item.default_value = def_stmt.arg
-                            # actually check the content
+                            # actually check the syntax
                             item.default_ari = self._get_ari(def_stmt.arg)
-                            if item.typeobj.get(item.default_ari) is not None:
-                                item.default_ari = item.typeobj.convert(item.default_ari)
                     except Exception as err:
                         raise RuntimeError(f'Failure in default value "{def_stmt.arg}": {err}') from err
 
@@ -530,10 +528,8 @@ class Decoder:
             value_stmt = stmt.search_one((AMM_MOD, 'init-value'))
             if value_stmt:
                 obj.init_value = value_stmt.arg
-                # actually check the content
+                # actually check the syntax
                 obj.init_ari = self._get_ari(value_stmt.arg)
-                if obj.typeobj.get(obj.init_ari) is not None:
-                    obj.init_ari = obj.typeobj.convert(obj.init_ari)
             elif cls is Const:
                 LOGGER.warning('const "%s" is missing init-value substatement', stmt.arg)
 

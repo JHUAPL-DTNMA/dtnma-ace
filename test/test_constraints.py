@@ -294,5 +294,5 @@ class TestConstraintsBasic(BaseTest):
             module_name='example-adm-a',
             check_name='ace.constraints.basic.default_value_type_match',
             obj_ref=ctrl,
-            detail_re=r'Within the object named "control_a" the default value "123" does not match the associated type',
+            detail_re=r'Within the object named "control_a" the value "123" does not match the associated type',
         )
