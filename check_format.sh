@@ -25,8 +25,7 @@ set -e
 ./apply_format.sh
 ./apply_license.sh
 
-changed=$(git status --porcelain=1)
-if [ -n "${changed}" ]; then
+if ! git diff --quiet; then
   echo "Error: Files changed after formatting:"
   git diff
   exit 1

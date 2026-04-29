@@ -40,7 +40,7 @@ LICENSEOPTS="${LICENSEOPTS} --years 2020-2026"
 
 
 # Specific paths
-if [ "$#" -gt 0 ]
+if [[ "$#" -gt 0 ]]
 then
     echo "Applying markings to selected $@ ..."
     licenseheaders ${LICENSEOPTS} --dir $@
