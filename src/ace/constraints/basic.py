@@ -168,7 +168,8 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _check_typeobj(self, issuelist: List[Issue], top_obj, ctr: models.TypeUseMixin, db_sess: orm.Session, adm: models.AdmModule):
+    def _check_typeobj(self, issuelist: List[Issue], top_obj, ctr: models.TypeUseMixin,
+                       db_sess: orm.Session, adm: models.AdmModule):
         ''' Verify a single named type. '''
         typeobj = ctr.typeobj
         if not typeobj:
@@ -196,7 +197,8 @@ class valid_reference_ari:  # pylint: disable=invalid-name
     :py:cls:`valid_type_name` so not handled here.
     '''
 
-    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session, top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
+    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session,
+                 top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
         ''' Entrypoint for this functor. '''
         count = 0
         if isinstance(obj, models.AdmModule):
@@ -216,16 +218,16 @@ class valid_reference_ari:  # pylint: disable=invalid-name
 
         if isinstance(obj, (models.Const, models.Var)):
             # actual check on init value
-            count += self._do_check(issuelist, obj.init_value, obj.init_ari, obj, adm, db_sess)
+            count += self._do_check(issuelist, obj.init_value, obj.init_ari, obj, db_sess)
         elif isinstance(obj, models.Sbr):
-            count += self._do_check(issuelist, obj.action_value, obj.action_ari, obj, adm, db_sess)
-            count += self._do_check(issuelist, obj.condition_value, obj.condition_ari, obj, adm, db_sess)
+            count += self._do_check(issuelist, obj.action_value, obj.action_ari, obj, db_sess)
+            count += self._do_check(issuelist, obj.condition_value, obj.condition_ari, obj, db_sess)
         elif isinstance(obj, models.Tbr):
-            count += self._do_check(issuelist, obj.action_value, obj.action_ari, obj, adm, db_sess)
+            count += self._do_check(issuelist, obj.action_value, obj.action_ari, obj, db_sess)
 
         if isinstance(obj, models.TypeNameItem):
             # actual check on default
-            count += self._do_check(issuelist, obj.default_value, obj.default_ari, top_obj, adm, db_sess)
+            count += self._do_check(issuelist, obj.default_value, obj.default_ari, top_obj, db_sess)
 
         return count
 
@@ -235,7 +237,8 @@ class valid_reference_ari:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _do_check(self, issuelist: List[Issue], _value: str, val_ari: Optional[ari.ARI], top_obj: models.AdmObjMixin, adm: models.AdmModule, db_sess: orm.Session) -> int:
+    def _do_check(self, issuelist: List[Issue], _value: str, val_ari: Optional[ari.ARI],
+                  top_obj: models.AdmObjMixin, db_sess: orm.Session) -> int:
         ''' Walk the ARI for any internal references '''
         if val_ari is None:
             return 0
@@ -264,7 +267,8 @@ class default_value_type_match:  # pylint: disable=invalid-name
     for Const and Var objects.
     '''
 
-    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session, top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
+    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session,
+                 top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
         ''' Entrypoint for this functor. '''
         count = 0
         if isinstance(obj, models.AdmModule):
@@ -298,7 +302,8 @@ class default_value_type_match:  # pylint: disable=invalid-name
             count += self(issuelist, obj, db_sess, top_obj=obj, adm=adm)
         return count
 
-    def _do_check(self, issuelist: List[Issue], value: str, val_ari: Optional[ari.ARI], typeobj: typing.BaseType, top_obj: models.AdmObjMixin, adm: models.AdmModule) -> int:
+    def _do_check(self, issuelist: List[Issue], value: str, val_ari: Optional[ari.ARI],
+                  typeobj: typing.BaseType, top_obj: models.AdmObjMixin, adm: models.AdmModule) -> int:
         ''' Check the root ARI against its needed type '''
         if val_ari is None:
             return 0
