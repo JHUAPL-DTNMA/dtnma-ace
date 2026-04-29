@@ -201,7 +201,6 @@ class IdentRefBase(Constraint):
             db_sess = object_session(self.base_ident)
 
             def match_base(ref: ARI):
-                print('check base', ref)
                 try:
                     got_ident = dereference(ref, db_sess)
                 except TypeError:

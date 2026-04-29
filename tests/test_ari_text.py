@@ -23,7 +23,6 @@
 ''' Verify behavior of the ace.ari_text module tree.
 '''
 import base64
-import datetime
 import io
 import logging
 import math
@@ -32,7 +31,7 @@ import numpy
 from ace.ari import (
     apiIntInterval,
     ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern
+    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
 )
 from ace import ari_text
 
@@ -113,10 +112,10 @@ class TestAriText(unittest.TestCase):
         ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
         ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
         # Times
-        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05')),
-        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),  # with formatting
-        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25')),
-        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05'), 'ari:/TP/20230102T030405Z'),
+        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH),
+        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),  # with formatting
+        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25') - DTN_EPOCH),
+        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),
         ('ari:/TD/PT3H', numpy.timedelta64(3, 'h')),
         ('ari:/TD/PT10.001S', numpy.timedelta64(10001, 'ms')),
         ('ari:/TD/PT10.25S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
@@ -126,6 +125,8 @@ class TestAriText(unittest.TestCase):
         ('ari:/TD/-PT3H', -numpy.timedelta64(3, 'h')),
         ('ari:/TD/100', numpy.timedelta64(100, 's'), 'ari:/TD/PT1M40S'),
         ('ari:/TD/1.5', numpy.timedelta64(1500, 'ms'), 'ari:/TD/PT1.5S'),
+        ('ari:/TD/-P106751DT23H47M16.854775807S', numpy.timedelta64(-(2**63 - 1), 'ns')),  # domain minimum
+        ('ari:/TD/P106751DT23H47M16.854775807S', numpy.timedelta64(2**63 - 1, 'ns')),  # domain maximum
         # Extras
         ('ari:/LABEL/test', 'test'),
         ('ari:/LABEL/null', 'null'),
@@ -208,7 +209,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
@@ -224,7 +225,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/other;(null))',
             ReportSet(
                 nonce=LiteralARI(1234),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
@@ -240,7 +241,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=tuple()
             )
         ),
@@ -248,7 +249,7 @@ class TestAriText(unittest.TestCase):
             'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=datetime.datetime(2024, 1, 2, 3, 4, 5),
+                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
                 reports=(
                     Report(
                         rel_time=numpy.timedelta64(0, 's'),
@@ -296,8 +297,12 @@ class TestAriText(unittest.TestCase):
     LITERAL_OPTIONS = (
         ('1000', dict(int_base=2), 'ari:0b1111101000'),
         ('1000', dict(int_base=16), 'ari:0x3E8'),
-        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845.'),
-        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800.'),
+        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845'),
+        ('/TP/17070922T001243.145224193Z', dict(time_text=False), 'ari:/TP/-9223372036.854775807'),  # domain minimum
+        ('/TP/22920410T234716.854775807Z', dict(time_text=False), 'ari:/TP/9223372036.854775807'),  # domain maximum
+        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800'),
+        ('ari:/TD/-P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/-9223372036.854775807'),  # domain minimum
+        ('ari:/TD/P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/9223372036.854775807'),  # domain maximum
         ('1e3', dict(float_form='g'), 'ari:1000.0'),
         ('1e3', dict(float_form='f'), 'ari:1000.000000'),
         ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
@@ -982,13 +987,13 @@ class TestAriText(unittest.TestCase):
 
     def test_ari_text_decode_lit_typed_tp(self):
         TEST_CASE = [
-            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20')),
-            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20')),
-            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5')),
-            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001')),
-            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001')),
+            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
+            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
+            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
+            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001') - DTN_EPOCH),
+            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001') - DTN_EPOCH),
         ]
 
         dec = ari_text.Decoder()
@@ -1023,6 +1028,28 @@ class TestAriText(unittest.TestCase):
                 LOGGER.info('Got ARI %s', ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
+
+    def test_decfrac_out_of_bounds_fails(self):
+        invalid_cases = [
+            'ari:/TP/17070922T001243.145224192Z',  # domain minimum
+            'ari:/TP/22920410T234716.854775808Z',  # domain maximum
+            'ari:/TP/9223372036.854775808',   # +1ns over limit
+            'ari:/TP/-9223372036.854775809',  # -1ns over limit
+            'ari:/TP/10000000000.0',          # Magnitude too large
+            'ari:/TP/0.0000000001',           # Too much precision (10th decimal)
+            'ari:/TD/-P106751DT23H47M16.854775808S',  # domain minimum
+            'ari:/TD/P106751DT23H47M16.854775808S',  # domain maximum
+            'ari:/TD/9223372036.854775808',   # +1ns over limit
+            'ari:/TD/-9223372036.854775809',  # -1ns over limit
+            'ari:/TD/0.0000000001',           # Too much precision (10th decimal)
+        ]
+
+        text_dec = ari_text.Decoder()
+        for text in invalid_cases:
+            with self.subTest(f"Should fail: {text}"):
+                with self.assertRaises(RuntimeError):
+                    ari = text_dec.decode(io.StringIO(text))
+                    LOGGER.error('Got ARI %s', ari)
 
     def test_ari_text_decode_lit_typed_ac(self):
         TEST_CASE = [
@@ -1103,7 +1130,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_lit_typed_rptset(self):
         TEST_CASE = [
             ("ari:/RPTSET/n=1234;r=725943845;(t=0;s=//example/test/CTRL/hi;())", int, 1),
-            ("ari:/RPTSET/n=1234;r=725943845;(t=0.0;s=//example/test/CTRL/hi;())", int, 1),
+            ("ari:/RPTSET/n=1234;r=725943845;(t=/TD/0.0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
@@ -1492,3 +1519,23 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     dec.decode(io.StringIO(text))
+
+    def test_invalid_decimal_fractions(self):
+        decoder = ari_text.Decoder()
+
+        invalid_cases = [
+            # Magnitude errors (1ns beyond the 64-bit signed limit)
+            'ari:/TD/9223372036.854775808',
+            'ari:/TD/-9223372036.854775809',
+            # Precision errors (sub-nanosecond values)
+            'ari:/TP/20240101T000000.0000000001Z',
+            'ari:/TD/0.1234567891',
+            # Extreme magnitude
+            'ari:/TD/100000000000.0'
+        ]
+
+        for text in invalid_cases:
+            with self.subTest(text=text):
+                with self.assertRaises(RuntimeError):
+                    ari = decoder.decode(io.StringIO(text))
+                    LOGGER.error('Got ARI %s', ari)

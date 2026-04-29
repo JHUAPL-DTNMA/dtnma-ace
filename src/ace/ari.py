@@ -26,6 +26,7 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 import copy
 import datetime
 from dataclasses import dataclass, field
+import decimal
 import enum
 import math
 import portion
@@ -97,7 +98,7 @@ class ExecutionSet:
 @dataclass(frozen=True)
 class Report:
     ''' Internal representation of Report data. '''
-    rel_time: datetime.timedelta
+    rel_time: numpy.timedelta64
     ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
     value. '''
     source: 'ARI'
@@ -111,7 +112,7 @@ class ReportSet:
     ''' Internal representation of Report-Set data. '''
     nonce: 'LiteralARI'
     ''' Optional nonce value '''
-    ref_time: datetime.datetime
+    ref_time: numpy.datetime64
     ''' The reference time for all contained Report relative-times. '''
     reports: Tuple['Report']
     ''' The contained Reports '''
@@ -239,20 +240,24 @@ UndefinedPrimitiveType = type(cbor2.undefined)
 NoneType = type(None)
 ''' Alias to the type for native None value '''
 
+TimePrimitiveType = Union[numpy.timedelta64, decimal.Decimal, int]
+''' Primitive type for TP and TD values.
+TP as offset from :py:data:`DTN_EPOCH` and TD as relative offset.
+'''
 AriListType = Tuple[ARI]
-''' Type for AC, parameter list, and similar values '''
+''' Primitive type for AC, parameter list, and similar values '''
 AriMapType = Dict['LiteralARI', ARI]
-''' Type for AM, parameter map, and similar values '''
+''' Primitive type for AM, parameter map, and similar values '''
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,
     # enumerated types
     NoneType, bool,
-    # numbers
+    # primitive numbers
     int, float,
-    # strings
+    # primitive strings
     str, bytes,
-    # times
-    numpy.datetime64, numpy.timedelta64,
+    # times values
+    TimePrimitiveType,
     # containers
     AriListType, AriMapType, Table, ExecutionSet, ReportSet, ObjectRefPattern
 ]
@@ -431,6 +436,32 @@ def as_bool(val: ARI) -> bool:
     if isinstance(val, LiteralARI) and val.value in {True, False}:
         return val.value
     raise ValueError('as_bool given non-boolean value')
+
+
+def check_decfrac(val: decimal.Decimal) -> int:
+    """
+    Validates decimal fraction bounds for TP and TD types.
+    Limits: -2^63 / 10^9 to (2^63 - 1) / 10^9
+
+    :param val: The value to check.
+    :return: The value converted to scale 10^-9 (nanoseconds)
+    """
+    # 64-bit Signed Nano-range
+    MIN_NS = -(2**63)
+    MAX_NS = 2**63 - 1
+
+    val_ns = val.scaleb(9)
+
+    # Precision Check: Ensure no sub-nanosecond remainders
+    if val_ns != val_ns.to_integral_value():
+        raise ValueError("Sub-nanosecond precision not allowed")
+
+    # Range Check
+    int_ns = int(val_ns)
+    if not (MIN_NS <= int_ns <= MAX_NS):
+        raise ValueError("Decimal fraction out of 64-bit nanosecond range")
+
+    return int_ns
 
 
 @dataclass(frozen=True)
