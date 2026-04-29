@@ -24,12 +24,13 @@
 '''
 import base64
 import datetime
+import decimal
 import logging
 import re
 from typing import List
 import numpy
 import cbor_diag
-from ace.ari import INT_ENVELOPE, UNDEFINED, StructType
+from ace.ari import INT_ENVELOPE, UNDEFINED, DTN_EPOCH, StructType
 
 LOGGER = logging.getLogger(__name__)
 
@@ -85,7 +86,8 @@ def t_bool(found):
 
 @TypeMatch.apply(r'([+-])?(\d*)\.(\d*)')
 def t_decfrac(found):
-    return float(found[0])
+    # text conversion happens in constructor
+    return decimal.Decimal(found[0])
 
 
 # float either contains a decimal point or exponent or both
@@ -208,27 +210,45 @@ def part_to_int(digits):
         return 0
 
 
-def subsec_to_nanoseconds(digits):
-    ''' Convert subseconds text into nanoseconds, defaulting to zero. '''
+def subsec_to_nanoseconds(digits: str) -> int:
+    ''' Convert sub-seconds text (after decimal point) into nanoseconds,
+    defaulting to zero if the text is empty.
+    '''
     if digits:
-        return int(digits) * 10 ** (9 - len(digits))
+        length = len(digits)
+        if length > 9:
+            raise ValueError('too many decimal digits')
+        return int(digits) * 10 ** (9 - length)
     else:
         return 0
 
 
-@TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d{1,6}))?Z')
+@TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d+))?Z')
 def t_timepoint(found):
-    exp = f"{found.group('yr')}-{found.group('mon')}-{found.group('dom')}T{found.group('H')}:{found.group('M')}:{found.group('S')}"
-    nsec = found.group('SS')
+    # seconds-scale processing with datetime
+    secs = datetime.datetime(
+        year=part_to_int(found.group('yr')),
+        month=part_to_int(found.group('mon')),
+        day=part_to_int(found.group('dom')),
+        hour=part_to_int(found.group('H')),
+        minute=part_to_int(found.group('M')),
+        second=part_to_int(found.group('S')),
+    )
+    # subseconds separately
+    nsec = subsec_to_nanoseconds(found.group('SS'))
+
+    value = numpy.timedelta64(secs - DTN_EPOCH.item())
     if nsec:
-        exp += "." + found.group('SS')
-    value = numpy.datetime64(exp)
+        value += numpy.timedelta64(nsec, 'ns')
+
+    if numpy.isnat(value):
+        raise ValueError('Got not-a-time')
     return value
 
 
-@TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d{1,9}))?S)?')
+@TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d+))?S)?')
 def t_timeperiod(found):
-    neg = found.group('sign') == '-'
+    neg = (found.group('sign') == '-')
     day = part_to_int(found.group('D'))
     hour = part_to_int(found.group('H'))
     minute = part_to_int(found.group('M'))
@@ -241,8 +261,15 @@ def t_timeperiod(found):
         + numpy.timedelta64(second, 's')
         + numpy.timedelta64(nsec, 'ns')
     )
+    if value < 0:
+        # internal overflow
+        raise ValueError('Got overflow')
+
     if neg:
         value = -value
+
+    if numpy.isnat(value):
+        raise ValueError('Got not-a-time')
     return value
 
 

@@ -23,6 +23,7 @@
 ''' CODEC for converting ARI to and from text URI form.
 '''
 from dataclasses import dataclass
+import datetime
 import logging
 import math
 from typing import List, Dict, TextIO
@@ -30,8 +31,9 @@ import numpy
 import urllib.parse
 import cbor2
 from ace.ari import (
+    DTN_EPOCH,
     StructType, IntInterval, ARI, LiteralARI, ReferenceARI,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
+    ExecutionSet, ReportSet, Report, ObjectRefPattern
 )
 from ace.cborutil import to_diag
 from .util import t_identity, SINGLETONS
@@ -48,20 +50,31 @@ def percent_encode(text):
     return urllib.parse.quote(text, safe="'")
 
 
-TP_TRANS = str.maketrans({'-': '', ':': ''})
-
-
-def encode_datetime(value):
-    text = str(value).translate(TP_TRANS)
-    text = text.split('.')
-    if len(text) > 1:
-        text[1] = text[1].rstrip('0')
-    text = '.'.join(text).rstrip('.')
-    text += 'Z'
+def encode_decfrac(value: numpy.timedelta64) -> str:
+    diff_ns = value // numpy.timedelta64(1, 'ns')
+    digits_ns = str(diff_ns)
+    subsec = digits_ns[-9:].rstrip('0')
+    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
     return text
 
 
-def encode_timedelta(value):
+def encode_datetime(value: numpy.timedelta64) -> str:
+    ''' Encode a human-friendly offset from DTN_EPOCH. '''
+    delta_secs = int(value // numpy.timedelta64(1, 's'))
+    delta_subsec = (value - numpy.timedelta64(delta_secs, 's')) // numpy.timedelta64(1, 'ns')
+
+    secs = DTN_EPOCH.item() + datetime.timedelta(seconds=delta_secs)
+
+    text = secs.strftime('%Y%m%dT%H%M%S')
+    if delta_subsec:
+        text += '.' + str(delta_subsec).rstrip('0')
+    text += 'Z'
+
+    return text
+
+
+def encode_timedelta(value: numpy.timedelta64) -> str:
+    ''' Encode a human-friendly time delta '''
     if value == 0:
         return 'PT0S'
     neg = value < 0
@@ -163,16 +176,14 @@ class Encoder:
                     text = encode_datetime(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = (obj.value - DTN_EPOCH) / numpy.timedelta64(1, 's')
-                    text = f'{diff:.9f}'.rstrip('0')
+                    text = encode_decfrac(obj.value)
                     buf.write(text)
             elif obj.type_id is StructType.TD:
                 if self._options.time_text:
                     text = encode_timedelta(obj.value)
                     buf.write(percent_encode(text))
                 else:
-                    diff = obj.value / numpy.timedelta64(1, 's')
-                    text = f'{diff:.9f}'.rstrip('0')
+                    text = encode_decfrac(obj.value)
                     buf.write(text)
             elif obj.type_id is StructType.LABEL:
                 # no need to percent_encode identity
@@ -200,7 +211,7 @@ class Encoder:
             elif isinstance(obj.value, ReportSet):
                 params = {
                     'n': obj.value.nonce,
-                    'r': LiteralARI(obj.value.ref_time, StructType.TP),
+                    'r': LiteralARI(obj.value.ref_time - DTN_EPOCH, StructType.TP),
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)

@@ -61,8 +61,8 @@ class TestAriCbor(unittest.TestCase):
         # BYTESTR
         (cbor2.dumps(b'hi'), b'hi'),
         # Times
-        (cbor2.dumps([StructType.TP, 101]), (ari_cbor.DTN_EPOCH + numpy.timedelta64(101, 's'))),
-        (cbor2.dumps([StructType.TP, [3, 1]]), (ari_cbor.DTN_EPOCH + numpy.timedelta64(1000, 's'))),
+        (cbor2.dumps([StructType.TP, 101]), numpy.timedelta64(101, 's')),
+        (cbor2.dumps([StructType.TP, [3, 1]]), numpy.timedelta64(1000, 's')),
         (cbor2.dumps([StructType.TD, 18]), numpy.timedelta64(18, 's')),
         (cbor2.dumps([StructType.TD, -18]), -numpy.timedelta64(18, 's')),
         # OBJPAT
