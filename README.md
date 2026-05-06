@@ -63,11 +63,11 @@ If you are still encountering installation errors, please refer to the Troublesh
 If you are a developer seeking to do unit testing, you can run the following two commands to install the dependencies for unit tests and then run said unit tests to see if any are failing:
 ```
 pip3 install -e '.[test]'
-python3 -m pytest -v --cov=ace tests
+python3 -m pytest -v --cov=ace test
 ```
 You can also run this command to only run one unit test within a test file, which can save time:
 ```
-python3 -m pytest -v tests/<file name>.py -k '<unit test name>'
+python3 -m pytest -v test/<file name>.py -k '<unit test name>'
 ```
 
 When running either of the pytest commands above, it is ideal to include the explicit environment variable `PYTHONPATH=src/` at the start of the command. It is not always necessary, but if you have an older version of ACE somewhere in your paths, it can negatively affect importing modules/packages.
@@ -98,7 +98,7 @@ It can also be beneficial to run `pip install .` every time before running unit 
 
 An example of using the ARI transcoder, from the source tree, to convert from text to binary form is:
 ```
-echo 'ari:/EXECSET/n=123;(//ietf/dtnma-agent/CTRL/inspect(//ietf/dtnma-agent/EDD/sw-version))' | PYTHONPATH=./src ADM_PATH=./tests/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex
+echo 'ari:/EXECSET/n=123;(//ietf/dtnma-agent/CTRL/inspect(//ietf/dtnma-agent/EDD/sw-version))' | PYTHONPATH=./src ADM_PATH=./test/adms python3 -m ace.tools.ace_ari --inform=text --outform=cborhex
 ```
 which will produce a hexadecimal output:
 ```

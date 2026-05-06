@@ -32,15 +32,16 @@
 set -e
 
 SELFDIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
+cd "${SELFDIR}"
 
-LICENSEOPTS="${LICENSEOPTS} --tmpl ${SELFDIR}/apply_license.tmpl"
+LICENSEOPTS="${LICENSEOPTS} --tmpl apply_license.tmpl"
 LICENSEOPTS="${LICENSEOPTS} --years 2020-2026"
 # Excludes only apply to directory (--dir) mode and not file mode
 #LICENSEOPTS="${LICENSEOPTS} --exclude *.yml *.yaml *.min. "
 
 
 # Specific paths
-if [ "$#" -gt 0 ]
+if [[ "$#" -gt 0 ]]
 then
     echo "Applying markings to selected $@ ..."
     licenseheaders ${LICENSEOPTS} --dir $@
@@ -48,4 +49,4 @@ then
 fi
 
 echo "Applying markings to source..."
-licenseheaders ${LICENSEOPTS} --dir ${SELFDIR}
+licenseheaders ${LICENSEOPTS} --dir .

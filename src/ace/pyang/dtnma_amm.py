@@ -194,10 +194,6 @@ def pyang_plugin_init():
         'AMM_DOC_DESCRIPTION', 4,  # warning
         "A description should be present under %s statement \"%s\""
     )
-    error.add_error_code(
-        'AMM_DOC_REFERENCE', 4,  # warning
-        "A reference should be present under %s statement \"%s\""
-    )
 
 
 @dataclass
@@ -765,7 +761,4 @@ def _stmt_check_enum_unique(ctx: context.Context, stmt: statements.Statement):
 def _stmt_check_documentation(ctx: context.Context, stmt: statements.Statement):
     if stmt.search_one('description') is None:
         error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_DESCRIPTION',
-                      (keyword_to_str(stmt.keyword), stmt.arg))
-    if stmt.search_one('reference') is None and False:
-        error.err_add(ctx.errors, stmt.pos, 'AMM_DOC_REFERENCE',
                       (keyword_to_str(stmt.keyword), stmt.arg))
