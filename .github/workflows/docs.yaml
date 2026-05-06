@@ -80,7 +80,10 @@ jobs:
           name: docs
           path: docs/_build/
       - name: Decompress
-        run: cd docs/_build && tar -xf html.tar
+        working-directory: docs/_build
+        run: |
+          tar -xf html.tar
+          rm html.tar
       - name: Setup Pages
         uses: actions/configure-pages@v6
       - name: Upload artifact
