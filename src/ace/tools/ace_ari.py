@@ -61,6 +61,7 @@ def get_parser() -> argparse.ArgumentParser:
                         help='Require that a nickname exist when converting from text.')
     return parser
 
+
 def _decode_text(srcname: str) -> Iterable[ARI]:
     infile = sys.stdin if srcname == '-' else open(srcname, 'r', encoding="utf-8")
     # Assume that each line is a new ARI, but handle cases where line breaks are present in text literals
@@ -86,11 +87,13 @@ def _decode_text(srcname: str) -> Iterable[ARI]:
 
     infile.close()
 
+
 def _decode_cbor(srcname: str) -> Iterable[ARI]:
     infile = sys.stdin.buffer if srcname == '-' else open(srcname, 'rb')
     while infile.peek(1):
         yield ari_cbor.Decoder().decode(infile)
     infile.close()
+
 
 def _decode_cborhex(srcname: str) -> Iterable[ARI]:
     infile = sys.stdin if srcname == '-' else open(srcname, 'r', encoding="utf-8")
@@ -99,6 +102,7 @@ def _decode_cborhex(srcname: str) -> Iterable[ARI]:
         buf = io.BytesIO(cborutil.from_hexstr(indata))
         yield ari_cbor.Decoder().decode(buf)
     infile.close()
+
 
 def decode(args: argparse.Namespace) -> Iterable[ARI]:
     ''' Decode the ARI from the specified form directly from the input.

@@ -221,7 +221,7 @@ class TestAriRoundtrip(unittest.TestCase):
                 sys.stdin = io.StringIO(cborhex_in)
                 stdout = io.StringIO()
                 with redirect_stdout(stdout), self.assertRaises(ari_cbor.ParseError):
-                        ace_ari.run(args)
+                    ace_ari.run(args)
                 text_out = stdout.getvalue()
                 LOGGER.info('Got text %s', text_out)
                 self.assertEqual(part_out, text_out)
@@ -234,13 +234,13 @@ class TestAriRoundtrip(unittest.TestCase):
     def test_text_to_cborhex_invalid(self):
         for text_in, part_out in self.INVALID_TEXTS:
             LOGGER.info('Testing text %s', text_in)
-    
+
             args = argparse.Namespace(
-                inform = 'uri',
-                input = '-',
-                outform = 'cborhex',
-                output = '-',
-                must_nickname = True,
+                inform='uri',
+                input='-',
+                outform='cborhex',
+                output='-',
+                must_nickname=True,
             )
             sys.stdin = io.StringIO(text_in)
             stdout = io.StringIO()
