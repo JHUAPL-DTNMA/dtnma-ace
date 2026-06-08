@@ -46,12 +46,12 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--log-level', choices=('debug', 'info', 'warning', 'error'),
                         default='info',
                         help='The minimum log severity.')
-    parser.add_argument('--inform', choices=('text', 'cbor', 'cborhex'),
+    parser.add_argument('--inform', choices=('uri', 'text', 'cbor', 'cborhex'),
                         default='text',
                         help='The input encoding.')
     parser.add_argument('--input', default='-',
                         help='The input file or "-" for stdin stream.')
-    parser.add_argument('--outform', choices=('text', 'cbor', 'cborhex'),
+    parser.add_argument('--outform', choices=('uri', 'text', 'cbor', 'cborhex'),
                         default='cbor',
                         help='The desired output encoding.')
     parser.add_argument('--output', default='-',
@@ -68,7 +68,7 @@ def decode(args: argparse.Namespace):
     :return: An iterable for the ARI items.
     '''
     # pylint: disable=consider-using-with
-    if args.inform == 'text':
+    if args.inform in {'uri', 'text'}:
         infile = sys.stdin if args.input == '-' else open(args.input, 'r', encoding="utf-8")
         # Assume that each line is a new ARI, but handle cases where line breaks are present in text literals
         buffer = io.StringIO()
@@ -106,6 +106,9 @@ def decode(args: argparse.Namespace):
             buf = io.BytesIO(cborutil.from_hexstr(indata))
             yield ari_cbor.Decoder().decode(buf)
         infile.close()
+
+    else:
+        raise ValueError(f'Invalid inform {args.inform}')
     # pylint: enable=consider-using-with
 
 
@@ -116,7 +119,7 @@ def encode(args: argparse.Namespace, ari):
     :param ari: The single ARI to encode.
     '''
     # pylint: disable=consider-using-with
-    if args.outform == 'text':
+    if args.outform in {'uri', 'text'}:
         outfile = sys.stdout if args.output == '-' else open(args.output, 'w', encoding="utf-8")
         ari_text.Encoder().encode(ari, outfile)
         outfile.write('\n')
@@ -130,6 +133,8 @@ def encode(args: argparse.Namespace, ari):
         outfile = sys.stdout if args.output == '-' else open(args.output, 'w', encoding="utf-8")
         outfile.write(cborutil.to_hexstr(buf.getvalue()))
         outfile.write('\n')
+    else:
+        raise ValueError(f'Invalid outform {args.outform}')
     # pylint: enable=consider-using-with
 
 
