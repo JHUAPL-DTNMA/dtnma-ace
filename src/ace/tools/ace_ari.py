@@ -33,7 +33,7 @@ import argparse
 import io
 import logging
 import sys
-from typing import Iterable, Tuple
+from typing import Iterable
 from ace import ari_text, ari_cbor, cborutil, nickname, ARI, AdmSet, Checker
 
 LOGGER = logging.getLogger(__name__)

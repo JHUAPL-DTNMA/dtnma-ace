@@ -31,7 +31,7 @@ import sys
 import unittest
 from ace.tools import ace_ari
 from ace import ari_text, ari_cbor, cborutil
-from ace.ari import ARI, ReferenceARI
+from ace.ari import ARI
 from .util import TmpDir
 
 LOGGER = logging.getLogger(__name__)
