@@ -33,7 +33,8 @@ import argparse
 import io
 import logging
 import sys
-from ace import ari_text, ari_cbor, cborutil, nickname, AdmSet, Checker
+from typing import Iterable
+from ace import ari_text, ari_cbor, cborutil, nickname, ARI, AdmSet, Checker
 
 LOGGER = logging.getLogger(__name__)
 
@@ -46,14 +47,14 @@ def get_parser() -> argparse.ArgumentParser:
     parser.add_argument('--log-level', choices=('debug', 'info', 'warning', 'error'),
                         default='info',
                         help='The minimum log severity.')
-    parser.add_argument('--inform', choices=('text', 'cbor', 'cborhex'),
-                        default='text',
-                        help='The input encoding.')
+    parser.add_argument('--inform', choices=('auto', 'uri', 'text', 'cbor', 'cborhex'),
+                        default='auto',
+                        help='The input encoding, or "auto" to detect based on the input.')
     parser.add_argument('--input', default='-',
                         help='The input file or "-" for stdin stream.')
-    parser.add_argument('--outform', choices=('text', 'cbor', 'cborhex'),
-                        default='cbor',
-                        help='The desired output encoding.')
+    parser.add_argument('--outform', choices=('auto', 'uri', 'text', 'cbor', 'cborhex'),
+                        default='auto',
+                        help='The desired output encoding, or "auto" to alternate from the input.')
     parser.add_argument('--output', default='-',
                         help='The output file or "-" for stdout stream.')
     parser.add_argument('--must-nickname', action='store_true', default=False,
@@ -61,62 +62,95 @@ def get_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def decode(args: argparse.Namespace):
-    ''' Decode the ARI from the specified form.
+def _decode_text(srcname: str) -> Iterable[ARI]:
+    infile = sys.stdin if srcname == '-' else open(srcname, 'r', encoding="utf-8")
+    # Assume that each line is a new ARI, but handle cases where line breaks are present in text literals
+    buffer = io.StringIO()
+    last_err = None
+    for line in infile:
+        buffer.seek(0, io.SEEK_END)
+        buffer.write(line)
+        buffer.seek(0)
+
+        try:
+            ari = ari_text.Decoder().decode(buffer)
+            buffer = io.StringIO()
+            last_err = None
+            yield ari
+        except ari_text.ParseError as err:
+            # leave the buffer lines and just add the next one
+            last_err = err
+
+    if last_err:
+        # Propagate the error from the last failure
+        raise last_err
+
+    infile.close()
+
+
+def _decode_cbor(srcname: str) -> Iterable[ARI]:
+    infile = sys.stdin.buffer if srcname == '-' else open(srcname, 'rb')
+    while infile.peek(1):
+        yield ari_cbor.Decoder().decode(infile)
+    infile.close()
+
+
+def _decode_cborhex(srcname: str) -> Iterable[ARI]:
+    infile = sys.stdin if srcname == '-' else open(srcname, 'r', encoding="utf-8")
+    for line in infile:
+        indata = line.strip()
+        buf = io.BytesIO(cborutil.from_hexstr(indata))
+        yield ari_cbor.Decoder().decode(buf)
+    infile.close()
+
+
+def decode(args: argparse.Namespace) -> Iterable[ARI]:
+    ''' Decode the ARI from the specified form directly from the input.
 
     :param args: The command arguments.
-    :return: An iterable for the ARI items.
+    The input and output form will be adjusted if either is "auto".
+    :return: A pair of: an iterable for the ARI items, and the actual form
+    used to decode them.
     '''
     # pylint: disable=consider-using-with
-    if args.inform == 'text':
-        infile = sys.stdin if args.input == '-' else open(args.input, 'r', encoding="utf-8")
-        # Assume that each line is a new ARI, but handle cases where line breaks are present in text literals
-        buffer = io.StringIO()
-        last_err = None
-        for line in infile:
-            buffer.seek(0, io.SEEK_END)
-            buffer.write(line)
-            buffer.seek(0)
-
-            try:
-                ari = ari_text.Decoder().decode(buffer)
-                buffer = io.StringIO()
-                last_err = None
-                yield ari
-            except ari_text.ParseError as err:
-                # leave the buffer lines and just add the next one
-                last_err = err
-
-        if last_err:
-            # Propagate the error from the last failure
-            raise last_err
-
-        infile.close()
-
-    elif args.inform == 'cbor':
+    if args.inform == 'auto':
         infile = sys.stdin.buffer if args.input == '-' else open(args.input, 'rb')
-        while infile.peek(1):
-            yield ari_cbor.Decoder().decode(infile)
-        infile.close()
-
+        front = infile.peek(4)
+        if front.startswith(b'ari:'):
+            args.inform = 'uri'
+            out = _decode_text(args.input)
+        else:
+            args.inform = 'cbor'
+            out = _decode_cbor(args.input)
+    elif args.inform in {'uri', 'text'}:
+        args.inform = 'uri'
+        out = _decode_text(args.input)
+    elif args.inform == 'cbor':
+        out = _decode_cbor(args.input)
     elif args.inform == 'cborhex':
-        infile = sys.stdin if args.input == '-' else open(args.input, 'r', encoding="utf-8")
-        for line in infile:
-            indata = line.strip()
-            buf = io.BytesIO(cborutil.from_hexstr(indata))
-            yield ari_cbor.Decoder().decode(buf)
-        infile.close()
+        out = _decode_cborhex(args.input)
+    else:
+        raise ValueError(f'Invalid inform {args.inform}')
     # pylint: enable=consider-using-with
 
+    # set auto outform
+    if args.outform == 'auto':
+        if args.inform == 'uri':
+            args.outform = 'cborhex'
+        elif args.inform in {'cbor', 'cborhex'}:
+            args.outform = 'uri'
 
-def encode(args: argparse.Namespace, ari):
-    ''' Encode the ARI in the desired form.
+    return out
+
+
+def encode(args: argparse.Namespace, ari: ARI) -> None:
+    ''' Encode the ARI in the desired form directly to the output.
 
     :param args: The command arguments.
     :param ari: The single ARI to encode.
     '''
     # pylint: disable=consider-using-with
-    if args.outform == 'text':
+    if args.outform in {'uri', 'text'}:
         outfile = sys.stdout if args.output == '-' else open(args.output, 'w', encoding="utf-8")
         ari_text.Encoder().encode(ari, outfile)
         outfile.write('\n')
@@ -130,6 +164,8 @@ def encode(args: argparse.Namespace, ari):
         outfile = sys.stdout if args.output == '-' else open(args.output, 'w', encoding="utf-8")
         outfile.write(cborutil.to_hexstr(buf.getvalue()))
         outfile.write('\n')
+    else:
+        raise ValueError(f'Invalid outform {args.outform}')
     # pylint: enable=consider-using-with
 
 
