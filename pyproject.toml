@@ -22,7 +22,7 @@ classifiers = [
 dependencies = [
   "cbor2 ~=5.6.4", # specific patch version for tag 100 fix
   "cbor-diag",
-  "numpy",
+  "numpy ~=2.0.2",
   "PLY >= 3",
   "portion ~=2.4",
   "pyang ~=2.6",
