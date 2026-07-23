@@ -397,6 +397,10 @@ class Decoder:
         self._ctx = pyang.context.Context(repos)
         self._ctx.strict = True
         self._ctx.opts = opts
+
+        # adding a warning ignore 
+        self._ctx.ignore_error_tags.add("UNUSED_IMPORT"
+                                        )
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
