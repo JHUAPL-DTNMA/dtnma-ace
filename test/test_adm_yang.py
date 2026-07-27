@@ -159,7 +159,10 @@ module example-empty {
         self.assertEqual(
             [
                 'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an amm:enum statement',
-                'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an organization with an amm:enum statement',
+                (
+                    'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain '
+                    "an organization with an amm:enum statement"
+                ),
             ],
             self._filter_logs(logs.output),
         )

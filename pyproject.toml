@@ -87,6 +87,8 @@ max-line-length=120
 
 [tool.ruff]
 line-length=120
+[tool.ruff.lint]
+select = ["E", "W", "F"]
 
 [project.scripts]
 ace_ari = "ace.tools.ace_ari:main"

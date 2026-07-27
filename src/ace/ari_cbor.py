@@ -203,7 +203,8 @@ class Decoder:
                 nrow = (len(item) - 1) // ncol
             if len(item) != nrow * ncol + 1:
                 raise ParseError(
-                    f"Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns"
+                    f"Number of columns does not match number of values: {item[1:]} "
+                    f"cannot be split among {ncol} columns"
                 )
             value = Table((nrow, ncol))
             LOGGER.debug(f"Processing TBL with {nrow} rows and {ncol} columns...")
