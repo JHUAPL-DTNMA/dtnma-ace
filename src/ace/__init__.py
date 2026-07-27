@@ -24,22 +24,20 @@
 converting ARIs between text URI and CBOR.
 """
 
+from ace import ari_cbor, ari_text, nickname
 from ace.adm_set import AdmSet
-from ace.constraints import Checker
 from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
-import ace.ari_text as ari_text
-import ace.ari_cbor as ari_cbor
-import ace.nickname as nickname
+from ace.constraints import Checker
 
 # make linters happy
 __all__ = [
-    "AdmSet",
     "ARI",
+    "AdmSet",
     "Checker",
     "LiteralARI",
     "ReferenceARI",
     "StructType",
-    "ari_text",
     "ari_cbor",
+    "ari_text",
     "nickname",
 ]

@@ -22,9 +22,10 @@
 #
 """An interface and runner of model consistency constraints."""
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from typing import Callable, List
+
 from ace import models
 
 LOGGER = logging.getLogger(__name__)

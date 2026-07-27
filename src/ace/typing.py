@@ -22,30 +22,33 @@
 #
 """Implementation of semantic typing logic for ADMs and ARI processing."""
 
-from dataclasses import dataclass, field
 import decimal
-from functools import reduce
 import logging
 import math
-from typing import List, Optional, Set, Type, Iterator
+import struct
+from collections.abc import Iterator
+from dataclasses import dataclass, field
+from functools import reduce
+from typing import List, Optional, Set, Type
+
 import numpy
+
 from .ari import (
-    DTN_EPOCH,
-    check_decfrac,
-    StructType,
-    Table,
-    ObjectRefPattern,
-    ExecutionSet,
-    ReportSet,
     ARI,
-    LiteralARI,
-    ReferenceARI,
-    Identity,
-    is_undefined,
+    DTN_EPOCH,
     NULL,
     TRUE,
+    ExecutionSet,
+    Identity,
+    LiteralARI,
+    ObjectRefPattern,
+    ReferenceARI,
+    ReportSet,
+    StructType,
+    Table,
+    check_decfrac,
+    is_undefined,
 )
-import struct
 
 LOGGER = logging.getLogger(__name__)
 

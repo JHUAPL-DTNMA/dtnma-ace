@@ -24,9 +24,11 @@
 
 import enum
 import logging
+
 from sqlalchemy.orm.session import Session
-from ace.ari import ARI, ReferenceARI, Identity
-from ace.lookup import find_adm, dereference
+
+from ace.ari import ARI, Identity, ReferenceARI
+from ace.lookup import dereference, find_adm
 
 LOGGER = logging.getLogger(__name__)
 

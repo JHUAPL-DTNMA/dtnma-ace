@@ -23,9 +23,10 @@
 """ORM models for the ADM and its contents."""
 
 from typing import Optional
-from sqlalchemy import Column, ForeignKey, Boolean, Integer, String, Date, DateTime, Text, PickleType
-from sqlalchemy.orm import declarative_base, declarative_mixin, relationship, declared_attr, Mapped
+
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, PickleType, String, Text
 from sqlalchemy.ext.orderinglist import ordering_list
+from sqlalchemy.orm import Mapped, declarative_base, declarative_mixin, declared_attr, relationship
 
 CURRENT_SCHEMA_VERSION = 24
 """ Value of :attr:`SchemaVersion.version_num` """

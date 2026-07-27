@@ -26,7 +26,8 @@ import io
 import logging
 import os
 import unittest
-from ace import ari, typing, ari_text, lookup
+
+from ace import ari, ari_text, lookup, typing
 
 SELFDIR = os.path.dirname(__file__)
 LOGGER = logging.getLogger(__name__)

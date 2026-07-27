@@ -23,8 +23,10 @@
 """Test the pure ORM models within models.py"""
 
 import unittest
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
+
 from ace import models
 
 

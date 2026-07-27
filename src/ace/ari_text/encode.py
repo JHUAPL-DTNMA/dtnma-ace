@@ -22,28 +22,31 @@
 #
 """CODEC for converting ARI to and from text URI form."""
 
-from dataclasses import dataclass
 import datetime
 import logging
 import math
-from typing import List, Dict, TextIO
-import numpy
 import urllib.parse
+from dataclasses import dataclass
+from typing import Dict, List, TextIO
+
 import cbor2
+import numpy
+
 from ace.ari import (
-    DTN_EPOCH,
-    StructType,
-    IntInterval,
     ARI,
-    LiteralARI,
-    ReferenceARI,
+    DTN_EPOCH,
     ExecutionSet,
-    ReportSet,
-    Report,
+    IntInterval,
+    LiteralARI,
     ObjectRefPattern,
+    ReferenceARI,
+    Report,
+    ReportSet,
+    StructType,
 )
 from ace.cborutil import to_diag
-from .util import t_identity, SINGLETONS
+
+from .util import SINGLETONS, t_identity
 
 LOGGER = logging.getLogger(__name__)
 

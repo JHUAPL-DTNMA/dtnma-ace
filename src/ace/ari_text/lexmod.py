@@ -25,12 +25,13 @@
 import logging
 import re
 from urllib.parse import unquote
+
 from ply import lex
 
 # make linters happy
 __all__ = [
-    "tokens",
     "new_lexer",
+    "tokens",
 ]
 
 LOGGER = logging.getLogger(__name__)

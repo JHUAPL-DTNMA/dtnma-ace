@@ -26,14 +26,15 @@ This is distinct from the ORM in :mod:`models` used for ADM introspection.
 
 import copy
 import datetime
-from dataclasses import dataclass, field
 import decimal
 import enum
 import math
-import portion
+from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+
 import cbor2
 import numpy
+import portion
 
 DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
 """ Reference for absolute time points """

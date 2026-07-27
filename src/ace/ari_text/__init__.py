@@ -32,15 +32,16 @@ except ImportError:
     # older compatibility
     import xdg as xdg_base_dirs
 from ace.ari import ARI
+
+from .encode import EncodeOptions, Encoder, percent_encode
 from .lexmod import new_lexer
 from .parsemod import new_parser
-from .encode import Encoder, EncodeOptions, percent_encode
 
 __all__ = (
-    "Encoder",
-    "EncodeOptions",
-    "percent_encode",
     "Decoder",
+    "EncodeOptions",
+    "Encoder",
+    "percent_encode",
 )
 
 LOGGER = logging.getLogger(__name__)

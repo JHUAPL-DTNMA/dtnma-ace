@@ -23,16 +23,18 @@
 """Dereference objects and types from a model."""
 
 import copy
-from dataclasses import dataclass
 import datetime
 import logging
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
+
 from sqlalchemy.orm.session import Session, object_session
-from .util import normalize_ident
-from .ari import ARI, LiteralARI, ReferenceARI, Identity, StructType, UNDEFINED, is_undefined
-from .typing import BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, Sequence, type_walk
+
 from . import models
+from .ari import ARI, UNDEFINED, Identity, LiteralARI, ReferenceARI, StructType, is_undefined
 from .models import AdmModule, AdmObjMixin
+from .typing import BUILTINS_BY_ENUM, BaseType, SemType, Sequence, TypeUse, type_walk
+from .util import normalize_ident
 
 LOGGER = logging.getLogger(__name__)
 

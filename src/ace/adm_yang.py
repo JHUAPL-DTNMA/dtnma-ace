@@ -22,65 +22,67 @@
 #
 """CODEC for converting ADM to and from YANG form."""
 
-from datetime import datetime, date
 import io
 import logging
 import math
 import optparse
 import os
+from datetime import date, datetime
 from typing import TextIO, Tuple, Union
+
 import portion
-import pyang.plugin
 import pyang.context
+import pyang.plugin
 import pyang.repository
 import pyang.syntax
 import pyang.translators.yang
+
 from ace import ari_text
 from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
-from ace.typing import (
-    SemType,
-    TypeUse,
-    TypeUnion,
-    UniformList,
-    DiverseList,
-    UniformMap,
-    TableTemplate,
-    TableColumn,
-    Sequence,
-)
-from ace.type_constraint import (
-    StringLength,
-    TextPattern,
-    NumericRange,
-    IntegerEnums,
-    IntegerBits,
-    CborCddl,
-    IdentRefBase,
-)
 from ace.lookup import RelativeResolver
 from ace.models import (
-    TypeNameList,
-    TypeNameItem,
-    MetadataList,
-    MetadataItem,
-    AdmRevision,
-    Feature,
-    AdmSource,
-    AdmModule,
     AdmImport,
-    ParamMixin,
-    TypeUseMixin,
+    AdmModule,
     AdmObjMixin,
-    Typedef,
-    Ident,
-    IdentBase,
+    AdmRevision,
+    AdmSource,
     Const,
     Ctrl,
     Edd,
+    Feature,
+    Ident,
+    IdentBase,
+    MetadataItem,
+    MetadataList,
     Oper,
-    Var,
+    ParamMixin,
     Sbr,
     Tbr,
+    Typedef,
+    TypeNameItem,
+    TypeNameList,
+    TypeUseMixin,
+    Var,
+)
+from ace.type_constraint import (
+    CborCddl,
+    IdentRefBase,
+    IntegerBits,
+    IntegerEnums,
+    NumericRange,
+    StringLength,
+    TextPattern,
+)
+from ace.typing import (
+    DiverseList,
+    SemType,
+    Sequence,
+    TableColumn,
+    TableTemplate,
+    TypeUnion,
+    TypeUse,
+    UniformList,
+    UniformMap,
 )
 from ace.util import normalize_ident
 
@@ -316,7 +318,7 @@ class TypingDecoder:
         for col_stmt in stmt.search((AMM_MOD, "column"), children=stmt.i_children):
             col = TableColumn(name=col_stmt.arg, base=self.decode(col_stmt))
             if col.name in col_names:
-                LOGGER.warn("A duplicate column name is present: %s", col)
+                LOGGER.warning("A duplicate column name is present: %s", col)
 
             typeobj.columns.append(col)
             col_names.add(col.name)

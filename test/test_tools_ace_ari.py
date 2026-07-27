@@ -23,15 +23,17 @@
 """Verify behavior of round-trips from text to CBOR and back."""
 
 import argparse
-from contextlib import redirect_stdout
 import io
 import logging
 import os
 import sys
 import unittest
-from ace.tools import ace_ari
-from ace import ari_text, ari_cbor, cborutil
+from contextlib import redirect_stdout
+
+from ace import ari_cbor, ari_text, cborutil
 from ace.ari import ARI
+from ace.tools import ace_ari
+
 from .util import TmpDir
 
 LOGGER = logging.getLogger(__name__)

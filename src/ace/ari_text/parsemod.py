@@ -24,29 +24,32 @@
 """Parser configuration for ARI text decoding."""
 
 import logging
+
 from ply import yacc
+
 from ace.ari import (
     DTN_EPOCH,
-    is_undefined,
+    ExecutionSet,
     Identity,
-    ReferenceARI,
     LiteralARI,
+    ObjectRefPattern,
+    ReferenceARI,
+    Report,
+    ReportSet,
     StructType,
     Table,
-    ExecutionSet,
-    ReportSet,
-    Report,
-    ObjectRefPattern,
     apiIntInterval,
+    is_undefined,
 )
 from ace.typing import BUILTINS_BY_ENUM, NONCE
+
 from . import util
 from .lexmod import tokens  # pylint: disable=unused-import
 
 # make linters happy
 __all__ = [
-    "tokens",
     "new_parser",
+    "tokens",
 ]
 
 LOGGER = logging.getLogger(__name__)

@@ -22,8 +22,8 @@
 #
 """This tool wraps the pyang package CLI with local plugins."""
 
-import subprocess
 import os
+import subprocess
 import sys
 
 SELFDIR = os.path.dirname(__file__)

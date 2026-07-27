@@ -26,13 +26,14 @@ import io
 import logging
 import os
 import unittest
+from typing import List, TextIO
+
 import portion
-from typing import TextIO
+from pyang.repository import FileRepository
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from pyang.repository import FileRepository
-from typing import List
-from ace import adm_yang, ari, ari_text, models, lookup
+
+from ace import adm_yang, ari, ari_text, lookup, models
 
 LOGGER = logging.getLogger(__name__)
 SELFDIR = os.path.dirname(__file__)

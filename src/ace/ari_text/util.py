@@ -28,9 +28,11 @@ import decimal
 import logging
 import re
 from typing import List
-import numpy
+
 import cbor_diag
-from ace.ari import INT_ENVELOPE, UNDEFINED, DTN_EPOCH, StructType
+import numpy
+
+from ace.ari import DTN_EPOCH, INT_ENVELOPE, UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
 

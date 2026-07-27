@@ -24,11 +24,15 @@
 
 import logging
 import os
-from sqlalchemy import inspect, orm, func
-from typing import Iterable, Optional, List
-from ace import models, ari, typing
-from ace.lookup import dereference, TypeResolver, TypeResolverError
-from .core import register, Issue
+from collections.abc import Iterable
+from typing import List, Optional
+
+from sqlalchemy import func, inspect, orm
+
+from ace import ari, models, typing
+from ace.lookup import TypeResolver, TypeResolverError, dereference
+
+from .core import Issue, register
 
 LOGGER = logging.getLogger(__name__)
 

@@ -26,9 +26,10 @@ import base64
 import io
 import logging
 import unittest
+
+from ace import ari_cbor, ari_text
 from ace.ari import ARI, ReferenceARI
 from ace.cborutil import to_diag
-from ace import ari_text, ari_cbor
 
 LOGGER = logging.getLogger(__name__)
 

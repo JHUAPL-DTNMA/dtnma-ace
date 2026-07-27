@@ -23,8 +23,9 @@
 """Utilities to convert to CBOR diagnostic notation."""
 
 import base64
-import cbor2
 import math
+
+import cbor2
 
 _TSTR_TRANS = str.maketrans(
     {

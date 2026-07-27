@@ -22,18 +22,19 @@
 #
 """Plugin to display the contents of an ADM module as an object tree."""
 
-import optparse
 import io
 import logging
+import optparse
 from typing import List
+
 import pyang
 from pyang.context import Context
 from pyang.statements import Statement
 
 try:
+    import ace.typing
     from ace.adm_yang import AriTextDecoder, TypingDecoder
     from ace.ari_text import Encoder as AriEncoder
-    import ace.typing
 except ImportError:
     AriTextDecoder = None
     TypingDecoder = None

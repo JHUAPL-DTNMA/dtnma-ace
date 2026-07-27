@@ -22,12 +22,12 @@
 #
 """An interface and runner of model consistency constraints."""
 
-from ace.constraints.core import register, Issue, Checker
 from ace.constraints import basic
+from ace.constraints.core import Checker, Issue, register
 
 __all__ = [
-    "register",
-    "Issue",
     "Checker",
+    "Issue",
     "basic",
+    "register",
 ]

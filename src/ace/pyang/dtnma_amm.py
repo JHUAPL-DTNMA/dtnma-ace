@@ -28,15 +28,16 @@ This plugin implements the DTNMA Application Management Model (AMM) from
 [I-D.ietf-dtn-adm-yang] as a collection of extensions and the module itself.
 """
 
-from dataclasses import dataclass, field
 import io
+from dataclasses import dataclass, field
 from typing import List, Tuple
-from pyang import plugin, context, statements, syntax, grammar, error
+
+from pyang import context, error, grammar, plugin, statements, syntax
 from pyang.util import keyword_to_str
 
 # Use ARI processing library when possible
 try:
-    from ace import ari_text, ReferenceARI
+    from ace import ReferenceARI, ari_text
 except ImportError:
     ari_text = None
 

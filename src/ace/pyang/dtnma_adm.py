@@ -36,8 +36,10 @@ import io
 import optparse
 import os
 from typing import List
-from pyang import plugin, context, statements, grammar, error
-from ace.pyang.dtnma_amm import MODULE_NAME, AMM_OBJ_NAMES
+
+from pyang import context, error, grammar, plugin, statements
+
+from ace.pyang.dtnma_amm import AMM_OBJ_NAMES, MODULE_NAME
 
 # Use ARI processing library when possible
 try:

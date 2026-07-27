@@ -24,7 +24,8 @@
 
 import logging
 import unittest
-from ace.ari import ARI, Identity, ReferenceARI, LiteralARI, StructType, ObjectRefPattern, apiIntInterval
+
+from ace.ari import ARI, Identity, LiteralARI, ObjectRefPattern, ReferenceARI, StructType, apiIntInterval
 
 LOGGER = logging.getLogger(__name__)
 

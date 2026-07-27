@@ -25,7 +25,9 @@
 import logging
 import os
 import unittest
+
 from ace import nickname
+
 from .test_adm_yang import BaseYang
 
 LOGGER = logging.getLogger(__name__)

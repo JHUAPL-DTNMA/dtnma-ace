@@ -28,16 +28,17 @@ import logging
 import os
 import traceback
 from typing import BinaryIO, List, Set, Union
+
 from pyang.repository import Repository
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import Session, sessionmaker
 
 try:
     import xdg_base_dirs
 except ImportError:
     # older compatibility
     import xdg as xdg_base_dirs
-from ace import models, adm_yang
+from ace import adm_yang, models
 
 LOGGER = logging.getLogger(__name__)
 

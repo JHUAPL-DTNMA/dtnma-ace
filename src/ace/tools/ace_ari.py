@@ -34,8 +34,9 @@ import argparse
 import io
 import logging
 import sys
-from typing import Iterable
-from ace import ari_text, ari_cbor, cborutil, nickname, ARI, AdmSet, Checker
+from collections.abc import Iterable
+
+from ace import ARI, AdmSet, Checker, ari_cbor, ari_text, cborutil, nickname
 
 LOGGER = logging.getLogger(__name__)
 

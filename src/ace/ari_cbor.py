@@ -25,24 +25,26 @@
 import datetime
 import decimal
 import logging
-import numpy
 from typing import Any, BinaryIO, Optional, Tuple, Union
+
 import cbor2
+import numpy
+
 from ace.ari import (
+    ARI,
     DTN_EPOCH,
     INT_ENVELOPE,
-    check_decfrac,
-    ARI,
+    ExecutionSet,
     Identity,
-    ReferenceARI,
     LiteralARI,
+    ObjectRefPattern,
+    ReferenceARI,
+    Report,
+    ReportSet,
     StructType,
     Table,
-    ExecutionSet,
-    ReportSet,
-    Report,
-    ObjectRefPattern,
     apiIntInterval,
+    check_decfrac,
 )
 from ace.typing import NONCE
 
@@ -169,9 +171,7 @@ class Decoder:
             if not isinstance(item, bytes):
                 raise TypeError(f"Invalid BYTESTR value: {item}")
             value = item
-        elif type_id == StructType.TP:
-            value = self._item_to_timeval(item)
-        elif type_id == StructType.TD:
+        elif type_id == StructType.TP or type_id == StructType.TD:
             value = self._item_to_timeval(item)
         elif type_id == StructType.LABEL:
             if not isinstance(item, (str, int)):

@@ -26,9 +26,11 @@ import io
 import logging
 import os
 import unittest
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace import ari, ari_text, models, typing, constraints
+
+from ace import ari, ari_text, constraints, models, typing
 
 SELFDIR = os.path.dirname(__file__)
 LOGGER = logging.getLogger(__name__)

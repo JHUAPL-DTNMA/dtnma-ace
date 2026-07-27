@@ -24,38 +24,41 @@
 
 import logging
 import unittest
+
 import portion
-from ace.typing import (
-    BUILTINS,
-    type_walk,
-    NullType,
-    BoolType,
-    NumericType,
-    StringType,
-    TypeUse,
-    TypeUnion,
-    UniformList,
-    DiverseList,
-    UniformMap,
-    TableTemplate,
-    TableColumn,
-    Sequence,
-)
-from ace.type_constraint import NumericRange, StringLength
+
 from ace.ari import (
-    StructType,
-    Table,
-    LiteralARI,
-    ReferenceARI,
-    Identity,
-    UNDEFINED,
+    FALSE,
     NULL,
     TRUE,
-    FALSE,
+    TYPED_FALSE,
     TYPED_NULL,
     TYPED_TRUE,
-    TYPED_FALSE,
+    UNDEFINED,
+    Identity,
+    LiteralARI,
+    ReferenceARI,
+    StructType,
+    Table,
 )
+from ace.type_constraint import NumericRange, StringLength
+from ace.typing import (
+    BUILTINS,
+    BoolType,
+    DiverseList,
+    NullType,
+    NumericType,
+    Sequence,
+    StringType,
+    TableColumn,
+    TableTemplate,
+    TypeUnion,
+    TypeUse,
+    UniformList,
+    UniformMap,
+    type_walk,
+)
+
 from .util import TypeSummary
 
 LOGGER = logging.getLogger(__name__)

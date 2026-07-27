@@ -20,16 +20,18 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-from dataclasses import dataclass
 import re
-from typing import Optional, Set, Dict
+from dataclasses import dataclass
+from typing import Dict, Optional, Set
+
 import cbor2
 import portion
 from sqlalchemy.orm.session import object_session
-from .ari import StructType, ARI, ReferenceARI, IntInterval, apiIntInterval
-from .typing import Constraint
+
+from .ari import ARI, IntInterval, ReferenceARI, StructType, apiIntInterval
 from .lookup import dereference
 from .models import Ident
+from .typing import Constraint
 
 
 @dataclass

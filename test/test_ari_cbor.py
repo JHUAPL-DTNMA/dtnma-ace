@@ -24,13 +24,15 @@
 
 import io
 import logging
-import unittest
-import cbor2
 import math
+import unittest
+
+import cbor2
 import numpy
-from ace.ari import apiIntInterval, ReferenceARI, LiteralARI, StructType, Identity, ReportSet, ObjectRefPattern
-from ace.cborutil import to_diag
+
 from ace import ari_cbor
+from ace.ari import Identity, LiteralARI, ObjectRefPattern, ReferenceARI, ReportSet, StructType, apiIntInterval
+from ace.cborutil import to_diag
 
 LOGGER = logging.getLogger(__name__)
 
@@ -130,9 +132,8 @@ class TestAriCbor(unittest.TestCase):
     def test_invalid_enc_failure(self):
         dec = ari_cbor.Decoder()
         for data in self.INVALID_DATAS:
-            with self.subTest(data.hex()):
-                with self.assertRaises(ari_cbor.ParseError):
-                    dec.decode(io.BytesIO(data))
+            with self.subTest(data.hex()), self.assertRaises(ari_cbor.ParseError):
+                dec.decode(io.BytesIO(data))
 
     #    def test_complex_decode(self):
     #        text = 'ari:/IANA:Amp.Agent/Ctrl.gen_rpts([ari:/IANA:DTN.bpsec/Rptt.source_report("ipn:1.1")],[])'
