@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Test the pure ORM models within models.py
-'''
+"""Test the pure ORM models within models.py"""
+
 import unittest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ from ace import models
 
 
 class TestModels(unittest.TestCase):
-    ''' Each test case run constructs a separate in-memory DB '''
+    """Each test case run constructs a separate in-memory DB"""
 
     def setUp(self):
         self._db_eng = create_engine("sqlite:///:memory:")
@@ -44,11 +44,11 @@ class TestModels(unittest.TestCase):
 
     def test_simple(self):
         src = models.AdmSource(
-            abs_file_path='example-hi',
+            abs_file_path="example-hi",
         )
         mod = models.AdmModule(
             source=src,
-            norm_name='example-hi',
+            norm_name="example-hi",
             ns_org_name="example",
             ns_org_enum=65535,
             ns_model_name="hi",
@@ -61,4 +61,4 @@ class TestModels(unittest.TestCase):
         objs = self._db_sess.query(models.AdmModule)
         self.assertEqual(1, objs.count())
         adm = objs.first()
-        self.assertEqual('example-hi', adm.source.abs_file_path)
+        self.assertEqual("example-hi", adm.source.abs_file_path)

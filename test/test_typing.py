@@ -20,23 +20,41 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-'''Test the mod:`ace.typing` module.
-'''
+"""Test the mod:`ace.typing` module."""
+
 import logging
 import unittest
 import portion
 from ace.typing import (
-    BUILTINS, type_walk,
-    NullType, BoolType, NumericType, StringType,
-    TypeUse, TypeUnion, UniformList, DiverseList, UniformMap,
-    TableTemplate, TableColumn, Sequence
+    BUILTINS,
+    type_walk,
+    NullType,
+    BoolType,
+    NumericType,
+    StringType,
+    TypeUse,
+    TypeUnion,
+    UniformList,
+    DiverseList,
+    UniformMap,
+    TableTemplate,
+    TableColumn,
+    Sequence,
 )
-from ace.type_constraint import (
-    NumericRange, StringLength
-)
+from ace.type_constraint import NumericRange, StringLength
 from ace.ari import (
-    StructType, Table, LiteralARI, ReferenceARI, Identity,
-    UNDEFINED, NULL, TRUE, FALSE, TYPED_NULL, TYPED_TRUE, TYPED_FALSE
+    StructType,
+    Table,
+    LiteralARI,
+    ReferenceARI,
+    Identity,
+    UNDEFINED,
+    NULL,
+    TRUE,
+    FALSE,
+    TYPED_NULL,
+    TYPED_TRUE,
+    TYPED_FALSE,
 )
 from .util import TypeSummary
 
@@ -44,55 +62,54 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TestTyping(unittest.TestCase):
-
     def test_builtin_get_undefined(self):
         for name, typ in BUILTINS.items():
-            LOGGER.info('Testing %s: %s', name, typ)
+            LOGGER.info("Testing %s: %s", name, typ)
             self.assertIsNone(typ.get(UNDEFINED))
 
     def test_builtin_convert_undefined(self):
         for name, typ in BUILTINS.items():
-            LOGGER.info('Testing %s: %s', name, typ)
+            LOGGER.info("Testing %s: %s", name, typ)
             self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
 
     def test_bool_get(self):
-        typ = BUILTINS['bool']
+        typ = BUILTINS["bool"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertEqual(TRUE, typ.get(TRUE))
         self.assertEqual(FALSE, typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('')))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
-        self.assertIsNone(typ.get(LiteralARI(b'')))
-        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertIsNone(typ.get(LiteralARI("")))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
+        self.assertIsNone(typ.get(LiteralARI(b"")))
+        self.assertIsNone(typ.get(LiteralARI(b"hi")))
         self.assertIsNone(typ.get(LiteralARI(0)))
         self.assertIsNone(typ.get(LiteralARI(123)))
 
     def test_bool_convert(self):
-        typ = BUILTINS['bool']
+        typ = BUILTINS["bool"]
 
         self.assertEqual(TYPED_TRUE, typ.convert(TRUE))
         self.assertEqual(TYPED_FALSE, typ.convert(FALSE))
         self.assertEqual(TYPED_FALSE, typ.convert(NULL))
-        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI('')))
-        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI('hi')))
-        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(b'')))
-        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(b'hi')))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI("")))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI("hi")))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(b"")))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(b"hi")))
         self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(0)))
         self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(123)))
 
     def test_int_get(self):
-        typ = BUILTINS['int']
+        typ = BUILTINS["int"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
         self.assertIsNone(typ.get(TYPED_TRUE))
         self.assertIsNone(typ.get(TYPED_FALSE))
-        self.assertIsNone(typ.get(LiteralARI('')))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
-        self.assertIsNone(typ.get(LiteralARI(b'')))
-        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertIsNone(typ.get(LiteralARI("")))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
+        self.assertIsNone(typ.get(LiteralARI(b"")))
+        self.assertIsNone(typ.get(LiteralARI(b"hi")))
         self.assertEqual(LiteralARI(0), typ.get(LiteralARI(0)))
         self.assertEqual(LiteralARI(123), typ.get(LiteralARI(123)))
         self.assertEqual(LiteralARI(-123), typ.get(LiteralARI(-123)))
@@ -101,7 +118,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UVAST)))
 
     def test_int_convert(self):
-        typ = BUILTINS['int']
+        typ = BUILTINS["int"]
 
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(NULL))
         self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TRUE))
@@ -109,13 +126,13 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TYPED_TRUE))
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(TYPED_FALSE))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(''))
+            typ.convert(LiteralARI(""))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI('hi'))
+            typ.convert(LiteralARI("hi"))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(b''))
+            typ.convert(LiteralARI(b""))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(b'hi'))
+            typ.convert(LiteralARI(b"hi"))
 
         # in domain
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(LiteralARI(0)))
@@ -126,25 +143,25 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(LiteralARI(0, StructType.INT), typ.convert(LiteralARI(0, StructType.UVAST)))
 
         # domain limits
-        typ.convert(LiteralARI(2 ** 31 - 1))
-        typ.convert(LiteralARI(2 ** 31 - 1, StructType.UVAST))
+        typ.convert(LiteralARI(2**31 - 1))
+        typ.convert(LiteralARI(2**31 - 1, StructType.UVAST))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(2 ** 31))
-        typ.convert(LiteralARI(-(2 ** 31)))
+            typ.convert(LiteralARI(2**31))
+        typ.convert(LiteralARI(-(2**31)))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(-(2 ** 31) - 1))
+            typ.convert(LiteralARI(-(2**31) - 1))
 
     def test_textstr_get(self):
-        typ = BUILTINS['textstr']
+        typ = BUILTINS["textstr"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
-        self.assertEqual(LiteralARI(''), typ.get(LiteralARI('')))
-        self.assertEqual(LiteralARI('hi'), typ.get(LiteralARI('hi')))
-        self.assertEqual(LiteralARI('hi', StructType.TEXTSTR), typ.get(LiteralARI('hi', StructType.TEXTSTR)))
-        self.assertIsNone(typ.get(LiteralARI(b'')))
-        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertEqual(LiteralARI(""), typ.get(LiteralARI("")))
+        self.assertEqual(LiteralARI("hi"), typ.get(LiteralARI("hi")))
+        self.assertEqual(LiteralARI("hi", StructType.TEXTSTR), typ.get(LiteralARI("hi", StructType.TEXTSTR)))
+        self.assertIsNone(typ.get(LiteralARI(b"")))
+        self.assertIsNone(typ.get(LiteralARI(b"hi")))
         self.assertIsNone(typ.get(LiteralARI(0)))
         self.assertIsNone(typ.get(LiteralARI(123)))
         self.assertIsNone(typ.get(LiteralARI(-123)))
@@ -153,7 +170,7 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UVAST)))
 
     def test_textstr_convert(self):
-        typ = BUILTINS['textstr']
+        typ = BUILTINS["textstr"]
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
         with self.assertRaises(TypeError):
@@ -162,13 +179,13 @@ class TestTyping(unittest.TestCase):
             typ.convert(TRUE)
         with self.assertRaises(TypeError):
             typ.convert(FALSE)
-        self.assertEqual(LiteralARI('', StructType.TEXTSTR), typ.convert(LiteralARI('')))
-        self.assertEqual(LiteralARI('hi', StructType.TEXTSTR), typ.convert(LiteralARI('hi')))
-        self.assertEqual(LiteralARI('hi', StructType.TEXTSTR), typ.convert(LiteralARI('hi', StructType.TEXTSTR)))
+        self.assertEqual(LiteralARI("", StructType.TEXTSTR), typ.convert(LiteralARI("")))
+        self.assertEqual(LiteralARI("hi", StructType.TEXTSTR), typ.convert(LiteralARI("hi")))
+        self.assertEqual(LiteralARI("hi", StructType.TEXTSTR), typ.convert(LiteralARI("hi", StructType.TEXTSTR)))
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI(b''))
+            typ.convert(LiteralARI(b""))
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI(b'hi'))
+            typ.convert(LiteralARI(b"hi"))
         with self.assertRaises(TypeError):
             typ.convert(LiteralARI(0))
         with self.assertRaises(TypeError):
@@ -183,23 +200,23 @@ class TestTyping(unittest.TestCase):
             typ.convert(LiteralARI(0, StructType.UVAST))
 
     def test_edd_get(self):
-        typ = BUILTINS['edd']
+        typ = BUILTINS["edd"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
-        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
+        self.assertIsNone(typ.get(LiteralARI(b"hi")))
         self.assertIsNone(typ.get(LiteralARI(123)))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.get(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.CTRL, obj_id="name"))
         self.assertIsNone(typ.get(ref))
 
     def test_edd_convert(self):
-        typ = BUILTINS['edd']
+        typ = BUILTINS["edd"]
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
         with self.assertRaises(TypeError):
@@ -209,82 +226,82 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             typ.convert(FALSE)
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI('hi'))
+            typ.convert(LiteralARI("hi"))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.convert(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.CTRL, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.CTRL, obj_id="name"))
         with self.assertRaises(ValueError):
             typ.convert(ref)
 
     def test_literal_get(self):
-        typ = BUILTINS['literal']
+        typ = BUILTINS["literal"]
 
         self.assertEqual(NULL, typ.get(NULL))
         self.assertEqual(TRUE, typ.get(TRUE))
         self.assertEqual(FALSE, typ.get(FALSE))
-        self.assertEqual(LiteralARI('hi'), typ.get(LiteralARI('hi')))
+        self.assertEqual(LiteralARI("hi"), typ.get(LiteralARI("hi")))
         self.assertEqual(LiteralARI(10, StructType.INT), typ.get(LiteralARI(10, StructType.INT)))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertIsNone(typ.get(ref))
 
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         self.assertIsNone(typ.get(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         self.assertIsNone(typ.get(ref))
 
     def test_literal_convert(self):
-        typ = BUILTINS['literal']
+        typ = BUILTINS["literal"]
 
         self.assertEqual(NULL, typ.convert(NULL))
         self.assertEqual(TRUE, typ.convert(TRUE))
         self.assertEqual(FALSE, typ.convert(FALSE))
         self.assertEqual(TYPED_TRUE, typ.convert(TYPED_TRUE))
         self.assertEqual(TYPED_FALSE, typ.convert(TYPED_FALSE))
-        self.assertEqual(LiteralARI('hi'), typ.convert(LiteralARI('hi')))
+        self.assertEqual(LiteralARI("hi"), typ.convert(LiteralARI("hi")))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
 
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
 
     def test_object_get(self):
-        typ = BUILTINS['object']
+        typ = BUILTINS["object"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
         self.assertIsNone(typ.get(LiteralARI(10, StructType.INT)))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.get(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.get(ref))
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.get(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         self.assertIsNone(typ.get(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod'))
+        ref = ReferenceARI(Identity(model_id="mod"))
         self.assertIsNone(typ.get(ref))
         ref = ReferenceARI(Identity())
         self.assertIsNone(typ.get(ref))
 
     def test_object_convert(self):
-        typ = BUILTINS['object']
+        typ = BUILTINS["object"]
 
         with self.assertRaises(TypeError):
             typ.convert(NULL)
@@ -293,21 +310,21 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             typ.convert(FALSE)
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI('hi'))
+            typ.convert(LiteralARI("hi"))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.convert(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.convert(ref))
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         self.assertEqual(ref, typ.convert(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
         # relative
-        ref = ReferenceARI(Identity(model_id='mod'))
+        ref = ReferenceARI(Identity(model_id="mod"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
         ref = ReferenceARI(Identity())
@@ -315,32 +332,32 @@ class TestTyping(unittest.TestCase):
             typ.convert(ref)
 
     def test_namespace_get(self):
-        typ = BUILTINS['namespace']
+        typ = BUILTINS["namespace"]
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
         self.assertIsNone(typ.get(LiteralARI(10, StructType.INT)))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertIsNone(typ.get(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(model_id="mod", type_id=StructType.EDD, obj_id="name"))
         self.assertIsNone(typ.get(ref))
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         self.assertIsNone(typ.get(ref))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         self.assertEqual(ref, typ.get(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod'))
+        ref = ReferenceARI(Identity(model_id="mod"))
         self.assertEqual(ref, typ.get(ref))
         ref = ReferenceARI(Identity())
         self.assertEqual(ref, typ.get(ref))
 
     def test_namespace_convert(self):
-        typ = BUILTINS['namespace']
+        typ = BUILTINS["namespace"]
 
         with self.assertRaises(TypeError):
             typ.convert(NULL)
@@ -349,34 +366,29 @@ class TestTyping(unittest.TestCase):
         with self.assertRaises(TypeError):
             typ.convert(FALSE)
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI('hi'))
+            typ.convert(LiteralARI("hi"))
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod", type_id=StructType.EDD, obj_id="name"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
         # relative
-        ref = ReferenceARI(Identity(model_id='mod', type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(model_id="mod", type_id=StructType.EDD, obj_id="name"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
-        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id='name'))
+        ref = ReferenceARI(Identity(type_id=StructType.EDD, obj_id="name"))
         with self.assertRaises(TypeError):
             typ.convert(ref)
 
-        ref = ReferenceARI(Identity(org_id='example', model_id='mod'))
+        ref = ReferenceARI(Identity(org_id="example", model_id="mod"))
         self.assertEqual(ref, typ.convert(ref))
         # relative
-        ref = ReferenceARI(Identity(model_id='mod'))
+        ref = ReferenceARI(Identity(model_id="mod"))
         self.assertEqual(ref, typ.convert(ref))
         ref = ReferenceARI(Identity())
         self.assertEqual(ref, typ.convert(ref))
 
     def test_typeuse_int_range_get(self):
-        typ = TypeUse(
-            base=BUILTINS['int'],
-            constraints=[
-                NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
-            ]
-        )
+        typ = TypeUse(base=BUILTINS["int"], constraints=[NumericRange(portion.closed(1, 10) | portion.closed(20, 25))])
 
         self.assertIsNone(typ.get(UNDEFINED))
         self.assertIsNone(typ.get(TRUE))
@@ -394,12 +406,7 @@ class TestTyping(unittest.TestCase):
             self.assertIsNone(typ.get(LiteralARI(val)))
 
     def test_typeuse_int_range_convert(self):
-        typ = TypeUse(
-            base=BUILTINS['int'],
-            constraints=[
-                NumericRange(portion.closed(1, 10) | portion.closed(20, 25))
-            ]
-        )
+        typ = TypeUse(base=BUILTINS["int"], constraints=[NumericRange(portion.closed(1, 10) | portion.closed(20, 25))])
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
         self.assertEqual(LiteralARI(1, StructType.INT), typ.convert(TRUE))
@@ -420,10 +427,7 @@ class TestTyping(unittest.TestCase):
 
     def test_typeuse_textstr_length_get(self):
         typ = TypeUse(
-            base=BUILTINS['textstr'],
-            constraints=[
-                StringLength(portion.closed(1, 10) | portion.closed(20, 25))
-            ]
+            base=BUILTINS["textstr"], constraints=[StringLength(portion.closed(1, 10) | portion.closed(20, 25))]
         )
 
         self.assertIsNone(typ.get(UNDEFINED))
@@ -431,27 +435,24 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(FALSE))
 
         for slen in range(-10, 1):
-            val = LiteralARI('-' * slen)
+            val = LiteralARI("-" * slen)
             self.assertIsNone(typ.get(val))
         for slen in range(1, 11):
-            val = LiteralARI('-' * slen)
+            val = LiteralARI("-" * slen)
             self.assertEqual(val, typ.get(val))
         for slen in range(11, 20):
-            val = LiteralARI('-' * slen)
+            val = LiteralARI("-" * slen)
             self.assertIsNone(typ.get(val))
         for slen in range(20, 26):
-            val = LiteralARI('-' * slen)
+            val = LiteralARI("-" * slen)
             self.assertEqual(val, typ.get(val))
         for slen in range(26, 30):
-            val = LiteralARI('-' * slen)
+            val = LiteralARI("-" * slen)
             self.assertIsNone(typ.get(val))
 
     def test_typeuse_textstr_length_convert(self):
         typ = TypeUse(
-            base=BUILTINS['textstr'],
-            constraints=[
-                StringLength(portion.closed(1, 10) | portion.closed(20, 25))
-            ]
+            base=BUILTINS["textstr"], constraints=[StringLength(portion.closed(1, 10) | portion.closed(20, 25))]
         )
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
@@ -459,48 +460,42 @@ class TestTyping(unittest.TestCase):
             typ.convert(TRUE)
 
         for slen in range(-10, 1):
-            with self.subTest(f'length {slen}'):
-                val = LiteralARI('-' * slen)
+            with self.subTest(f"length {slen}"):
+                val = LiteralARI("-" * slen)
                 with self.assertRaises(ValueError):
                     typ.convert(val)
         for slen in range(1, 11):
-            with self.subTest(f'length {slen}'):
-                val = LiteralARI('-' * slen)
+            with self.subTest(f"length {slen}"):
+                val = LiteralARI("-" * slen)
                 self.assertEqual(LiteralARI(val.value, StructType.TEXTSTR), typ.convert(val))
         for slen in range(11, 20):
-            with self.subTest(f'length {slen}'):
-                val = LiteralARI('-' * slen)
+            with self.subTest(f"length {slen}"):
+                val = LiteralARI("-" * slen)
                 with self.assertRaises(ValueError):
                     typ.convert(val)
         for slen in range(20, 26):
-            with self.subTest(f'length {slen}'):
-                val = LiteralARI('-' * slen)
+            with self.subTest(f"length {slen}"):
+                val = LiteralARI("-" * slen)
                 self.assertEqual(LiteralARI(val.value, StructType.TEXTSTR), typ.convert(val))
         for slen in range(26, 30):
-            with self.subTest(f'length {slen}'):
-                val = LiteralARI('-' * slen)
+            with self.subTest(f"length {slen}"):
+                val = LiteralARI("-" * slen)
                 with self.assertRaises(ValueError):
                     typ.convert(val)
 
     def test_union_get(self):
-        typ = TypeUnion(types=[
-            BUILTINS['bool'],
-            BUILTINS['null']
-        ])
+        typ = TypeUnion(types=[BUILTINS["bool"], BUILTINS["null"]])
 
         self.assertIsNone(typ.get(UNDEFINED))
         self.assertEqual(TRUE, typ.get(TRUE))
         self.assertEqual(FALSE, typ.get(FALSE))
         self.assertEqual(NULL, typ.get(NULL))
         # non-matching types
-        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
         self.assertIsNone(typ.get(LiteralARI(123)))
 
     def test_union_convert(self):
-        typ = TypeUnion(types=[
-            BUILTINS['bool'],
-            BUILTINS['null']
-        ])
+        typ = TypeUnion(types=[BUILTINS["bool"], BUILTINS["null"]])
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
         self.assertEqual(NULL, typ.convert(NULL))
@@ -510,14 +505,14 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(TYPED_TRUE, typ.convert(TYPED_TRUE))
         self.assertEqual(TYPED_FALSE, typ.convert(TYPED_FALSE))
         # force the output type (in union order)
-        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI('hi')))
-        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI('')))
+        self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI("hi")))
+        self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI("")))
         self.assertEqual(TYPED_TRUE, typ.convert(LiteralARI(123)))
         self.assertEqual(TYPED_FALSE, typ.convert(LiteralARI(0)))
 
     def test_ulist_get(self):
         typ = UniformList(
-            base=BUILTINS['textstr'],
+            base=BUILTINS["textstr"],
             min_elements=1,
             max_elements=3,
         )
@@ -525,44 +520,44 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi')
-            ]),
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi')
-            ]))
+            LiteralARI(type_id=StructType.AC, value=[LiteralARI("hi")]),
+            typ.get(LiteralARI(type_id=StructType.AC, value=[LiteralARI("hi")])),
         )
         self.assertIsNotNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('one'),
-                LiteralARI('two'),
-                LiteralARI('three'),
-            ]))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI("one"),
+                        LiteralARI("two"),
+                        LiteralARI("three"),
+                    ],
+                )
+            )
         )
         # non-matching types
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
         self.assertIsNone(typ.get(LiteralARI(123)))
+        self.assertIsNone(typ.get(LiteralARI(type_id=StructType.AC, value=[LiteralARI(123)])))
+        self.assertIsNone(typ.get(LiteralARI(type_id=StructType.AC, value=[])))
         self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123)
-            ]))
-        )
-        self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[]))
-        )
-        self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('one'),
-                LiteralARI('two'),
-                LiteralARI('three'),
-                LiteralARI('four'),
-            ]))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI("one"),
+                        LiteralARI("two"),
+                        LiteralARI("three"),
+                        LiteralARI("four"),
+                    ],
+                )
+            )
         )
 
     def test_ulist_convert(self):
         typ = UniformList(
-            base=BUILTINS['textstr'],
+            base=BUILTINS["textstr"],
             min_elements=1,
             max_elements=3,
         )
@@ -570,190 +565,230 @@ class TestTyping(unittest.TestCase):
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi', StructType.TEXTSTR)
-            ]),
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi')
-            ]))
+            LiteralARI(type_id=StructType.AC, value=[LiteralARI("hi", StructType.TEXTSTR)]),
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[LiteralARI("hi")])),
         )
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('one'),
-                LiteralARI('two'),
-                LiteralARI('three'),
-                LiteralARI('four'),
-            ]))
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI("one"),
+                        LiteralARI("two"),
+                        LiteralARI("three"),
+                        LiteralARI("four"),
+                    ],
+                )
+            )
 
     def test_dlist_get(self):
-        typ = DiverseList(parts=[
-            BUILTINS['int'],
-            Sequence(
-                base=BUILTINS['textstr'],
-                max_elements=1,
-            )
-        ])
+        typ = DiverseList(
+            parts=[
+                BUILTINS["int"],
+                Sequence(
+                    base=BUILTINS["textstr"],
+                    max_elements=1,
+                ),
+            ]
+        )
 
         self.assertIsNone(typ.get(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123)
-            ]),
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123)
-            ]))
+            LiteralARI(type_id=StructType.AC, value=[LiteralARI(123)]),
+            typ.get(LiteralARI(type_id=StructType.AC, value=[LiteralARI(123)])),
         )
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123),
-                LiteralARI('hi'),
-            ]),
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123),
-                LiteralARI('hi'),
-            ]))
+            LiteralARI(
+                type_id=StructType.AC,
+                value=[
+                    LiteralARI(123),
+                    LiteralARI("hi"),
+                ],
+            ),
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI(123),
+                        LiteralARI("hi"),
+                    ],
+                )
+            ),
         )
+        self.assertIsNone(typ.get(LiteralARI(type_id=StructType.AC, value=[])))
+        self.assertIsNone(typ.get(LiteralARI(type_id=StructType.AC, value=[LiteralARI("hi")])))
         self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[]))
-        )
-        self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi')
-            ]))
-        )
-        self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123),
-                LiteralARI('hi'),
-                LiteralARI('hi'),
-            ]))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI(123),
+                        LiteralARI("hi"),
+                        LiteralARI("hi"),
+                    ],
+                )
+            )
         )
 
     def test_dlist_convert(self):
-        typ = DiverseList(parts=[
-            BUILTINS['int'],
-            Sequence(
-                base=BUILTINS['textstr'],
-                max_elements=1,
-            )
-        ])
+        typ = DiverseList(
+            parts=[
+                BUILTINS["int"],
+                Sequence(
+                    base=BUILTINS["textstr"],
+                    max_elements=1,
+                ),
+            ]
+        )
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123, StructType.INT)
-            ]),
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123)
-            ]))
+            LiteralARI(type_id=StructType.AC, value=[LiteralARI(123, StructType.INT)]),
+            typ.convert(LiteralARI(type_id=StructType.AC, value=[LiteralARI(123)])),
         )
         self.assertEqual(
-            LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123, StructType.INT),
-                LiteralARI('hi', StructType.TEXTSTR),
-            ]),
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123),
-                LiteralARI('hi'),
-            ]))
+            LiteralARI(
+                type_id=StructType.AC,
+                value=[
+                    LiteralARI(123, StructType.INT),
+                    LiteralARI("hi", StructType.TEXTSTR),
+                ],
+            ),
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI(123),
+                        LiteralARI("hi"),
+                    ],
+                )
+            ),
         )
         with self.assertRaises(ValueError):
             typ.convert(LiteralARI(type_id=StructType.AC, value=[]))
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI('hi'),
-            ]))
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI("hi"),
+                    ],
+                )
+            )
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(type_id=StructType.AC, value=[
-                LiteralARI(123),
-                LiteralARI('hi'),
-                LiteralARI('hi'),
-            ]))
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AC,
+                    value=[
+                        LiteralARI(123),
+                        LiteralARI("hi"),
+                        LiteralARI("hi"),
+                    ],
+                )
+            )
 
     def test_umap_get(self):
         typ = UniformMap(
-            kbase=BUILTINS['uint'],
-            vbase=BUILTINS['textstr'],
+            kbase=BUILTINS["uint"],
+            vbase=BUILTINS["textstr"],
         )
 
         self.assertIsNone(typ.get(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AM, value={}),
-            typ.get(LiteralARI(type_id=StructType.AM, value={}))
+            LiteralARI(type_id=StructType.AM, value={}), typ.get(LiteralARI(type_id=StructType.AM, value={}))
         )
         self.assertEqual(
-            LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI('hi')
-            }),
-            typ.get(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI('hi')
-            }))
+            LiteralARI(type_id=StructType.AM, value={LiteralARI(3): LiteralARI("hi")}),
+            typ.get(LiteralARI(type_id=StructType.AM, value={LiteralARI(3): LiteralARI("hi")})),
         )
         self.assertIsNotNone(
-            typ.get(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(1): LiteralARI('one'),
-                LiteralARI(2): LiteralARI('two'),
-                LiteralARI(3): LiteralARI('three'),
-            }))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AM,
+                    value={
+                        LiteralARI(1): LiteralARI("one"),
+                        LiteralARI(2): LiteralARI("two"),
+                        LiteralARI(3): LiteralARI("three"),
+                    },
+                )
+            )
         )
         # non-matching types
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
         self.assertIsNone(typ.get(LiteralARI(123)))
         self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI(123),
-            }))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AM,
+                    value={
+                        LiteralARI(3): LiteralARI(123),
+                    },
+                )
+            )
         )
         self.assertIsNone(
-            typ.get(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI('hi'): LiteralARI('hello'),
-            }))
+            typ.get(
+                LiteralARI(
+                    type_id=StructType.AM,
+                    value={
+                        LiteralARI("hi"): LiteralARI("hello"),
+                    },
+                )
+            )
         )
 
     def test_umap_convert(self):
         typ = UniformMap(
-            kbase=BUILTINS['uint'],
-            vbase=BUILTINS['textstr'],
+            kbase=BUILTINS["uint"],
+            vbase=BUILTINS["textstr"],
         )
 
         self.assertEqual(UNDEFINED, typ.convert(UNDEFINED))
 
         self.assertEqual(
-            LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI('hi', StructType.TEXTSTR)
-            }),
-            typ.convert(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI('hi')
-            }))
+            LiteralARI(type_id=StructType.AM, value={LiteralARI(3): LiteralARI("hi", StructType.TEXTSTR)}),
+            typ.convert(LiteralARI(type_id=StructType.AM, value={LiteralARI(3): LiteralARI("hi")})),
         )
         with self.assertRaises(TypeError):
-            typ.convert(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI(3): LiteralARI(123),
-            }))
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AM,
+                    value={
+                        LiteralARI(3): LiteralARI(123),
+                    },
+                )
+            )
         with self.assertRaises(ValueError):
-            typ.convert(LiteralARI(type_id=StructType.AM, value={
-                LiteralARI('hi'): LiteralARI('hello'),
-            }))
+            typ.convert(
+                LiteralARI(
+                    type_id=StructType.AM,
+                    value={
+                        LiteralARI("hi"): LiteralARI("hello"),
+                    },
+                )
+            )
 
     def test_tblt_get(self):
-        typ = TableTemplate(columns=[
-            TableColumn(name='one', base=BUILTINS['int']),
-            TableColumn(name='two', base=BUILTINS['textstr']),
-            TableColumn(name='three', base=BUILTINS['bool']),
-        ])
+        typ = TableTemplate(
+            columns=[
+                TableColumn(name="one", base=BUILTINS["int"]),
+                TableColumn(name="two", base=BUILTINS["textstr"]),
+                TableColumn(name="three", base=BUILTINS["bool"]),
+            ]
+        )
 
         self.assertIsNone(typ.get(NULL))
         self.assertIsNone(typ.get(TRUE))
         self.assertIsNone(typ.get(FALSE))
-        self.assertIsNone(typ.get(LiteralARI('')))
-        self.assertIsNone(typ.get(LiteralARI('hi')))
-        self.assertIsNone(typ.get(LiteralARI('hi', StructType.TEXTSTR)))
-        self.assertIsNone(typ.get(LiteralARI(b'')))
-        self.assertIsNone(typ.get(LiteralARI(b'hi')))
+        self.assertIsNone(typ.get(LiteralARI("")))
+        self.assertIsNone(typ.get(LiteralARI("hi")))
+        self.assertIsNone(typ.get(LiteralARI("hi", StructType.TEXTSTR)))
+        self.assertIsNone(typ.get(LiteralARI(b"")))
+        self.assertIsNone(typ.get(LiteralARI(b"hi")))
         self.assertIsNone(typ.get(LiteralARI(0)))
         self.assertIsNone(typ.get(LiteralARI(123)))
         self.assertIsNone(typ.get(LiteralARI(-123)))
@@ -762,138 +797,149 @@ class TestTyping(unittest.TestCase):
         self.assertIsNone(typ.get(LiteralARI(0, StructType.UVAST)))
 
         inarray = Table((0, 3))
-        LOGGER.info('array %s', inarray)
+        LOGGER.info("array %s", inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
         self.assertEqual(inarray, got.value)
 
-        inarray = Table.from_rows([
-            [LiteralARI(1), LiteralARI('hi'), LiteralARI(True)],
-        ])
-        LOGGER.info('in %s', inarray)
+        inarray = Table.from_rows(
+            [
+                [LiteralARI(1), LiteralARI("hi"), LiteralARI(True)],
+            ]
+        )
+        LOGGER.info("in %s", inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
-        LOGGER.info('out %s', got.value)
+        LOGGER.info("out %s", got.value)
         self.assertEqual(inarray, got.value)
 
         # mismatched value type in last column
         self.assertEqual(LiteralARI(True), inarray[0, 2])
         inarray[0, 2] = LiteralARI(3)
-        LOGGER.info('in %s', inarray)
+        LOGGER.info("in %s", inarray)
         got = typ.get(LiteralARI(inarray, StructType.TBL))
         self.assertIsNone(got)
 
     def test_tblt_convert(self):
-        typ = TableTemplate(columns=[
-            TableColumn(name='one', base=BUILTINS['int']),
-            TableColumn(name='two', base=BUILTINS['textstr']),
-            TableColumn(name='three', base=BUILTINS['bool']),
-        ])
+        typ = TableTemplate(
+            columns=[
+                TableColumn(name="one", base=BUILTINS["int"]),
+                TableColumn(name="two", base=BUILTINS["textstr"]),
+                TableColumn(name="three", base=BUILTINS["bool"]),
+            ]
+        )
 
-        inarray = Table.from_rows([
-            [LiteralARI(1), LiteralARI('hi'), LiteralARI(True)],
-        ])
-        LOGGER.info('in %s', inarray)
+        inarray = Table.from_rows(
+            [
+                [LiteralARI(1), LiteralARI("hi"), LiteralARI(True)],
+            ]
+        )
+        LOGGER.info("in %s", inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
-        LOGGER.info('out %s', got.value)
-        outarray = Table.from_rows([
+        LOGGER.info("out %s", got.value)
+        outarray = Table.from_rows(
             [
-                LiteralARI(1, StructType.INT),
-                LiteralARI('hi', StructType.TEXTSTR),
-                LiteralARI(True, StructType.BOOL)
-            ],
-        ])
+                [
+                    LiteralARI(1, StructType.INT),
+                    LiteralARI("hi", StructType.TEXTSTR),
+                    LiteralARI(True, StructType.BOOL),
+                ],
+            ]
+        )
         self.assertEqual(outarray, got.value)
 
-        inarray = Table.from_rows([
-            [LiteralARI(1), LiteralARI('hi'), LiteralARI('hi')],
-        ])
-        LOGGER.info('in %s', inarray)
+        inarray = Table.from_rows(
+            [
+                [LiteralARI(1), LiteralARI("hi"), LiteralARI("hi")],
+            ]
+        )
+        LOGGER.info("in %s", inarray)
         got = typ.convert(LiteralARI(inarray, StructType.TBL))
         self.assertIsNotNone(got)
         self.assertEqual(StructType.TBL, got.type_id)
-        LOGGER.info('out %s', got.value)
-        outarray = Table.from_rows([
+        LOGGER.info("out %s", got.value)
+        outarray = Table.from_rows(
             [
-                LiteralARI(1, StructType.INT),
-                LiteralARI('hi', StructType.TEXTSTR),
-                LiteralARI(True, StructType.BOOL)
-            ],
-        ])
+                [
+                    LiteralARI(1, StructType.INT),
+                    LiteralARI("hi", StructType.TEXTSTR),
+                    LiteralARI(True, StructType.BOOL),
+                ],
+            ]
+        )
         self.assertEqual(outarray, got.value)
 
     def test_seq_take(self):
         typ = Sequence(
-            base=BUILTINS['textstr'],
+            base=BUILTINS["textstr"],
             max_elements=1,
         )
 
         items = [
             LiteralARI(1),
-            LiteralARI('hi'),
+            LiteralARI("hi"),
         ]
         got = typ.take(items)
         self.assertEqual(0, len(got))
         self.assertEqual(2, len(items))
 
         items = [
-            LiteralARI('hi'),
+            LiteralARI("hi"),
             LiteralARI(1),
         ]
         got = typ.take(items)
         self.assertEqual(1, len(got))
         self.assertEqual(1, len(items))
-        self.assertEqual([LiteralARI('hi')], got)
+        self.assertEqual([LiteralARI("hi")], got)
 
         items = [
-            LiteralARI('hi'),
-            LiteralARI('oh'),  # don't care
+            LiteralARI("hi"),
+            LiteralARI("oh"),  # don't care
         ]
         got = typ.take(items)
         self.assertEqual(1, len(got))
         self.assertEqual(1, len(items))
-        self.assertEqual([LiteralARI('hi')], got)
+        self.assertEqual([LiteralARI("hi")], got)
 
     TYPE_WALK = (
         (
-            BUILTINS['int'],
+            BUILTINS["int"],
             [
                 TypeSummary(NumericType, StructType.INT),
-            ]
+            ],
         ),
         (
-            TypeUnion(types=[BUILTINS['bool'], BUILTINS['null']]),
+            TypeUnion(types=[BUILTINS["bool"], BUILTINS["null"]]),
             [
                 TypeSummary(TypeUnion, None),
                 TypeSummary(BoolType, StructType.BOOL),
                 TypeSummary(NullType, StructType.NULL),
-            ]
+            ],
         ),
         (
-            TableTemplate(columns=[
-                TableColumn(name='one', base=BUILTINS['int']),
-                TableColumn(name='two', base=BUILTINS['textstr']),
-                TableColumn(name='three', base=BUILTINS['bool']),
-            ]),
+            TableTemplate(
+                columns=[
+                    TableColumn(name="one", base=BUILTINS["int"]),
+                    TableColumn(name="two", base=BUILTINS["textstr"]),
+                    TableColumn(name="three", base=BUILTINS["bool"]),
+                ]
+            ),
             [
                 TypeSummary(TableTemplate, None),
                 TypeSummary(NumericType, StructType.INT),
                 TypeSummary(StringType, StructType.TEXTSTR),
                 TypeSummary(BoolType, StructType.BOOL),
-            ]
+            ],
         ),
     )
 
     def test_type_walk(self):
         for row in self.TYPE_WALK:
-            with self.subTest(f'{row}'):
+            with self.subTest(f"{row}"):
                 root, expect = row
-                got = [
-                    TypeSummary.from_type(obj)
-                    for obj in type_walk(root)
-                ]
+                got = [TypeSummary.from_type(obj) for obj in type_walk(root)]
                 self.assertEqual(expect, got)

@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' CODEC for converting ARI to and from CBOR form.
-'''
+"""CODEC for converting ARI to and from CBOR form."""
+
 import datetime
 import decimal
 import logging
@@ -29,9 +29,20 @@ import numpy
 from typing import Any, BinaryIO, Optional, Tuple, Union
 import cbor2
 from ace.ari import (
-    DTN_EPOCH, INT_ENVELOPE, check_decfrac,
-    ARI, Identity, ReferenceARI, LiteralARI, StructType,
-    Table, ExecutionSet, ReportSet, Report, ObjectRefPattern, apiIntInterval
+    DTN_EPOCH,
+    INT_ENVELOPE,
+    check_decfrac,
+    ARI,
+    Identity,
+    ReferenceARI,
+    LiteralARI,
+    StructType,
+    Table,
+    ExecutionSet,
+    ReportSet,
+    Report,
+    ObjectRefPattern,
+    apiIntInterval,
 )
 from ace.typing import NONCE
 
@@ -39,40 +50,40 @@ LOGGER = logging.getLogger(__name__)
 
 
 class ParseError(RuntimeError):
-    ''' Indicate an error in ARI parsing. '''
+    """Indicate an error in ARI parsing."""
 
 
 class Decoder:
-    ''' The decoder portion of this CODEC. '''
+    """The decoder portion of this CODEC."""
 
     def decode(self, buf: BinaryIO) -> ARI:
-        ''' Decode an ARI from CBOR bytestring.
+        """Decode an ARI from CBOR bytestring.
 
         :param buf: The buffer to read from.
         :return: The decoded ARI.
-        '''
+        """
         cbordec = cbor2.CBORDecoder(buf)
         try:
             item = cbordec.decode()
         except Exception as err:
-            raise ParseError(f'Failed to decode CBOR: {err}') from err
+            raise ParseError(f"Failed to decode CBOR: {err}") from err
 
         try:
             res = self._item_to_ari(item)
         except cbor2.CBORDecodeEOF as err:
-            raise ParseError(f'Failed to decode ARI: {err}') from err
+            raise ParseError(f"Failed to decode ARI: {err}") from err
 
         return res
 
     def _item_to_ari(self, item: object):
-        LOGGER.debug('Got ARI item: %s', item)
+        LOGGER.debug("Got ARI item: %s", item)
 
         if isinstance(item, list):
             if len(item) in {4, 5, 6}:
                 idx = 2
                 if isinstance(item[idx], datetime.date):
                     if len(item) < 5:
-                        raise ParseError(f'Invalid ARI CBOR item containing model revision, too few segments: {item}')
+                        raise ParseError(f"Invalid ARI CBOR item containing model revision, too few segments: {item}")
 
                     model_rev = item[idx]
                     idx += 1
@@ -80,8 +91,10 @@ class Decoder:
                     model_rev = None
 
                 for item_idx in (0, 1, idx, idx + 1):
-                    if not (item[item_idx] is None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)):
-                        raise ParseError(f'{item} segment {item_idx} has unexpected type {type(item[idx])}')
+                    if not (
+                        item[item_idx] is None or isinstance(item[item_idx], int) or isinstance(item[item_idx], str)
+                    ):
+                        raise ParseError(f"{item} segment {item_idx} has unexpected type {type(item[idx])}")
 
                 ident = Identity(
                     org_id=item[0],
@@ -95,10 +108,7 @@ class Decoder:
                 params = None
                 if len(item) == idx + 1:
                     if isinstance(item[idx], list):
-                        params = tuple(
-                            self._item_to_ari(param_item)
-                            for param_item in item[idx]
-                        )
+                        params = tuple(self._item_to_ari(param_item) for param_item in item[idx])
                     elif isinstance(item[idx], dict):
                         mapobj = {}
                         for key, val in item[idx].items():
@@ -107,9 +117,11 @@ class Decoder:
                             mapobj[k] = v
                         params = mapobj
                     else:
-                        raise ParseError(f'Invalid parameter format: {item} segment {idx} should be a list or dictionary')
+                        raise ParseError(
+                            f"Invalid parameter format: {item} segment {idx} should be a list or dictionary"
+                        )
                 elif len(item) > idx + 1:
-                    raise ParseError(f'Invalid ARI CBOR item, too many segments: {item}')
+                    raise ParseError(f"Invalid ARI CBOR item, too many segments: {item}")
 
                 res = ReferenceARI(ident=ident, params=params)
 
@@ -117,15 +129,12 @@ class Decoder:
                 # Typed literal
                 type_id = StructType(item[0])
                 value = self._item_to_val(item[1], type_id)
-                res = LiteralARI(
-                    type_id=type_id,
-                    value=value
-                )
+                res = LiteralARI(type_id=type_id, value=value)
             else:
-                raise ParseError(f'Invalid ARI CBOR item, unexpected number of segments: {item}')
+                raise ParseError(f"Invalid ARI CBOR item, unexpected number of segments: {item}")
 
         elif isinstance(item, dict):
-            raise ParseError(f'Invalid ARI CBOR major type: {item}')
+            raise ParseError(f"Invalid ARI CBOR major type: {item}")
 
         else:
             # Untyped literal
@@ -135,7 +144,7 @@ class Decoder:
         return res
 
     def _item_to_val(self, item: Any, type_id: Optional[int]):
-        ''' Decode a CBOR item into an ARI value. '''
+        """Decode a CBOR item into an ARI value."""
         if type_id == StructType.NULL:
             if item is not None:
                 raise ValueError(f"Invalid NULL value: {item}")
@@ -166,15 +175,15 @@ class Decoder:
             value = self._item_to_timeval(item)
         elif type_id == StructType.LABEL:
             if not isinstance(item, (str, int)):
-                raise TypeError(f'Invalid LABEL: {item} should be text or int')
+                raise TypeError(f"Invalid LABEL: {item} should be text or int")
             value = item
         elif type_id == StructType.CBOR:
             if not isinstance(item, bytes):
-                raise TypeError(f'Invalid CBOR: {item} should be bytes')
+                raise TypeError(f"Invalid CBOR: {item} should be bytes")
             value = item
         elif type_id == StructType.ARITYPE:
             if not isinstance(item, (str, int)):
-                raise TypeError(f'Invalid ARITYPE: {item} should be text or int')
+                raise TypeError(f"Invalid ARITYPE: {item} should be text or int")
             value = item
         elif type_id == StructType.AC:
             value = tuple(self._item_to_ari(sub_item) for sub_item in item)
@@ -185,17 +194,19 @@ class Decoder:
 
             ncol = next(item_it, None)
             if ncol is None:
-                raise ParseError(f'No column number provided for TBL: {item}')
+                raise ParseError(f"No column number provided for TBL: {item}")
             elif not isinstance(ncol, int):
-                raise ParseError(f'Invalid column provided for TBL: {ncol}')
+                raise ParseError(f"Invalid column provided for TBL: {ncol}")
             if ncol == 0:
                 nrow = 0
             else:
                 nrow = (len(item) - 1) // ncol
             if len(item) != nrow * ncol + 1:
-                raise ParseError(f'Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns')
+                raise ParseError(
+                    f"Number of columns does not match number of values: {item[1:]} cannot be split among {ncol} columns"
+                )
             value = Table((nrow, ncol))
-            LOGGER.debug(f'Processing TBL with {nrow} rows and {ncol} columns...')
+            LOGGER.debug(f"Processing TBL with {nrow} rows and {ncol} columns...")
             for row_ix in range(nrow):
                 for col_ix in range(ncol):
                     value[row_ix, col_ix] = self._item_to_ari(next(item_it))
@@ -203,32 +214,25 @@ class Decoder:
         elif type_id == StructType.EXECSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
-                raise ValueError(f'invalid nonce: {item[0]}')
-            value = ExecutionSet(
-                nonce=nonce,
-                targets=tuple(self._item_to_ari(sub) for sub in item[1:])
-            )
+                raise ValueError(f"invalid nonce: {item[0]}")
+            value = ExecutionSet(nonce=nonce, targets=tuple(self._item_to_ari(sub) for sub in item[1:]))
         elif type_id == StructType.RPTSET:
             nonce = NONCE.get(LiteralARI(item[0]))
             if nonce is None:
-                raise ValueError(f'invalid nonce: {item[0]}')
+                raise ValueError(f"invalid nonce: {item[0]}")
 
-            ref_time = (DTN_EPOCH + self._item_to_timeval(item[1]))
+            ref_time = DTN_EPOCH + self._item_to_timeval(item[1])
 
             rpts = []
             for rpt_item in item[2:]:
                 rpt = Report(
                     rel_time=self._item_to_timeval(rpt_item[0]),
                     source=self._item_to_ari(rpt_item[1]),
-                    items=tuple(map(self._item_to_ari, rpt_item[2:]))
+                    items=tuple(map(self._item_to_ari, rpt_item[2:])),
                 )
                 rpts.append(rpt)
 
-            value = ReportSet(
-                nonce=nonce,
-                ref_time=ref_time,
-                reports=tuple(rpts)
-            )
+            value = ReportSet(nonce=nonce, ref_time=ref_time, reports=tuple(rpts))
         elif type_id == StructType.OBJPAT:
             value = ObjectRefPattern(
                 org_pat=self._pattern_part(item[0]),
@@ -243,24 +247,24 @@ class Decoder:
                     raise ValueError(f"Integer value {item} is outside valid interval {INT_ENVELOPE}")
             value = item
         else:
-            raise ValueError(f'Unhandled literal type: {type_id}')
+            raise ValueError(f"Unhandled literal type: {type_id}")
 
         return value
 
     def _item_to_timeval(self, item: Any) -> numpy.timedelta64:
-        ''' Extract a time offset value from CBOR item. '''
+        """Extract a time offset value from CBOR item."""
         if isinstance(item, int):
-            value = numpy.timedelta64(item, 's')
+            value = numpy.timedelta64(item, "s")
         elif isinstance(item, list):
             # require both items are integer
             exp, mant = map(int, item)
             prim = decimal.Decimal(mant).scaleb(exp)
-            value = numpy.timedelta64(check_decfrac(prim), 'ns')
+            value = numpy.timedelta64(check_decfrac(prim), "ns")
         else:
-            raise TypeError(f'Bad timeval type: {item} is type {type(item)}')
+            raise TypeError(f"Bad timeval type: {item} is type {type(item)}")
 
         if numpy.isnat(value):
-            raise ValueError('Got not-a-time')
+            raise ValueError("Got not-a-time")
         return value
 
     def _pattern_part(self, item: Any) -> ObjectRefPattern.PartType:
@@ -292,27 +296,27 @@ class Decoder:
 
             return value
         else:
-            raise TypeError(f'Bad pattern part type: {item} is type {type(item)}')
+            raise TypeError(f"Bad pattern part type: {item} is type {type(item)}")
 
 
 class Encoder:
-    ''' The encoder portion of this CODEC. '''
+    """The encoder portion of this CODEC."""
 
     def encode(self, ari: ARI, buf: BinaryIO):
-        ''' Encode an ARI into CBOR bytestring.
+        """Encode an ARI into CBOR bytestring.
 
         :param ari: The ARI object to encode.
         :param buf: The buffer to write into.
-        '''
+        """
         cborenc = cbor2.CBOREncoder(buf, canonical=True)
         item = self._ari_to_item(ari)
-        LOGGER.debug('ARI to item %s', item)
+        LOGGER.debug("ARI to item %s", item)
         cborenc.encode(item)
 
     def _ari_to_item(self, obj: ARI) -> object:
-        ''' Convert an ARI object into a CBOR item. '''
+        """Convert an ARI object into a CBOR item."""
         item = None
-        LOGGER.debug('ARI: %s', obj)
+        LOGGER.debug("ARI: %s", obj)
         if isinstance(obj, ReferenceARI):
             type_id = int(obj.ident.type_id) if obj.ident.type_id is not None else None
             item = [
@@ -328,10 +332,7 @@ class Encoder:
             ]
 
             if isinstance(obj.params, (tuple, list)):
-                item.append([
-                    self._ari_to_item(param)
-                    for param in obj.params
-                ])
+                item.append([self._ari_to_item(param) for param in obj.params])
             elif isinstance(obj.params, dict):
                 mapobj = {}
                 for key, val in obj.params.items():
@@ -347,12 +348,12 @@ class Encoder:
                 item = self._val_to_item(obj.value)
 
         else:
-            raise TypeError(f'Unhandled object type {type(obj)} for: {obj}')
+            raise TypeError(f"Unhandled object type {type(obj)} for: {obj}")
 
         return item
 
     def _val_to_item(self, value):
-        ''' Convert a non-typed value into a CBOR item. '''
+        """Convert a non-typed value into a CBOR item."""
         if isinstance(value, (tuple, list)):
             item = [self._ari_to_item(obj) for obj in value]
         elif isinstance(value, dict):
@@ -362,9 +363,7 @@ class Encoder:
         elif isinstance(value, numpy.timedelta64):
             item = self._timeval_to_item(value)
         elif isinstance(value, ExecutionSet):
-            item = [
-                self._ari_to_item(value.nonce)
-            ] + list(map(self._ari_to_item, value.targets))
+            item = [self._ari_to_item(value.nonce)] + list(map(self._ari_to_item, value.targets))
         elif isinstance(value, ReportSet):
             rpts_item = []
             for rpt in value.reports:
@@ -373,10 +372,7 @@ class Encoder:
                     self._ari_to_item(rpt.source),
                 ] + list(map(self._ari_to_item, rpt.items))
                 rpts_item.append(rpt_item)
-            item = [
-                self._ari_to_item(value.nonce),
-                self._val_to_item(value.ref_time - DTN_EPOCH)
-            ] + rpts_item
+            item = [self._ari_to_item(value.nonce), self._val_to_item(value.ref_time - DTN_EPOCH)] + rpts_item
         elif isinstance(value, ObjectRefPattern):
             item = [
                 self._pattern_part(value.org_pat),
@@ -389,7 +385,7 @@ class Encoder:
         return item
 
     def _timeval_to_item(self, diff: numpy.timedelta64) -> Union[int, Tuple[int, int]]:
-        total_nsec = int(diff // numpy.timedelta64(1, 'ns'))
+        total_nsec = int(diff // numpy.timedelta64(1, "ns"))
 
         mant = total_nsec
         exp = -9

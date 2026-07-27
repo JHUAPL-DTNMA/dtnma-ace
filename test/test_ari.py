@@ -20,20 +20,16 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the :mod:`ace.ari` module.
-'''
+"""Verify behavior of the :mod:`ace.ari` module."""
+
 import logging
 import unittest
-from ace.ari import (
-    ARI, Identity, ReferenceARI, LiteralARI, StructType,
-    ObjectRefPattern, apiIntInterval
-)
+from ace.ari import ARI, Identity, ReferenceARI, LiteralARI, StructType, ObjectRefPattern, apiIntInterval
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Counter:
-
     def __init__(self):
         self.count = 0
         self.seen = []
@@ -44,13 +40,11 @@ class Counter:
 
 
 class IdentityMapper:
-
     def __call__(self, ari: ARI) -> ARI:
         return ari
 
 
 class TestAri(unittest.TestCase):
-
     def test_visit_simple(self):
         ari = LiteralARI(3)
         ctr = Counter()
@@ -65,11 +59,11 @@ class TestAri(unittest.TestCase):
 
     def test_visit_params_list(self):
         ari = ReferenceARI(
-            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
+            ident=Identity(org_id="example", model_id="hi", type_id=StructType.EDD, obj_id="there"),
             params=(
                 LiteralARI(3),
-                LiteralARI('hello'),
-            )
+                LiteralARI("hello"),
+            ),
         )
         ctr = Counter()
         ari.visit(ctr)
@@ -77,10 +71,10 @@ class TestAri(unittest.TestCase):
 
     def test_visit_params_map(self):
         ari = ReferenceARI(
-            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
+            ident=Identity(org_id="example", model_id="hi", type_id=StructType.EDD, obj_id="there"),
             params={
-                LiteralARI(3): LiteralARI('hello'),
-            }
+                LiteralARI(3): LiteralARI("hello"),
+            },
         )
         ctr = Counter()
         ari.visit(ctr)
@@ -93,28 +87,28 @@ class TestAri(unittest.TestCase):
 
     def test_map_params_list(self):
         ari = ReferenceARI(
-            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
+            ident=Identity(org_id="example", model_id="hi", type_id=StructType.EDD, obj_id="there"),
             params=(
                 LiteralARI(3),
-                LiteralARI('hello'),
-            )
+                LiteralARI("hello"),
+            ),
         )
         got = ari.map(IdentityMapper())
         self.assertEqual(ari, got)
 
     def test_map_params_map(self):
         ari = ReferenceARI(
-            ident=Identity(org_id='example', model_id='hi', type_id=StructType.EDD, obj_id='there'),
+            ident=Identity(org_id="example", model_id="hi", type_id=StructType.EDD, obj_id="there"),
             params={
-                LiteralARI(3): LiteralARI('hello'),
-            }
+                LiteralARI(3): LiteralARI("hello"),
+            },
         )
         got = ari.map(IdentityMapper())
         self.assertEqual(ari, got)
 
 
 class TestPatternLogic(unittest.TestCase):
-    ''' Simple verification of OBJPAT internal logic '''
+    """Simple verification of OBJPAT internal logic"""
 
     def test_match_any(self):
         pat = ObjectRefPattern(

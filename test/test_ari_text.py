@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the ace.ari_text module tree.
-'''
+"""Verify behavior of the ace.ari_text module tree."""
+
 import base64
 import io
 import logging
@@ -30,8 +30,17 @@ import unittest
 import numpy
 from ace.ari import (
     apiIntInterval,
-    ARI, Identity, ReferenceARI, LiteralARI, StructType, UNDEFINED,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern, DTN_EPOCH
+    ARI,
+    Identity,
+    ReferenceARI,
+    LiteralARI,
+    StructType,
+    UNDEFINED,
+    ExecutionSet,
+    ReportSet,
+    Report,
+    ObjectRefPattern,
+    DTN_EPOCH,
 )
 from ace import ari_text
 
@@ -50,223 +59,220 @@ class TestAriText(unittest.TestCase):
 
     LITERAL_TEXTS = [
         # Specials
-        ('ari:undefined', UNDEFINED.value),
-        ('ari:null', None),
-        ('ari:/NULL/null', None),
+        ("ari:undefined", UNDEFINED.value),
+        ("ari:null", None),
+        ("ari:/NULL/null", None),
         # BOOL
-        ('ari:true', True),
-        ('ari:false', False),
-        ('ari:/BOOL/true', True),
-        ('ari:/1/true', True, 'ari:/BOOL/true'),
-        ('true', True, 'ari:true'),
+        ("ari:true", True),
+        ("ari:false", False),
+        ("ari:/BOOL/true", True),
+        ("ari:/1/true", True, "ari:/BOOL/true"),
+        ("true", True, "ari:true"),
         # INT
-        ('ari:0', 0),
-        ('ari:10', 10),
-        ('ari:-100', -100),
-        ('ari:0x10', 16, 'ari:16'),
-        ('ari:0b100', 4, 'ari:4'),
-        ('ari:/INT/10', 10),
-        ('ari:/VAST/0', 0),
-        ('ari:/VAST/10', 10),
-        ('ari:/VAST/0xa', 0xa, 'ari:/VAST/10'),
-        ('ari:/VAST/0b10', 0b10, 'ari:/VAST/2'),
-        ('ari:/VAST/-10', -10),
-        ('ari:/VAST/-0xa', -0xa, 'ari:/VAST/-10'),
-        ('/INT/10', 10, 'ari:/INT/10'),
+        ("ari:0", 0),
+        ("ari:10", 10),
+        ("ari:-100", -100),
+        ("ari:0x10", 16, "ari:16"),
+        ("ari:0b100", 4, "ari:4"),
+        ("ari:/INT/10", 10),
+        ("ari:/VAST/0", 0),
+        ("ari:/VAST/10", 10),
+        ("ari:/VAST/0xa", 0xA, "ari:/VAST/10"),
+        ("ari:/VAST/0b10", 0b10, "ari:/VAST/2"),
+        ("ari:/VAST/-10", -10),
+        ("ari:/VAST/-0xa", -0xA, "ari:/VAST/-10"),
+        ("/INT/10", 10, "ari:/INT/10"),
         # FLOAT
-        ('ari:0.0', 0.0),
-        ('ari:1e3', 1000.0, 'ari:1000.0'),
+        ("ari:0.0", 0.0),
+        ("ari:1e3", 1000.0, "ari:1000.0"),
         # ('ari:0fx63d0', 1000.0, 'ari:1000.0'),
         # ('ari:+0fx63d0', 1000.0, 'ari:1000.0'),
         # ('ari:-0fx63d0', -1000.0, 'ari:-1000.0'),
         # ('ari:0fx447a0000', 1000.0, 'ari:1000.0'),
         # ('ari:0fx408f400000000000', 1000.0, 'ari:1000.0'),
-        ('ari:/REAL32/0.0', 0.0),
-        ('ari:/REAL64/NaN', float('NaN')),
-        ('ari:/REAL64/Infinity', float('Infinity')),
-        ('ari:/REAL64/-Infinity', -float('Infinity')),
-        ('ari:/REAL64/0.0', 0.0),
-        ('ari:/REAL64/0.01', 0.01),
-        ('ari:/REAL64/1e2', 1e2, 'ari:/REAL64/100.0'),
-        ('ari:/REAL64/1e-2', 1e-2, 'ari:/REAL64/0.01'),
-        ('ari:/REAL64/+1e2', 1e2, 'ari:/REAL64/100.0'),
-        ('ari:/REAL64/-1e2', -1e2, 'ari:/REAL64/-100.0'),
-        ('ari:/REAL64/1.25e2', 1.25e2, 'ari:/REAL64/125.0'),
-        ('ari:/REAL64/1e25', 1e25, 'ari:/REAL64/1e+25'),
-        ('ari:/REAL64/NaN', float('NaN')),
-        ('ari:/REAL64/Infinity', float('Infinity')),
-        ('ari:/REAL64/-Infinity', -float('Infinity')),
+        ("ari:/REAL32/0.0", 0.0),
+        ("ari:/REAL64/NaN", float("NaN")),
+        ("ari:/REAL64/Infinity", float("Infinity")),
+        ("ari:/REAL64/-Infinity", -float("Infinity")),
+        ("ari:/REAL64/0.0", 0.0),
+        ("ari:/REAL64/0.01", 0.01),
+        ("ari:/REAL64/1e2", 1e2, "ari:/REAL64/100.0"),
+        ("ari:/REAL64/1e-2", 1e-2, "ari:/REAL64/0.01"),
+        ("ari:/REAL64/+1e2", 1e2, "ari:/REAL64/100.0"),
+        ("ari:/REAL64/-1e2", -1e2, "ari:/REAL64/-100.0"),
+        ("ari:/REAL64/1.25e2", 1.25e2, "ari:/REAL64/125.0"),
+        ("ari:/REAL64/1e25", 1e25, "ari:/REAL64/1e+25"),
+        ("ari:/REAL64/NaN", float("NaN")),
+        ("ari:/REAL64/Infinity", float("Infinity")),
+        ("ari:/REAL64/-Infinity", -float("Infinity")),
         # TEXTSTR
-        ('ari:hi', 'hi'),
-        ('ari:%22hi%20there%22', 'hi there'),
-        ('ari:%22hi%5C%22oh%22', 'hi"oh'),
-        ('ari:/TEXTSTR/hi', 'hi'),
-        ('ari:/TEXTSTR/%22hi%20there%22', 'hi there'),
+        ("ari:hi", "hi"),
+        ("ari:%22hi%20there%22", "hi there"),
+        ("ari:%22hi%5C%22oh%22", 'hi"oh'),
+        ("ari:/TEXTSTR/hi", "hi"),
+        ("ari:/TEXTSTR/%22hi%20there%22", "hi there"),
         # BYTESTR
-        ('ari:\'hi\'', b'hi', 'ari:h\'6869\''),
-        ('ari:%27hi%27', b'hi', 'ari:h\'6869\''),
-        ('ari:\'hi%5C%22oh\'', b'hi"oh', 'ari:h\'6869226F68\''),
-        ('ari:\'hi%5C\'oh\'', b'hi\'oh', 'ari:h\'6869276F68\''),
-        ('ari:/BYTESTR/\'hi\'', b'hi', 'ari:/BYTESTR/h\'6869\''),
+        ("ari:'hi'", b"hi", "ari:h'6869'"),
+        ("ari:%27hi%27", b"hi", "ari:h'6869'"),
+        ("ari:'hi%5C%22oh'", b'hi"oh', "ari:h'6869226F68'"),
+        ("ari:'hi%5C'oh'", b"hi'oh", "ari:h'6869276F68'"),
+        ("ari:/BYTESTR/'hi'", b"hi", "ari:/BYTESTR/h'6869'"),
         # RFC 4648 test vectors
-        ('ari:h\'666f6f626172\'', b'foobar', 'ari:h\'666F6F626172\''),
-        ('ari:b64\'Zm9vYmFy\'', b'foobar', 'ari:h\'666F6F626172\''),
+        ("ari:h'666f6f626172'", b"foobar", "ari:h'666F6F626172'"),
+        ("ari:b64'Zm9vYmFy'", b"foobar", "ari:h'666F6F626172'"),
         # Times
-        ('ari:/TP/20230102T030405Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH),
-        ('ari:/TP/2023-01-02T03:04:05Z', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),  # with formatting
-        ('ari:/TP/20230102T030405.25Z', numpy.datetime64('2023-01-02T03:04:05.25') - DTN_EPOCH),
-        ('ari:/TP/725943845.0', numpy.datetime64('2023-01-02T03:04:05') - DTN_EPOCH, 'ari:/TP/20230102T030405Z'),
-        ('ari:/TD/PT3H', numpy.timedelta64(3, 'h')),
-        ('ari:/TD/PT10.001S', numpy.timedelta64(10001, 'ms')),
-        ('ari:/TD/PT10.25S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
-        ('ari:/TD/PT10.250000S', numpy.timedelta64(10250, 'ms'), 'ari:/TD/PT10.25S'),
-        ('ari:/TD/P1DT10.25S', numpy.timedelta64(1, 'D') + numpy.timedelta64(10250, 'ms'), 'ari:/TD/P1DT10.25S'),
-        ('ari:/TD/+PT3H', numpy.timedelta64(3, 'h'), 'ari:/TD/PT3H'),
-        ('ari:/TD/-PT3H', -numpy.timedelta64(3, 'h')),
-        ('ari:/TD/100', numpy.timedelta64(100, 's'), 'ari:/TD/PT1M40S'),
-        ('ari:/TD/1.5', numpy.timedelta64(1500, 'ms'), 'ari:/TD/PT1.5S'),
-        ('ari:/TD/-P106751DT23H47M16.854775807S', numpy.timedelta64(-(2**63 - 1), 'ns')),  # domain minimum
-        ('ari:/TD/P106751DT23H47M16.854775807S', numpy.timedelta64(2**63 - 1, 'ns')),  # domain maximum
-        # Extras
-        ('ari:/LABEL/test', 'test'),
-        ('ari:/LABEL/null', 'null'),
-        ('ari:/LABEL/undefined', 'undefined'),
-        ('ari:/CBOR/h\'A164746573748203F94480\'', base64.b16decode('A164746573748203F94480')),
-        ('ari:/ARITYPE/BOOL', StructType.BOOL),
+        ("ari:/TP/20230102T030405Z", numpy.datetime64("2023-01-02T03:04:05") - DTN_EPOCH),
         (
-            'ari:/OBJPAT/(65535)(..-1,1)(*)(10..100)',
+            "ari:/TP/2023-01-02T03:04:05Z",
+            numpy.datetime64("2023-01-02T03:04:05") - DTN_EPOCH,
+            "ari:/TP/20230102T030405Z",
+        ),  # with formatting
+        ("ari:/TP/20230102T030405.25Z", numpy.datetime64("2023-01-02T03:04:05.25") - DTN_EPOCH),
+        ("ari:/TP/725943845.0", numpy.datetime64("2023-01-02T03:04:05") - DTN_EPOCH, "ari:/TP/20230102T030405Z"),
+        ("ari:/TD/PT3H", numpy.timedelta64(3, "h")),
+        ("ari:/TD/PT10.001S", numpy.timedelta64(10001, "ms")),
+        ("ari:/TD/PT10.25S", numpy.timedelta64(10250, "ms"), "ari:/TD/PT10.25S"),
+        ("ari:/TD/PT10.250000S", numpy.timedelta64(10250, "ms"), "ari:/TD/PT10.25S"),
+        ("ari:/TD/P1DT10.25S", numpy.timedelta64(1, "D") + numpy.timedelta64(10250, "ms"), "ari:/TD/P1DT10.25S"),
+        ("ari:/TD/+PT3H", numpy.timedelta64(3, "h"), "ari:/TD/PT3H"),
+        ("ari:/TD/-PT3H", -numpy.timedelta64(3, "h")),
+        ("ari:/TD/100", numpy.timedelta64(100, "s"), "ari:/TD/PT1M40S"),
+        ("ari:/TD/1.5", numpy.timedelta64(1500, "ms"), "ari:/TD/PT1.5S"),
+        ("ari:/TD/-P106751DT23H47M16.854775807S", numpy.timedelta64(-(2**63 - 1), "ns")),  # domain minimum
+        ("ari:/TD/P106751DT23H47M16.854775807S", numpy.timedelta64(2**63 - 1, "ns")),  # domain maximum
+        # Extras
+        ("ari:/LABEL/test", "test"),
+        ("ari:/LABEL/null", "null"),
+        ("ari:/LABEL/undefined", "undefined"),
+        ("ari:/CBOR/h'A164746573748203F94480'", base64.b16decode("A164746573748203F94480")),
+        ("ari:/ARITYPE/BOOL", StructType.BOOL),
+        (
+            "ari:/OBJPAT/(65535)(..-1,1)(*)(10..100)",
             ObjectRefPattern(
                 org_pat=apiIntInterval.singleton(65535),
                 model_pat=(apiIntInterval.closed(ObjectRefPattern.DOMAIN_MIN, -1) | apiIntInterval.singleton(1)),
                 type_pat=True,
-                obj_pat=apiIntInterval.closed(10, 100)
-            )
+                obj_pat=apiIntInterval.closed(10, 100),
+            ),
         ),
-        (
-            'ari:/OBJPAT/(*)(*)(*)(*)',
-            ObjectRefPattern(
-                org_pat=True,
-                model_pat=True,
-                type_pat=True,
-                obj_pat=True
-            )
-        ),
+        ("ari:/OBJPAT/(*)(*)(*)(*)", ObjectRefPattern(org_pat=True, model_pat=True, type_pat=True, obj_pat=True)),
         # Containers
-        ('ari:/AC/()', tuple()),
-        ('ari:/AC/(1,2)', (LiteralARI(1), LiteralARI(2))),
+        ("ari:/AC/()", tuple()),
+        ("ari:/AC/(1,2)", (LiteralARI(1), LiteralARI(2))),
+        ("ari:/AC/(1,/UVAST/2)", (LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST))),
+        ("ari:/AM/()", {}),
+        ("ari:/AM/(1=1,2=3)", {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
         (
-            'ari:/AC/(1,/UVAST/2)',
-            (LiteralARI(1), LiteralARI(2, type_id=StructType.UVAST))
+            "ari:/AM/(1=/UVAST/1,2=3)",
+            {LiteralARI(1): LiteralARI(1, type_id=StructType.UVAST), LiteralARI(2): LiteralARI(3)},
         ),
-        ('ari:/AM/()', {}),
-        ('ari:/AM/(1=1,2=3)', {LiteralARI(1): LiteralARI(1), LiteralARI(2): LiteralARI(3)}),
+        ("ari:/AM/(a=1,b=3)", {LiteralARI("a"): LiteralARI(1), LiteralARI("b"): LiteralARI(3)}),
+        ("ari:/TBL/c=3;", numpy.ndarray((0, 3))),
         (
-            'ari:/AM/(1=/UVAST/1,2=3)',
-            {LiteralARI(1): LiteralARI(1, type_id=StructType.UVAST), LiteralARI(2): LiteralARI(3)}
-        ),
-        ('ari:/AM/(a=1,b=3)', {LiteralARI('a'): LiteralARI(1), LiteralARI('b'): LiteralARI(3)}),
-        (
-            'ari:/TBL/c=3;',
-            numpy.ndarray((0, 3))
-        ),
-        (
-            'ari:/TBL/c=3;(1,2,3)(a,b,c)',
-            numpy.array([
-                [LiteralARI(1), LiteralARI(2), LiteralARI(3)],
-                [LiteralARI('a'), LiteralARI('b'), LiteralARI('c')],
-            ])
+            "ari:/TBL/c=3;(1,2,3)(a,b,c)",
+            numpy.array(
+                [
+                    [LiteralARI(1), LiteralARI(2), LiteralARI(3)],
+                    [LiteralARI("a"), LiteralARI("b"), LiteralARI("c")],
+                ]
+            ),
         ),
         (
-            'ari:/EXECSET/n=null;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(None), targets=(
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-            ))
+            "ari:/EXECSET/n=null;(//example/adm/CTRL/name)",
+            ExecutionSet(
+                nonce=LiteralARI(None),
+                targets=(
+                    ReferenceARI(Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")),
+                ),
+            ),
         ),
         (
-            'ari:/EXECSET/n=1234;(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(1234), targets=(
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-            ))
+            "ari:/EXECSET/n=1234;(//example/adm/CTRL/name)",
+            ExecutionSet(
+                nonce=LiteralARI(1234),
+                targets=(
+                    ReferenceARI(Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")),
+                ),
+            ),
         ),
         (
-            'ari:/EXECSET/n=h\'6869\';(//example/adm/CTRL/name)',
-            ExecutionSet(nonce=LiteralARI(b'hi'), targets=(
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-            ))
+            "ari:/EXECSET/n=h'6869';(//example/adm/CTRL/name)",
+            ExecutionSet(
+                nonce=LiteralARI(b"hi"),
+                targets=(
+                    ReferenceARI(Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")),
+                ),
+            ),
+        ),
+        ("ari:/EXECSET/n=null;()", ExecutionSet(nonce=LiteralARI(None), targets=tuple())),
+        (
+            "ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)",
+            ExecutionSet(
+                nonce=LiteralARI(None),
+                targets=(
+                    ReferenceARI(Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")),
+                    ReferenceARI(Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="other")),
+                ),
+            ),
         ),
         (
-            'ari:/EXECSET/n=null;()',
-            ExecutionSet(nonce=LiteralARI(None), targets=tuple())
-        ),
-        (
-            'ari:/EXECSET/n=null;(//example/adm/CTRL/name,//example/adm/CTRL/other)',
-            ExecutionSet(nonce=LiteralARI(None), targets=(
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-                ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-            ))
-        ),
-        (
-            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
+            "ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))",
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
+                ref_time=numpy.datetime64("2024-01-02T03:04:05"),
                 reports=(
                     Report(
-                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-                        rel_time=numpy.timedelta64(0, 's'),
-                        items=(
-                            LiteralARI(None),
-                        )
+                        source=ReferenceARI(
+                            Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")
+                        ),
+                        rel_time=numpy.timedelta64(0, "s"),
+                        items=(LiteralARI(None),),
                     ),
-                )
-            )
+                ),
+            ),
         ),
         (
-            'ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/other;(null))',
+            "ari:/RPTSET/n=1234;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/other;(null))",
             ReportSet(
                 nonce=LiteralARI(1234),
-                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
+                ref_time=numpy.datetime64("2024-01-02T03:04:05"),
                 reports=(
                     Report(
-                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-                        rel_time=numpy.timedelta64(0, 's'),
-                        items=(
-                            LiteralARI(None),
-                        )
+                        source=ReferenceARI(
+                            Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="other")
+                        ),
+                        rel_time=numpy.timedelta64(0, "s"),
+                        items=(LiteralARI(None),),
                     ),
-                )
-            )
+                ),
+            ),
         ),
         (
-            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()',
-            ReportSet(
-                nonce=LiteralARI(None),
-                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
-                reports=tuple()
-            )
+            "ari:/RPTSET/n=null;r=/TP/20240102T030405Z;()",
+            ReportSet(nonce=LiteralARI(None), ref_time=numpy.datetime64("2024-01-02T03:04:05"), reports=tuple()),
         ),
         (
-            'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))',
+            "ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null),t=/TD/PT1S;s=//example/adm/CTRL/other;(undefined))",
             ReportSet(
                 nonce=LiteralARI(None),
-                ref_time=numpy.datetime64('2024-01-02T03:04:05'),
+                ref_time=numpy.datetime64("2024-01-02T03:04:05"),
                 reports=(
                     Report(
-                        rel_time=numpy.timedelta64(0, 's'),
-                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='name')),
-                        items=(
-                            LiteralARI(None),
-                        )
+                        rel_time=numpy.timedelta64(0, "s"),
+                        source=ReferenceARI(
+                            Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="name")
+                        ),
+                        items=(LiteralARI(None),),
                     ),
                     Report(
-                        rel_time=numpy.timedelta64(1, 's'),
-                        source=ReferenceARI(Identity(org_id='example', model_id='adm', type_id=StructType.CTRL, obj_id='other')),
-                        items=(
-                            UNDEFINED,
-                        )
+                        rel_time=numpy.timedelta64(1, "s"),
+                        source=ReferenceARI(
+                            Identity(org_id="example", model_id="adm", type_id=StructType.CTRL, obj_id="other")
+                        ),
+                        items=(UNDEFINED,),
                     ),
-                )
-            )
+                ),
+            ),
         ),
     ]
 
@@ -284,47 +290,59 @@ class TestAriText(unittest.TestCase):
 
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.debug('Got ARI %s', ari)
+                LOGGER.debug("Got ARI %s", ari)
                 self.assertIsInstance(ari, LiteralARI)
                 self.assertEqualWithNan(ari.value, val)
 
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.debug('Got text: %s', loop.getvalue())
+                LOGGER.debug("Got text: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), exp_loop)
 
     LITERAL_OPTIONS = (
-        ('1000', dict(int_base=2), 'ari:0b1111101000'),
-        ('1000', dict(int_base=16), 'ari:0x3E8'),
-        ('/TP/20230102T030405Z', dict(time_text=False), 'ari:/TP/725943845'),
-        ('/TP/17070922T001243.145224193Z', dict(time_text=False), 'ari:/TP/-9223372036.854775807'),  # domain minimum
-        ('/TP/22920410T234716.854775807Z', dict(time_text=False), 'ari:/TP/9223372036.854775807'),  # domain maximum
-        ('/TD/PT3H', dict(time_text=False), 'ari:/TD/10800'),
-        ('ari:/TD/-P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/-9223372036.854775807'),  # domain minimum
-        ('ari:/TD/P106751DT23H47M16.854775807S', dict(time_text=False), 'ari:/TD/9223372036.854775807'),  # domain maximum
-        ('1e3', dict(float_form='g'), 'ari:1000.0'),
-        ('1e3', dict(float_form='f'), 'ari:1000.000000'),
-        ('1e3', dict(float_form='e'), 'ari:1.000000e+03'),
-        ('1e3', dict(float_form='a'), 'ari:0x1.f400000000000p+9'),
-        ('hi', dict(text_identity=False), 'ari:%22hi%22'),
-        ('/CBOR/h\'a164746573748203f94480\'', dict(cbor_diag=True), 'ari:/CBOR/' + ari_text.percent_encode('<<{"test":[3,4.5]}>>')),
+        ("1000", dict(int_base=2), "ari:0b1111101000"),
+        ("1000", dict(int_base=16), "ari:0x3E8"),
+        ("/TP/20230102T030405Z", dict(time_text=False), "ari:/TP/725943845"),
+        ("/TP/17070922T001243.145224193Z", dict(time_text=False), "ari:/TP/-9223372036.854775807"),  # domain minimum
+        ("/TP/22920410T234716.854775807Z", dict(time_text=False), "ari:/TP/9223372036.854775807"),  # domain maximum
+        ("/TD/PT3H", dict(time_text=False), "ari:/TD/10800"),
+        (
+            "ari:/TD/-P106751DT23H47M16.854775807S",
+            dict(time_text=False),
+            "ari:/TD/-9223372036.854775807",
+        ),  # domain minimum
+        (
+            "ari:/TD/P106751DT23H47M16.854775807S",
+            dict(time_text=False),
+            "ari:/TD/9223372036.854775807",
+        ),  # domain maximum
+        ("1e3", dict(float_form="g"), "ari:1000.0"),
+        ("1e3", dict(float_form="f"), "ari:1000.000000"),
+        ("1e3", dict(float_form="e"), "ari:1.000000e+03"),
+        ("1e3", dict(float_form="a"), "ari:0x1.f400000000000p+9"),
+        ("hi", dict(text_identity=False), "ari:%22hi%22"),
+        (
+            "/CBOR/h'a164746573748203f94480'",
+            dict(cbor_diag=True),
+            "ari:/CBOR/" + ari_text.percent_encode('<<{"test":[3,4.5]}>>'),
+        ),
     )
 
     def test_literal_text_options(self):
         dec = ari_text.Decoder()
         for row in self.LITERAL_OPTIONS:
-            with self.subTest(f'{row}'):
+            with self.subTest(f"{row}"):
                 text_dn, opts, exp_loop = row
                 enc = ari_text.Encoder(ari_text.EncodeOptions(**opts))
 
                 ari_dn = dec.decode(io.StringIO(text_dn))
-                LOGGER.info('Got ARI %s', ari_dn)
+                LOGGER.info("Got ARI %s", ari_dn)
                 self.assertIsInstance(ari_dn, LiteralARI)
 
                 loop = io.StringIO()
                 enc.encode(ari_dn, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 text_up = loop.getvalue()
                 self.assertEqual(text_up, exp_loop)
@@ -334,31 +352,31 @@ class TestAriText(unittest.TestCase):
                 self.assertEqual(ari_dn, ari_up)
 
     REFERENCE_TEXTS = [
-        'ari://65535/0/',
-        'ari://example/namespace/',
-        'ari://example/!namespace/',
-        'ari://example/namespace/VAR/hello',
-        'ari://example/!namespace/VAR/hello',
-        'ari://example/namespace/VAR/hello()',
-        'ari://example/namespace/VAR/hello(/INT/10)',
-        'ari://example/namespace/VAR/hello(//example/other/CONST/hi)',
-        'ari://example/namespace@2020-01-01/VAR/hello',
-        'ari://65535/0/CTRL/0',
-        'ari://!private/adm/',
-        'ari://!private/adm@2024-02-06/',
-        'ari://!private/!odm/',
-        'ari:./VAR/hello',
-        'ari:../adm/VAR/hello',
-        'ari://ietf/bp-agent/CTRL/reset_all_counts()',
-        'ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())',
+        "ari://65535/0/",
+        "ari://example/namespace/",
+        "ari://example/!namespace/",
+        "ari://example/namespace/VAR/hello",
+        "ari://example/!namespace/VAR/hello",
+        "ari://example/namespace/VAR/hello()",
+        "ari://example/namespace/VAR/hello(/INT/10)",
+        "ari://example/namespace/VAR/hello(//example/other/CONST/hi)",
+        "ari://example/namespace@2020-01-01/VAR/hello",
+        "ari://65535/0/CTRL/0",
+        "ari://!private/adm/",
+        "ari://!private/adm@2024-02-06/",
+        "ari://!private/!odm/",
+        "ari:./VAR/hello",
+        "ari:../adm/VAR/hello",
+        "ari://ietf/bp-agent/CTRL/reset_all_counts()",
+        "ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())",
         # Per spec:
-        'ari://ietf/AMP-AGENT/CTRL/ADD_SBR('
-        '//APL/SC/SBR/HEAT_ON,/VAST/0,'
-        '/AC/(//APL/SC/EDD/payload_temperature,//APL/SC/CONST/payload_heat_on_temp,//ietf/AMP-AGENT/OPER/LESSTHAN),'
-        '/VAST/1000,'
-        '/VAST/1000,'
-        '/AC/(//APL/SC/CTRL/payload_heater(/INT/1)),'
-        '%22heater%20on%22)',
+        "ari://ietf/AMP-AGENT/CTRL/ADD_SBR("
+        "//APL/SC/SBR/HEAT_ON,/VAST/0,"
+        "/AC/(//APL/SC/EDD/payload_temperature,//APL/SC/CONST/payload_heat_on_temp,//ietf/AMP-AGENT/OPER/LESSTHAN),"
+        "/VAST/1000,"
+        "/VAST/1000,"
+        "/AC/(//APL/SC/CTRL/payload_heater(/INT/1)),"
+        "%22heater%20on%22)",
     ]
 
     def test_reference_text_loopback(self):
@@ -366,37 +384,39 @@ class TestAriText(unittest.TestCase):
         enc = ari_text.Encoder()
         for text in self.REFERENCE_TEXTS:
             with self.subTest(text):
-                LOGGER.info('Testing text: %s', text)
+                LOGGER.info("Testing text: %s", text)
 
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ReferenceARI)
 
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.info("Got text: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
     INVALID_TEXTS = [
-        ('ari:hello', 'ari:hello there'),
-        ('/BOOL/true', '/BOOL/10'),
-        ('/INT/3', '/INT/%22hi%22'),
-        ('ari:/REAL32/0.0', 'ari:/REAL32/0'),
-        ('ari:/REAL64/0.0', 'ari:/REAL64/0'),
-        ('/TEXTSTR/hi', '/TEXTSTR/3'),
-        ('/BYTESTR/\'hi\'', '/BYTESTR/3', '/BYTESTR/hi'),
-        ('/AC/()', '/AC/', '/AC/3'),
-        ('/AM/()', '/AM/' '/AM/3'),
-        ('/TBL/c=1;', '/TBL/' '/TBL/c=1;(1,2)'),
-        ('/LABEL/hi', '/LABEL/\'hi\'', '/LABEL/%22hi%22'),
-        ('ari://example/ns/EDD/hello', 'ari://example/ns/EDD/hello(('),
-        ('ari:./EDD/hello', 'ari://./EDD/hello', 'ari:/./EDD/hello'),
-        ('ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
-         'ari:/RPTSET/n=null;r=20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))',
-         'ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=PT0S;s=//example/adm/CTRL/name;(null))'),
+        ("ari:hello", "ari:hello there"),
+        ("/BOOL/true", "/BOOL/10"),
+        ("/INT/3", "/INT/%22hi%22"),
+        ("ari:/REAL32/0.0", "ari:/REAL32/0"),
+        ("ari:/REAL64/0.0", "ari:/REAL64/0"),
+        ("/TEXTSTR/hi", "/TEXTSTR/3"),
+        ("/BYTESTR/'hi'", "/BYTESTR/3", "/BYTESTR/hi"),
+        ("/AC/()", "/AC/", "/AC/3"),
+        ("/AM/()", "/AM//AM/3"),
+        ("/TBL/c=1;", "/TBL//TBL/c=1;(1,2)"),
+        ("/LABEL/hi", "/LABEL/'hi'", "/LABEL/%22hi%22"),
+        ("ari://example/ns/EDD/hello", "ari://example/ns/EDD/hello(("),
+        ("ari:./EDD/hello", "ari://./EDD/hello", "ari:/./EDD/hello"),
+        (
+            "ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))",
+            "ari:/RPTSET/n=null;r=20240102T030405Z;(t=/TD/PT0S;s=//example/adm/CTRL/name;(null))",
+            "ari:/RPTSET/n=null;r=/TP/20240102T030405Z;(t=PT0S;s=//example/adm/CTRL/name;(null))",
+        ),
     ]
-    ''' Valid ARI followed by invalid variations '''
+    """ Valid ARI followed by invalid variations """
 
     def test_invalid_text_failure(self):
         dec = ari_text.Decoder()
@@ -404,26 +424,26 @@ class TestAriText(unittest.TestCase):
             text = row[0]
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
 
             for text in row[1:]:
                 with self.subTest(text):
-                    LOGGER.info('Testing text: %s', text)
+                    LOGGER.info("Testing text: %s", text)
                     with self.assertRaises(ari_text.ParseError):
                         ari = dec.decode(io.StringIO(text))
-                        LOGGER.info('Instead got ARI %s', ari)
+                        LOGGER.info("Instead got ARI %s", ari)
 
     def test_complex_decode(self):
-        text = 'ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())'
+        text = "ari://ietf/amp-agent/CTRL/gen_rpts(/AC/(//ietf/bpsec/CONST/source_report(%22ipn%3A1.1%22)),/AC/())"
         dec = ari_text.Decoder()
         ari = dec.decode(io.StringIO(text))
-        LOGGER.info('Got ARI %s', ari)
+        LOGGER.info("Got ARI %s", ari)
         self.assertIsInstance(ari, ARI)
-        self.assertEqual(ari.ident.org_id, 'ietf')
-        self.assertEqual(ari.ident.model_id, 'amp-agent')
+        self.assertEqual(ari.ident.org_id, "ietf")
+        self.assertEqual(ari.ident.model_id, "amp-agent")
         self.assertEqual(ari.ident.type_id, StructType.CTRL)
-        self.assertEqual(ari.ident.obj_id, 'gen_rpts')
+        self.assertEqual(ari.ident.obj_id, "gen_rpts")
         self.assertIsInstance(ari.params[0], LiteralARI)
         self.assertEqual(ari.params[0].type_id, StructType.AC)
 
@@ -448,7 +468,7 @@ class TestAriText(unittest.TestCase):
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_lit_prim_uint(self):
@@ -459,7 +479,7 @@ class TestAriText(unittest.TestCase):
             (1234, 10, "ari:1234"),
             (1234, 2, "ari:0b10011010010"),
             (1234, 16, "ari:0x4D2"),
-            (0xFFFFFFFFFFFFFFFF, 16, "ari:0xFFFFFFFFFFFFFFFF")
+            (0xFFFFFFFFFFFFFFFF, 16, "ari:0xFFFFFFFFFFFFFFFF"),
         ]
 
         for row in TEST_CASE:
@@ -469,21 +489,21 @@ class TestAriText(unittest.TestCase):
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_lit_prim_float64(self):
         TEST_CASE = [
-            (1.1, 'f', "ari:1.100000"),
-            (1.1, 'g', "ari:1.1"),
-            (1.1e2, 'g', "ari:110.0"),
-            (1.1e2, 'a', "ari:0x1.b800000000000p+6"),
-            (1.1e+10, 'e', "ari:1.100000e+10"),
-            (10.0, 'e', "ari:1.000000e+01"),
-            (10.0, 'a', "ari:0x1.4000000000000p+3"),
-            (float('nan'), ' ', "ari:NaN"),
-            (float('infinity'), ' ', "ari:Infinity"),
-            (float('-infinity'), ' ', "ari:-Infinity"),
+            (1.1, "f", "ari:1.100000"),
+            (1.1, "g", "ari:1.1"),
+            (1.1e2, "g", "ari:110.0"),
+            (1.1e2, "a", "ari:0x1.b800000000000p+6"),
+            (1.1e10, "e", "ari:1.100000e+10"),
+            (10.0, "e", "ari:1.000000e+01"),
+            (10.0, "a", "ari:0x1.4000000000000p+3"),
+            (float("nan"), " ", "ari:NaN"),
+            (float("infinity"), " ", "ari:Infinity"),
+            (float("-infinity"), " ", "ari:-Infinity"),
         ]
 
         for row in TEST_CASE:
@@ -493,7 +513,7 @@ class TestAriText(unittest.TestCase):
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_lit_prim_tstr(self):
@@ -501,11 +521,16 @@ class TestAriText(unittest.TestCase):
             ("test", False, True, "ari:test"),
             ("test", False, False, "ari:%22test%22"),
             ("test", True, True, "ari:test"),
-            ("\\'\'", True, True, "ari:%22%5C\'\'%22"),
-            ("':!@$%^&*()-+[]{},./?", True, True, "ari:%22\'%3A%21%40%24%25%5E%26%2A%28%29-%2B%5B%5D%7B%7D%2C.%2F%3F%22"),
+            ("\\''", True, True, "ari:%22%5C''%22"),
+            (
+                "':!@$%^&*()-+[]{},./?",
+                True,
+                True,
+                "ari:%22'%3A%21%40%24%25%5E%26%2A%28%29-%2B%5B%5D%7B%7D%2C.%2F%3F%22",
+            ),
             ("_-~The quick brown fox", True, True, "ari:%22_-~The%20quick%20brown%20fox%22"),
             ("hi\u1234", False, False, "ari:%22hi%E1%88%B4%22"),
-            ("hi\u0001D11E", False, False, "ari:%22hi%01D11E%22")
+            ("hi\u0001D11E", False, False, "ari:%22hi%01D11E%22"),
         ]
 
         for row in TEST_CASE:
@@ -515,17 +540,17 @@ class TestAriText(unittest.TestCase):
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_lit_prim_bstr(self):
         TEST_CASE = [
-            (b"", 0, "ari:h\'\'"),
-            (b"test", 4, "ari:h\'74657374\'"),
-            (b"hi\\u1234", 5, "ari:h\'68695C7531323334\'"),
-            (b"hi\\U0001D11E", 6, "ari:h\'68695C553030303144313145\'"),
-            (b"\x68\x00\x69", 3, "ari:h\'680069\'"),
-            (b"foobar", 6, "ari:h\'666F6F626172\'"),
+            (b"", 0, "ari:h''"),
+            (b"test", 4, "ari:h'74657374'"),
+            (b"hi\\u1234", 5, "ari:h'68695C7531323334'"),
+            (b"hi\\U0001D11E", 6, "ari:h'68695C553030303144313145'"),
+            (b"\x68\x00\x69", 3, "ari:h'680069'"),
+            (b"foobar", 6, "ari:h'666F6F626172'"),
         ]
 
         for row in TEST_CASE:
@@ -535,7 +560,7 @@ class TestAriText(unittest.TestCase):
                 ari = LiteralARI(value)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_objref_text(self):
@@ -549,27 +574,32 @@ class TestAriText(unittest.TestCase):
             with self.subTest(expect):
                 enc = ari_text.Encoder()
                 ari = ReferenceARI(
-                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj),
-                    params=None
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj), params=None
                 )
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     # Test case for an Object Reference with AM (dictionary) Parameters
     def test_ari_text_encode_objref_AM(self):
         TEST_CASE = [
-            ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True):
-                LiteralARI(value=True, type_id=StructType.BOOL)},
-                "ari://example/adm/EDD/myEDD(true=/BOOL/true)"),
-            (65535, 18, StructType.INT, "34", {
-                LiteralARI(value=101):
-                ReferenceARI(
-                    ident=Identity(type_id=StructType.INT, obj_id="11")
-                )},
-                "ari://65535/18/INT/34(101=./INT/11)")
+            (
+                "example",
+                "adm",
+                StructType.EDD,
+                "myEDD",
+                {LiteralARI(value=True): LiteralARI(value=True, type_id=StructType.BOOL)},
+                "ari://example/adm/EDD/myEDD(true=/BOOL/true)",
+            ),
+            (
+                65535,
+                18,
+                StructType.INT,
+                "34",
+                {LiteralARI(value=101): ReferenceARI(ident=Identity(type_id=StructType.INT, obj_id="11"))},
+                "ari://65535/18/INT/34(101=./INT/11)",
+            ),
         ]
 
         for row in TEST_CASE:
@@ -577,12 +607,11 @@ class TestAriText(unittest.TestCase):
             with self.subTest(expect):
                 enc = ari_text.Encoder()
                 ari = ReferenceARI(
-                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj),
-                    params=params
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj), params=params
                 )
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_nsref_text(self):
@@ -596,15 +625,12 @@ class TestAriText(unittest.TestCase):
         ]
         for row in TEST_CASE:
             org, model, expect = row
-            with self.subTest(f'{org}-{model}'):
+            with self.subTest(f"{org}-{model}"):
                 enc = ari_text.Encoder()
-                ari = ReferenceARI(
-                    ident=Identity(org_id=org, model_id=model),
-                    params=None
-                )
+                ari = ReferenceARI(ident=Identity(org_id=org, model_id=model), params=None)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_nsref_int(self):
@@ -618,13 +644,10 @@ class TestAriText(unittest.TestCase):
             value, expect = row
             with self.subTest(value):
                 enc = ari_text.Encoder()
-                ari = ReferenceARI(
-                    ident=Identity(value, None, None),
-                    params=None
-                )
+                ari = ReferenceARI(ident=Identity(value, None, None), params=None)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     def test_ari_text_encode_ariref(self):
@@ -637,13 +660,10 @@ class TestAriText(unittest.TestCase):
             type_id, obj, expect = row
             with self.subTest(expect):
                 enc = ari_text.Encoder()
-                ari = ReferenceARI(
-                    ident=Identity(None, None, type_id, obj),
-                    params=None
-                )
+                ari = ReferenceARI(ident=Identity(None, None, type_id, obj), params=None)
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text_dn: %s', loop.getvalue())
+                LOGGER.info("Got text_dn: %s", loop.getvalue())
                 self.assertEqual(expect, loop.getvalue())
 
     # this is a test of a decoder, it's constructing the decoder and calling a decoder
@@ -659,7 +679,7 @@ class TestAriText(unittest.TestCase):
             text = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, None)
 
@@ -674,7 +694,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -709,7 +729,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -723,7 +743,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -738,7 +758,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -754,7 +774,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -770,7 +790,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -786,7 +806,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -801,7 +821,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -809,20 +829,20 @@ class TestAriText(unittest.TestCase):
         TEST_CASE = [
             ("1.1", 1.1),
             ("1.1e2", 1.1e2),
-            ("1.1e+10", 1.1e+10),
+            ("1.1e+10", 1.1e10),
             ("0x1.4p+3", 10),
-            ("NaN", float('NaN')),
-            ("nan", float('NaN')),
-            ("infinity", float('Infinity')),
-            ("+Infinity", float('Infinity')),
-            ("-Infinity", -float('Infinity')),
+            ("NaN", float("NaN")),
+            ("nan", float("NaN")),
+            ("infinity", float("Infinity")),
+            ("+Infinity", float("Infinity")),
+            ("-Infinity", -float("Infinity")),
         ]
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 if math.isnan(expect):
                     self.assertEqual(math.isnan(ari.value), True)
@@ -847,7 +867,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -860,7 +880,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/REAL64/0xfF.ffp+0", 255.99609375),
             ("ari:/REAL64/0x1.b8p+6", 1.1e2),
             ("ari:/REAL64/0x1p+6", 64),
-            ("ari:/REAL64/-3.40282347E+38", -3.40282347E+38),
+            ("ari:/REAL64/-3.40282347E+38", -3.40282347e38),
             ("ari:/REAL64/3.40282347E+38", 3.40282347e38),
         ]
 
@@ -869,7 +889,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -879,7 +899,7 @@ class TestAriText(unittest.TestCase):
             ("!name", "!name"),
             ("%22hi%22", "hi"),
             ("%22h%20i%22", "h i"),
-            ("%22h%5c%22i%22", "h\"i"),
+            ("%22h%5c%22i%22", 'h"i'),
         ]
 
         dec = ari_text.Decoder()
@@ -887,7 +907,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -896,7 +916,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/TEXTSTR/label", "label", 6),
             ("ari:/TEXTSTR/%22hi%22", "hi", 3),
             ("ari:/TEXTSTR/%22h%20i%22", "h i", 4),
-            ("ari:/TEXTSTR/%22h%5c%22i%22", "h\"i", 4),
+            ("ari:/TEXTSTR/%22h%5c%22i%22", 'h"i', 4),
             ("ari:/TEXTSTR/%22!@-+.:'%22", "!@-+.:'", 8),
             ("ari:/TEXTSTR/%22%5C%22'%22", "\"'", 3),
             ("ari:/TEXTSTR/%22''%22", "''", 3),
@@ -909,13 +929,13 @@ class TestAriText(unittest.TestCase):
             text, expect, value = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_prim_bstr(self):
         TEST_CASE = [
-            ("''", b'', 0),
+            ("''", b"", 0),
             ("'hi'", b"hi", 2),
             ("'hi%20there'", b"hi there", 8),
             ("'h%5C'i'", b"h'i", 3),
@@ -933,16 +953,16 @@ class TestAriText(unittest.TestCase):
             text, expect, value = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_cbor(self):
         TEST_CASE = [
             ("ari:/CBOR/h''", b""),
-            ("ari:/CBOR/h'A164746573748203F94480'", b'\xa1dtest\x82\x03\xf9D\x80'),
-            ("ari:/CBOR/h'0064746573748203F94480'", b'\x00dtest\x82\x03\xf9D\x80'),
-            ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", b'\xa1dtest\x82\x03\xf9D\x80'),
+            ("ari:/CBOR/h'A164746573748203F94480'", b"\xa1dtest\x82\x03\xf9D\x80"),
+            ("ari:/CBOR/h'0064746573748203F94480'", b"\x00dtest\x82\x03\xf9D\x80"),
+            ("ari:/CBOR/h'A1%2064%2074%2065%2073%2074%2082%2003%20F9%2044%20%2080'", b"\xa1dtest\x82\x03\xf9D\x80"),
         ]
 
         dec = ari_text.Decoder()
@@ -950,7 +970,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
@@ -965,7 +985,7 @@ class TestAriText(unittest.TestCase):
             text = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, None)
 
@@ -981,19 +1001,19 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_tp(self):
         TEST_CASE = [
-            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
-            ("ari:/TP/20000101T000020Z", numpy.datetime64('2000-01-01T00:00:20') - DTN_EPOCH),
-            ("ari:/TP/20000101T000020.5Z", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
-            ("ari:/TP/20.5", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
-            ("ari:/TP/20.500", numpy.datetime64('2000-01-01T00:00:20.5') - DTN_EPOCH),
-            ("ari:/TP/20.000001", numpy.datetime64('2000-01-01T00:00:20.000001') - DTN_EPOCH),
-            ("ari:/TP/20.000000001", numpy.datetime64('2000-01-01T00:00:20.000000001') - DTN_EPOCH),
+            ("ari:/TP/2000-01-01T00:00:20Z", numpy.datetime64("2000-01-01T00:00:20") - DTN_EPOCH),
+            ("ari:/TP/20000101T000020Z", numpy.datetime64("2000-01-01T00:00:20") - DTN_EPOCH),
+            ("ari:/TP/20000101T000020.5Z", numpy.datetime64("2000-01-01T00:00:20.5") - DTN_EPOCH),
+            ("ari:/TP/20.5", numpy.datetime64("2000-01-01T00:00:20.5") - DTN_EPOCH),
+            ("ari:/TP/20.500", numpy.datetime64("2000-01-01T00:00:20.5") - DTN_EPOCH),
+            ("ari:/TP/20.000001", numpy.datetime64("2000-01-01T00:00:20.000001") - DTN_EPOCH),
+            ("ari:/TP/20.000000001", numpy.datetime64("2000-01-01T00:00:20.000000001") - DTN_EPOCH),
         ]
 
         dec = ari_text.Decoder()
@@ -1001,23 +1021,23 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
     def test_ari_text_decode_lit_typed_td(self):
         TEST_CASE = [
-            ("ari:/TD/PT1M", numpy.timedelta64(60, 's')),
-            ("ari:/TD/PT20S", numpy.timedelta64(20, 's')),
-            ("ari:/TD/PT20.5S", numpy.timedelta64(20500, 'ms')),
-            ("ari:/TD/20.5", numpy.timedelta64(20500, 'ms')),
-            ("ari:/TD/20.500", numpy.timedelta64(20500, 'ms')),
-            ("ari:/TD/20.000001", numpy.timedelta64(20000001, 'us')),
-            ("ari:/TD/20.000000001", numpy.timedelta64(20, 's') + numpy.timedelta64(1, 'ns')),
-            ("ari:/TD/+PT1M", numpy.timedelta64(60, 's')),
-            ("ari:/TD/-PT1M", -numpy.timedelta64(60, 's')),
-            ("ari:/TD/-P1DT", -numpy.timedelta64(1, 'D')),
-            ("ari:/TD/PT", numpy.timedelta64(0, 's')),
+            ("ari:/TD/PT1M", numpy.timedelta64(60, "s")),
+            ("ari:/TD/PT20S", numpy.timedelta64(20, "s")),
+            ("ari:/TD/PT20.5S", numpy.timedelta64(20500, "ms")),
+            ("ari:/TD/20.5", numpy.timedelta64(20500, "ms")),
+            ("ari:/TD/20.500", numpy.timedelta64(20500, "ms")),
+            ("ari:/TD/20.000001", numpy.timedelta64(20000001, "us")),
+            ("ari:/TD/20.000000001", numpy.timedelta64(20, "s") + numpy.timedelta64(1, "ns")),
+            ("ari:/TD/+PT1M", numpy.timedelta64(60, "s")),
+            ("ari:/TD/-PT1M", -numpy.timedelta64(60, "s")),
+            ("ari:/TD/-P1DT", -numpy.timedelta64(1, "D")),
+            ("ari:/TD/PT", numpy.timedelta64(0, "s")),
         ]
 
         dec = ari_text.Decoder()
@@ -1025,23 +1045,23 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value, expect)
 
     def test_decfrac_out_of_bounds_fails(self):
         invalid_cases = [
-            'ari:/TP/17070922T001243.145224192Z',  # domain minimum
-            'ari:/TP/22920410T234716.854775808Z',  # domain maximum
-            'ari:/TP/9223372036.854775808',   # +1ns over limit
-            'ari:/TP/-9223372036.854775809',  # -1ns over limit
-            'ari:/TP/10000000000.0',          # Magnitude too large
-            'ari:/TP/0.0000000001',           # Too much precision (10th decimal)
-            'ari:/TD/-P106751DT23H47M16.854775808S',  # domain minimum
-            'ari:/TD/P106751DT23H47M16.854775808S',  # domain maximum
-            'ari:/TD/9223372036.854775808',   # +1ns over limit
-            'ari:/TD/-9223372036.854775809',  # -1ns over limit
-            'ari:/TD/0.0000000001',           # Too much precision (10th decimal)
+            "ari:/TP/17070922T001243.145224192Z",  # domain minimum
+            "ari:/TP/22920410T234716.854775808Z",  # domain maximum
+            "ari:/TP/9223372036.854775808",  # +1ns over limit
+            "ari:/TP/-9223372036.854775809",  # -1ns over limit
+            "ari:/TP/10000000000.0",  # Magnitude too large
+            "ari:/TP/0.0000000001",  # Too much precision (10th decimal)
+            "ari:/TD/-P106751DT23H47M16.854775808S",  # domain minimum
+            "ari:/TD/P106751DT23H47M16.854775808S",  # domain maximum
+            "ari:/TD/9223372036.854775808",  # +1ns over limit
+            "ari:/TD/-9223372036.854775809",  # -1ns over limit
+            "ari:/TD/0.0000000001",  # Too much precision (10th decimal)
         ]
 
         text_dec = ari_text.Decoder()
@@ -1049,7 +1069,7 @@ class TestAriText(unittest.TestCase):
             with self.subTest(f"Should fail: {text}"):
                 with self.assertRaises(RuntimeError):
                     ari = text_dec.decode(io.StringIO(text))
-                    LOGGER.error('Got ARI %s', ari)
+                    LOGGER.error("Got ARI %s", ari)
 
     def test_ari_text_decode_lit_typed_ac(self):
         TEST_CASE = [
@@ -1064,7 +1084,7 @@ class TestAriText(unittest.TestCase):
             text, length, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(len(ari.value), length)
                 for i in range(length):
@@ -1082,7 +1102,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(len(ari.value), expect)
 
@@ -1093,7 +1113,7 @@ class TestAriText(unittest.TestCase):
             ("ari:/TBL/c=2;(1,2)", 2, 2),
             ("ari:/TBL/C=1;(1)(2)(3)", 1, 3),
             ("ari:/TBL/C=1;(/INT/4)(/TBL/c=0;)(20)", 1, 3),
-            ("ari:/TBL/c=/INT/1;(/INT/4)(/TBL/c=0;)(20)", 1, 3)
+            ("ari:/TBL/c=/INT/1;(/INT/4)(/TBL/c=0;)(20)", 1, 3),
         ]
 
         dec = ari_text.Decoder()
@@ -1101,7 +1121,7 @@ class TestAriText(unittest.TestCase):
             text, expect_cols, expect_items = row
             with self.subTest(text):  # TODO: update loop
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.value.shape[1], expect_cols)
                 count = 0
@@ -1123,7 +1143,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(len(ari.value.targets), expect)
 
@@ -1135,7 +1155,11 @@ class TestAriText(unittest.TestCase):
             ("ari:/RPTSET/n=1234;r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/725943845.000;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
             ("ari:/RPTSET/n=1234;r=/TP/20230102T030405Z;(t=/TD/0;s=//example/test/CTRL/hi;())", int, 1),
-            ("ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;(),t=/TD/1;s=//example/test/CTRL/eh;())", bytes, 2),
+            (
+                "ari:/RPTSET/n=h'6869';r=/TP/725943845;(t=/TD/0;s=//example/test/CTRL/hi;(),t=/TD/1;s=//example/test/CTRL/eh;())",
+                bytes,
+                2,
+            ),
         ]
 
         dec = ari_text.Decoder()
@@ -1143,7 +1167,7 @@ class TestAriText(unittest.TestCase):
             text, nonce_prim, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertIsInstance(ari.value.nonce.value, nonce_prim)
                 self.assertEqual(len(ari.value.reports), expect)
@@ -1156,7 +1180,7 @@ class TestAriText(unittest.TestCase):
         for text, nonce_prim, expect in TEST_CASE:
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
 
                 self.assertIsInstance(ari, ARI)
                 self.assertIsInstance(ari.value.nonce.value, nonce_prim)
@@ -1197,7 +1221,7 @@ class TestAriText(unittest.TestCase):
             text, expect = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertEqual(ari.ident.type_id, expect)
 
@@ -1258,7 +1282,7 @@ class TestAriText(unittest.TestCase):
             with self.subTest(text):
                 with self.assertRaises(ari_text.ParseError):
                     ari = dec.decode(io.StringIO(text))
-                    LOGGER.info('Got ARI %s', ari)
+                    LOGGER.info("Got ARI %s", ari)
 
     def test_ari_text_decode_nsref(self):
         TEST_CASE = [
@@ -1281,7 +1305,7 @@ class TestAriText(unittest.TestCase):
             text = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertIsInstance(ari, ReferenceARI)
                 self.assertNotEqual(ari.ident.ns_id, None)
@@ -1291,7 +1315,7 @@ class TestAriText(unittest.TestCase):
     def test_ari_text_decode_ariref(self):
         TEST_CASE = [
             ("ari:./CTRL/do_thing", None, StructType.CTRL),  # TODO: update values
-            ("ari:../adm/CTRL/do_thing", 'adm', StructType.CTRL),  # TODO: update values
+            ("ari:../adm/CTRL/do_thing", "adm", StructType.CTRL),  # TODO: update values
             ("ari:./CTRL/otherobj(%22a%20param%22,/UINT/10)", None, StructType.CTRL),
             ("ari:./-2/30", None, StructType.CONST),
             ("./CTRL/do_thing", None, StructType.CTRL),
@@ -1304,7 +1328,7 @@ class TestAriText(unittest.TestCase):
             text, expect_mod, expect_typ = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
                 self.assertIsInstance(ari, ReferenceARI)
                 self.assertEqual(ari.ident.org_id, None)
@@ -1371,7 +1395,7 @@ class TestAriText(unittest.TestCase):
                 ari = dec.decode(io.StringIO(text))
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.info("Got text: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
@@ -1389,7 +1413,7 @@ class TestAriText(unittest.TestCase):
                 ari = dec.decode(io.StringIO(text))
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.info("Got text: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), text)
 
@@ -1442,12 +1466,12 @@ class TestAriText(unittest.TestCase):
             text, expect_outtext = row
             with self.subTest(text):
                 ari = dec.decode(io.StringIO(text))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ARI)
 
                 loop = io.StringIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got text: %s', loop.getvalue())
+                LOGGER.info("Got text: %s", loop.getvalue())
                 self.assertLess(0, loop.tell())
                 self.assertEqual(loop.getvalue(), expect_outtext)
 
@@ -1525,17 +1549,17 @@ class TestAriText(unittest.TestCase):
 
         invalid_cases = [
             # Magnitude errors (1ns beyond the 64-bit signed limit)
-            'ari:/TD/9223372036.854775808',
-            'ari:/TD/-9223372036.854775809',
+            "ari:/TD/9223372036.854775808",
+            "ari:/TD/-9223372036.854775809",
             # Precision errors (sub-nanosecond values)
-            'ari:/TP/20240101T000000.0000000001Z',
-            'ari:/TD/0.1234567891',
+            "ari:/TP/20240101T000000.0000000001Z",
+            "ari:/TD/0.1234567891",
             # Extreme magnitude
-            'ari:/TD/100000000000.0'
+            "ari:/TD/100000000000.0",
         ]
 
         for text in invalid_cases:
             with self.subTest(text=text):
                 with self.assertRaises(RuntimeError):
                     ari = decoder.decode(io.StringIO(text))
-                    LOGGER.error('Got ARI %s', ari)
+                    LOGGER.error("Got ARI %s", ari)

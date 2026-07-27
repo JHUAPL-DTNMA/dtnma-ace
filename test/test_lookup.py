@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Test the :mod:`ace.lookup` module.
-'''
+"""Test the :mod:`ace.lookup` module."""
+
 import io
 import logging
 import os
@@ -33,7 +33,6 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TestActualParameterSet(unittest.TestCase):
-
     def setUp(self):
         unittest.TestCase.setUp(self)
 
@@ -41,7 +40,7 @@ class TestActualParameterSet(unittest.TestCase):
 
         self._fparams = {}
 
-        self._fparams['no_params'] = []
+        self._fparams["no_params"] = []
 
         # Equivalent to:
         # amm:parameter one {
@@ -54,26 +53,26 @@ class TestActualParameterSet(unittest.TestCase):
         #   amm:type "/ARITYPE/INT";
         #   amm:default "5";
         # }
-        self._fparams['many_params'] = [
+        self._fparams["many_params"] = [
             lookup.FormalParameter(
-                name='one',
+                name="one",
                 index=0,
                 typeobj=typing.TypeUse(
-                    base=typing.BUILTINS['int'],
+                    base=typing.BUILTINS["int"],
                 ),
             ),
             lookup.FormalParameter(
-                name='two',
+                name="two",
                 index=1,
                 typeobj=typing.TypeUse(
-                    base=typing.BUILTINS['int'],
+                    base=typing.BUILTINS["int"],
                 ),
             ),
             lookup.FormalParameter(
-                name='three',
+                name="three",
                 index=2,
                 typeobj=typing.TypeUse(
-                    base=typing.BUILTINS['int'],
+                    base=typing.BUILTINS["int"],
                 ),
                 default=ari.LiteralARI(5),
             ),
@@ -88,19 +87,19 @@ class TestActualParameterSet(unittest.TestCase):
         #     amm:type "/ARITYPE/INT";
         #   }
         # }
-        self._fparams['greedy_param'] = [
+        self._fparams["greedy_param"] = [
             lookup.FormalParameter(
-                name='one',
+                name="one",
                 index=0,
                 typeobj=typing.TypeUse(
-                    base=typing.BUILTINS['int'],
+                    base=typing.BUILTINS["int"],
                 ),
             ),
             lookup.FormalParameter(
-                name='args',
+                name="args",
                 index=1,
                 typeobj=typing.Sequence(
-                    base=typing.BUILTINS['int'],
+                    base=typing.BUILTINS["int"],
                 ),
             ),
         ]
@@ -110,19 +109,16 @@ class TestActualParameterSet(unittest.TestCase):
         return lookup.ActualParameterSet(ref.params, self._fparams[ref.ident.obj_id])
 
     def test_params_none(self):
-        aparams = self._process('//example/test-mod/EDD/no_params')
-        self.assertEqual(
-            [],
-            list(aparams)
-        )
-        aparams = self._process('//example/test-mod/EDD/many_params')
+        aparams = self._process("//example/test-mod/EDD/no_params")
+        self.assertEqual([], list(aparams))
+        aparams = self._process("//example/test-mod/EDD/many_params")
         self.assertEqual(
             [
                 ari.UNDEFINED,
                 ari.UNDEFINED,
                 ari.LiteralARI(5, ari.StructType.INT),  # from default
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def catch_error(self, ari, etype=lookup.ParameterError):
@@ -131,96 +127,99 @@ class TestActualParameterSet(unittest.TestCase):
 
     def test_params_error(self):
         # too many
-        self.catch_error('//example/test-mod/EDD/no_params(1)')
-        self.catch_error('//example/test-mod/EDD/many_params(1,2,3,4)')
+        self.catch_error("//example/test-mod/EDD/no_params(1)")
+        self.catch_error("//example/test-mod/EDD/many_params(1,2,3,4)")
 
         # value cannot be coerced
-        self.catch_error('//example/test-mod/EDD/many_params(0=test)')
+        self.catch_error("//example/test-mod/EDD/many_params(0=test)")
 
     def test_params_empty(self):
-        aparams = self._process('//example/test-mod/EDD/no_params()')
-        self.assertEqual(
-            [],
-            list(aparams)
-        )
+        aparams = self._process("//example/test-mod/EDD/no_params()")
+        self.assertEqual([], list(aparams))
 
-        aparams = self._process('//example/test-mod/EDD/many_params()')
+        aparams = self._process("//example/test-mod/EDD/many_params()")
         self.assertEqual(
             [
                 ari.UNDEFINED,
                 ari.UNDEFINED,
                 ari.LiteralARI(5, ari.StructType.INT),  # from default
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_list(self):
-        aparams = self._process('//example/test-mod/EDD/many_params(1,2)')
+        aparams = self._process("//example/test-mod/EDD/many_params(1,2)")
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
                 ari.LiteralARI(2, ari.StructType.INT),
                 ari.LiteralARI(5, ari.StructType.INT),  # from default
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_map_ord(self):
-        aparams = self._process('//example/test-mod/EDD/many_params(0=1,2=3)')
+        aparams = self._process("//example/test-mod/EDD/many_params(0=1,2=3)")
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
                 ari.UNDEFINED,
                 ari.LiteralARI(3, ari.StructType.INT),
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_map_name(self):
-        aparams = self._process('//example/test-mod/EDD/many_params(one=1,three=3)')
+        aparams = self._process("//example/test-mod/EDD/many_params(one=1,three=3)")
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
                 ari.UNDEFINED,
                 ari.LiteralARI(3, ari.StructType.INT),
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_seq_vals(self):
-        aparams = self._process('//example/test-mod/EDD/greedy_param(1,2,3,4,5)')
+        aparams = self._process("//example/test-mod/EDD/greedy_param(1,2,3,4,5)")
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
-                ari.LiteralARI(type_id=ari.StructType.AC, value=[
-                    ari.LiteralARI(2, ari.StructType.INT),
-                    ari.LiteralARI(3, ari.StructType.INT),
-                    ari.LiteralARI(4, ari.StructType.INT),
-                    ari.LiteralARI(5, ari.StructType.INT),
-                ]),
+                ari.LiteralARI(
+                    type_id=ari.StructType.AC,
+                    value=[
+                        ari.LiteralARI(2, ari.StructType.INT),
+                        ari.LiteralARI(3, ari.StructType.INT),
+                        ari.LiteralARI(4, ari.StructType.INT),
+                        ari.LiteralARI(5, ari.StructType.INT),
+                    ],
+                ),
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_seq_empty(self):
-        aparams = self._process('//example/test-mod/EDD/greedy_param()')
+        aparams = self._process("//example/test-mod/EDD/greedy_param()")
         self.assertEqual(
             [
                 ari.UNDEFINED,
                 ari.LiteralARI(type_id=ari.StructType.AC, value=[]),
             ],
-            list(aparams)
+            list(aparams),
         )
 
     def test_params_seq_frommap(self):
-        aparams = self._process('//example/test-mod/EDD/greedy_param(0=1,1=/AC/(2,3))')
+        aparams = self._process("//example/test-mod/EDD/greedy_param(0=1,1=/AC/(2,3))")
         self.assertEqual(
             [
                 ari.LiteralARI(1, ari.StructType.INT),
-                ari.LiteralARI(type_id=ari.StructType.AC, value=[
-                    ari.LiteralARI(2, ari.StructType.INT),
-                    ari.LiteralARI(3, ari.StructType.INT),
-                ]),
+                ari.LiteralARI(
+                    type_id=ari.StructType.AC,
+                    value=[
+                        ari.LiteralARI(2, ari.StructType.INT),
+                        ari.LiteralARI(3, ari.StructType.INT),
+                    ],
+                ),
             ],
-            list(aparams)
+            list(aparams),
         )

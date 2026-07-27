@@ -20,14 +20,14 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' An interface and runner of model consistency constraints.
-'''
+"""An interface and runner of model consistency constraints."""
+
 from ace.constraints.core import register, Issue, Checker
 from ace.constraints import basic
 
 __all__ = [
-    'register',
-    'Issue',
-    'Checker',
-    'basic',
+    "register",
+    "Issue",
+    "Checker",
+    "basic",
 ]

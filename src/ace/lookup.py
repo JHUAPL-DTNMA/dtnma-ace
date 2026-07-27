@@ -20,8 +20,7 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Dereference objects and types from a model.
-'''
+"""Dereference objects and types from a model."""
 
 import copy
 from dataclasses import dataclass
@@ -30,13 +29,8 @@ import logging
 from typing import Dict, List, Optional, Tuple, Union
 from sqlalchemy.orm.session import Session, object_session
 from .util import normalize_ident
-from .ari import (
-    ARI, LiteralARI, ReferenceARI, Identity, StructType,
-    UNDEFINED, is_undefined
-)
-from .typing import (
-    BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, Sequence, type_walk
-)
+from .ari import ARI, LiteralARI, ReferenceARI, Identity, StructType, UNDEFINED, is_undefined
+from .typing import BUILTINS_BY_ENUM, BaseType, SemType, TypeUse, Sequence, type_walk
 from . import models
 from .models import AdmModule, AdmObjMixin
 
@@ -53,11 +47,11 @@ ORM_TYPE = {
     StructType.SBR: models.Sbr,
     StructType.TBR: models.Tbr,
 }
-''' Map from reference type-ID to ADM model type. '''
+""" Map from reference type-ID to ADM model type. """
 
 
 class RelativeResolver:
-    ''' Resolve module-relative ARIs '''
+    """Resolve module-relative ARIs"""
 
     def __init__(self, org_id: Union[str, int], model_id: Union[str, int]):
         self._org_id = org_id
@@ -77,15 +71,15 @@ class RelativeResolver:
                         type_id=ari.ident.type_id,
                         obj_id=ari.ident.obj_id,
                     ),
-                    params=ari.params
+                    params=ari.params,
                 )
         return ari
 
 
-def find_adm(org_id: Union[str, int], model_id: Union[str, int],
-             model_rev: Optional[datetime.date], db_sess: Session) -> Optional[AdmModule]:
-    ''' Dereference an ADM module.
-    '''
+def find_adm(
+    org_id: Union[str, int], model_id: Union[str, int], model_rev: Optional[datetime.date], db_sess: Session
+) -> Optional[AdmModule]:
+    """Dereference an ADM module."""
     query_adm = db_sess.query(AdmModule)
 
     if isinstance(org_id, int):
@@ -93,14 +87,14 @@ def find_adm(org_id: Union[str, int], model_id: Union[str, int],
     elif isinstance(org_id, str):
         query_adm = query_adm.filter(AdmModule.ns_org_name == normalize_ident(org_id))
     else:
-        raise TypeError(f'ReferenceARI org_id is not int or str: {org_id}')
+        raise TypeError(f"ReferenceARI org_id is not int or str: {org_id}")
 
     if isinstance(model_id, int):
         query_adm = query_adm.filter(AdmModule.ns_model_enum == model_id)
     elif isinstance(model_id, str):
         query_adm = query_adm.filter(AdmModule.ns_model_name == normalize_ident(model_id))
     else:
-        raise TypeError(f'ReferenceARI model_id is not int or str: {model_id}')
+        raise TypeError(f"ReferenceARI model_id is not int or str: {model_id}")
 
     if model_rev is not None:
         query_adm = query_adm.filter(AdmModule.latest_revision_date == model_rev)
@@ -110,8 +104,7 @@ def find_adm(org_id: Union[str, int], model_id: Union[str, int],
 
 
 def dereference(ref: ReferenceARI, db_sess: Session) -> Optional[AdmObjMixin]:
-    ''' Dereference a single object reference.
-    '''
+    """Dereference a single object reference."""
     orm_type = ORM_TYPE[ref.ident.type_id]
 
     found_adm = find_adm(ref.ident.org_id, ref.ident.model_id, ref.ident.model_rev, db_sess)
@@ -119,55 +112,50 @@ def dereference(ref: ReferenceARI, db_sess: Session) -> Optional[AdmObjMixin]:
         return None
 
     obj_id = ref.ident.obj_id
-    query_obj = (
-        db_sess.query(orm_type)
-        .filter(orm_type.module == found_adm)
-    )
+    query_obj = db_sess.query(orm_type).filter(orm_type.module == found_adm)
     if isinstance(obj_id, int):
         query_obj = query_obj.filter(orm_type.enum == obj_id)
     elif isinstance(obj_id, str):
         query_obj = query_obj.filter(orm_type.norm_name == normalize_ident(obj_id))
     else:
-        raise TypeError('ReferenceARI obj_id is not int or str')
+        raise TypeError("ReferenceARI obj_id is not int or str")
     found_obj = query_obj.one_or_none()
     return found_obj
 
 
 class TypeResolverError(RuntimeError):
-
     def __init__(self, msg: str, badtypes: List):
         super().__init__(msg)
         self.badtypes = badtypes
 
 
 class TypeResolver:
-    ''' A caching recursive type resolver.
-    '''
+    """A caching recursive type resolver."""
 
     def __init__(self):
         self._cache = dict()
         self._badtypes = None
         self._db_sess = None
 
-    def resolve(self, typeobj: SemType, adm: 'AdmModule') -> SemType:
-        ''' Bind references to external BaseType objects from type names.
+    def resolve(self, typeobj: SemType, adm: "AdmModule") -> SemType:
+        """Bind references to external BaseType objects from type names.
         This function is not reentrant.
 
         :param typeobj: The original unbound type object (and any children).
         :return: The :ivar:`typeobj` with all type references bound.
         :raise TypeResolverError: If any required types are missing.
-        '''
+        """
         if typeobj is None:
             return None
 
         self._badtypes = set()
         self._db_sess = object_session(adm)
-        LOGGER.debug('Resolver started')
+        LOGGER.debug("Resolver started")
         for sub_obj in type_walk(typeobj):
             self._typeuse_bind(sub_obj)
-        LOGGER.debug('Resolver finished with %d bad', len(self._badtypes))
+        LOGGER.debug("Resolver finished with %d bad", len(self._badtypes))
         if self._badtypes:
-            raise TypeResolverError(f'Missing types to bind to: {self._badtypes}', self._badtypes)
+            raise TypeResolverError(f"Missing types to bind to: {self._badtypes}", self._badtypes)
 
         for sub_obj in type_walk(typeobj):
             self._constraint_bind(sub_obj)
@@ -175,7 +163,6 @@ class TypeResolver:
         # Verify type use constraint applicability
         for sub_obj in type_walk(typeobj):
             if isinstance(sub_obj, TypeUse):
-
                 have_types = set()
                 for subsub_obj in type_walk(sub_obj):
                     have_types |= subsub_obj.all_type_ids()
@@ -184,16 +171,16 @@ class TypeResolver:
                     need_one_type = constr.applicable()
                     met_types = need_one_type & have_types
                     if not met_types:
-                        raise TypeResolverError(f'Constraint needs {need_one_type} but have only {have_types}', [])
+                        raise TypeResolverError(f"Constraint needs {need_one_type} but have only {have_types}", [])
 
         self._badtypes = None
         self._db_sess = None
         return typeobj
 
-    def _typeuse_bind(self, obj: 'BaseType'):
-        ''' A type visitor suitable for binding :cls:`TypeUse` objects
+    def _typeuse_bind(self, obj: "BaseType"):
+        """A type visitor suitable for binding :cls:`TypeUse` objects
         from type references.
-        '''
+        """
         if not isinstance(obj, TypeUse):
             return
 
@@ -203,7 +190,7 @@ class TypeResolver:
 
         basetypeobj = None
         typedef = None
-        LOGGER.debug('type search for %s', obj.type_ari)
+        LOGGER.debug("type search for %s", obj.type_ari)
         if isinstance(obj.type_ari, LiteralARI):
             basetypeobj = BUILTINS_BY_ENUM[obj.type_ari.value]
         elif isinstance(obj.type_ari, ReferenceARI):
@@ -232,17 +219,16 @@ class TypeResolver:
                 # cache object before recursion
                 self._cache[key] = typeobj
 
-                LOGGER.debug('recurse binding %s for %s', typedef.norm_name, typeobj)
+                LOGGER.debug("recurse binding %s for %s", typedef.norm_name, typeobj)
                 for sub_obj in type_walk(typeobj):
                     self._typeuse_bind(sub_obj)
 
                 obj.base = typeobj
 
-        LOGGER.debug('result for %s bound %s', obj.type_ari, obj.base)
+        LOGGER.debug("result for %s bound %s", obj.type_ari, obj.base)
 
-    def _constraint_bind(self, obj: 'BaseType') -> None:
-        ''' Bindi :cls:`Constraint` objects to local DB session.
-        '''
+    def _constraint_bind(self, obj: "BaseType") -> None:
+        """Bindi :cls:`Constraint` objects to local DB session."""
         from .type_constraint import IdentRefBase
 
         if not isinstance(obj, TypeUse):
@@ -265,33 +251,32 @@ class TypeResolver:
 
 @dataclass
 class FormalParameter:
-    ''' A single formal parameter obtained from a :cls:`models.ParamMixin`
-    object within an ADM context. '''
+    """A single formal parameter obtained from a :cls:`models.ParamMixin`
+    object within an ADM context."""
 
     name: str
-    ''' The unique name of the parameter. '''
+    """ The unique name of the parameter. """
     index: int
-    ''' The list index (ordinal) of the parameter. '''
+    """ The list index (ordinal) of the parameter. """
     typeobj: SemType
-    ''' The fully recursively resolved type of the parameter. '''
+    """ The fully recursively resolved type of the parameter. """
     default: Optional[ARI] = None
-    ''' Default value. '''
+    """ Default value. """
 
 
 class ParameterError(RuntimeError):
-    ''' Exception when parameter handling fails. '''
+    """Exception when parameter handling fails."""
 
 
 class ActualParameterSet:
-    ''' An actual parameter set normalized from given parameters
+    """An actual parameter set normalized from given parameters
     based on formal parameters.
 
     :param gparams: The given parameters from a :cls:`ReferenceARI` value.
     :param fparams: The formal parameters from an ADM.
-    '''
+    """
 
-    def __init__(self, gparams: Union[Tuple[ARI], Dict[ARI, ARI]],
-                 fparams: List['FormalParameter']):
+    def __init__(self, gparams: Union[Tuple[ARI], Dict[ARI, ARI]], fparams: List["FormalParameter"]):
         self._ordinal = [None for _ix in range(len(fparams))]
         self._name = {}
 
@@ -302,7 +287,7 @@ class ActualParameterSet:
         elif isinstance(gparams, dict):
             mutable = dict(gparams)
         elif gparams is not None:
-            raise ParameterError(f'Unhandled given parameters as {type(gparams)}')
+            raise ParameterError(f"Unhandled given parameters as {type(gparams)}")
 
         for fparam in fparams:
             if mutable is None:
@@ -312,10 +297,10 @@ class ActualParameterSet:
             elif isinstance(mutable, list):
                 if isinstance(fparam.typeobj, Sequence):
                     # special handling of greedy formal parameter
-                    glist = mutable[fparam.index:]
+                    glist = mutable[fparam.index :]
                     got = fparam.typeobj.take(glist)
                     if glist:
-                        LOGGER.warning('seq parameter type left %d unused given parameters', len(glist))
+                        LOGGER.warning("seq parameter type left %d unused given parameters", len(glist))
 
                     # indicate all are used
                     for g_ix in range(fparam.index, fparam.index + len(got)):
@@ -338,7 +323,7 @@ class ActualParameterSet:
                 gparam = tuple(filter(None, [mutable.pop(key, None) for key in keys]))
                 if len(gparam) > 1:
                     keys = [str(key.value) for key in keys]
-                    raise ParameterError(f'Duplicate given parameters for: {",".join(keys)}')
+                    raise ParameterError(f"Duplicate given parameters for: {','.join(keys)}")
                 elif len(gparam) == 1:
                     gparam = gparam[0]
                 else:
@@ -350,24 +335,23 @@ class ActualParameterSet:
             if isinstance(mutable, (tuple, list)):
                 unused = [val for val in mutable if val is not None]
                 if unused:
-                    raise ParameterError(f'Too many given parameters, unused: {unused}')
+                    raise ParameterError(f"Too many given parameters, unused: {unused}")
             elif isinstance(mutable, dict):
                 keys = [str(key.value) for key in mutable.keys()]
-                raise ParameterError(f'Too many given parameters, unused keys: {",".join(keys)}')
+                raise ParameterError(f"Too many given parameters, unused keys: {','.join(keys)}")
 
-    def _add_val(self, gparam: ARI, fparam: 'FormalParameter'):
+    def _add_val(self, gparam: ARI, fparam: "FormalParameter"):
         if is_undefined(gparam):
             if fparam.default is not None:
                 gparam = fparam.default
             else:
-                LOGGER.warning('Parameter %s/%s has no default value, leaving undefined',
-                               fparam.name, fparam.index)
+                LOGGER.warning("Parameter %s/%s has no default value, leaving undefined", fparam.name, fparam.index)
 
         try:
             aparam = fparam.typeobj.convert(gparam)
         except (TypeError, ValueError):
             raise ParameterError(f'Parameter "{fparam.name}" cannot be coerced from value {gparam}')
-        LOGGER.debug('Normalizing parameter %s from %s to %s', fparam.name, gparam, aparam)
+        LOGGER.debug("Normalizing parameter %s from %s to %s", fparam.name, gparam, aparam)
         self._ordinal[fparam.index] = aparam
         self._name[fparam.name] = aparam
 
@@ -383,4 +367,4 @@ class ActualParameterSet:
         elif isinstance(idx, str):
             return self._name[idx]
         else:
-            raise KeyError(f'Invalid index type {type(idx).__name__}')
+            raise KeyError(f"Invalid index type {type(idx).__name__}")

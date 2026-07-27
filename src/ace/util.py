@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Algorithms that rely on the ACE data models.
-'''
+"""Algorithms that rely on the ACE data models."""
+
 import logging
 import string
 
@@ -29,19 +29,16 @@ LOGGER = logging.getLogger(__name__)
 
 
 def is_printable(name: bytes) -> bool:
-    return (
-        name and name[:1].isalpha()
-        and all([chr(char) in string.printable for char in name])
-    )
+    return name and name[:1].isalpha() and all([chr(char) in string.printable for char in name])
 
 
 def normalize_ident(text: str) -> str:
-    ''' Normalize an identity component (namespace or name) to make
+    """Normalize an identity component (namespace or name) to make
     lookup in the database consistent and output in tools like CAmp
     consistent.
 
     :param text: The text to normalize.
     :return: Normalized text.
-    '''
+    """
 
     return text.casefold()

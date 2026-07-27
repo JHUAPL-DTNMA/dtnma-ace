@@ -20,19 +20,15 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the ace.ari_cbor module tree.
-'''
+"""Verify behavior of the ace.ari_cbor module tree."""
+
 import io
 import logging
 import unittest
 import cbor2
 import math
 import numpy
-from ace.ari import (
-    apiIntInterval,
-    ReferenceARI, LiteralARI, StructType, Identity,
-    ReportSet, ObjectRefPattern
-)
+from ace.ari import apiIntInterval, ReferenceARI, LiteralARI, StructType, Identity, ReportSet, ObjectRefPattern
 from ace.cborutil import to_diag
 from ace import ari_cbor
 
@@ -40,15 +36,14 @@ LOGGER = logging.getLogger(__name__)
 
 
 class TestAriCbor(unittest.TestCase):
-
     LITERAL_DATAS = [
         # BOOL
-        (bytes.fromhex('F5'), True),
-        (bytes.fromhex('F4'), False),
+        (bytes.fromhex("F5"), True),
+        (bytes.fromhex("F4"), False),
         # INT
-        (bytes.fromhex('00'), 0),
-        (bytes.fromhex('0A'), 10),
-        (bytes.fromhex('29'), -10),
+        (bytes.fromhex("00"), 0),
+        (bytes.fromhex("0A"), 10),
+        (bytes.fromhex("29"), -10),
         # FLOAT
         (cbor2.dumps(0.01, canonical=True), 0.01),
         (cbor2.dumps(1e2, canonical=True), 1e2),
@@ -57,24 +52,24 @@ class TestAriCbor(unittest.TestCase):
         (cbor2.dumps(1.25e2, canonical=True), 1.25e2),
         (cbor2.dumps(1e25, canonical=True), 1e25),
         # TEXTSTR
-        (cbor2.dumps("hi"), 'hi'),
+        (cbor2.dumps("hi"), "hi"),
         # BYTESTR
-        (cbor2.dumps(b'hi'), b'hi'),
+        (cbor2.dumps(b"hi"), b"hi"),
         # Times
-        (cbor2.dumps([StructType.TP, 101]), numpy.timedelta64(101, 's')),
-        (cbor2.dumps([StructType.TP, [3, 1]]), numpy.timedelta64(1000, 's')),
-        (cbor2.dumps([StructType.TD, 18]), numpy.timedelta64(18, 's')),
-        (cbor2.dumps([StructType.TD, -18]), -numpy.timedelta64(18, 's')),
+        (cbor2.dumps([StructType.TP, 101]), numpy.timedelta64(101, "s")),
+        (cbor2.dumps([StructType.TP, [3, 1]]), numpy.timedelta64(1000, "s")),
+        (cbor2.dumps([StructType.TD, 18]), numpy.timedelta64(18, "s")),
+        (cbor2.dumps([StructType.TD, -18]), -numpy.timedelta64(18, "s")),
         # OBJPAT
-        (bytes.fromhex('82181884F5F5F5F5'), ObjectRefPattern(True, True, True, True)),
+        (bytes.fromhex("82181884F5F5F5F5"), ObjectRefPattern(True, True, True, True)),
         (
-            bytes.fromhex('8218188419FFFF84F61A7FFFFFFF0000F5820A185A'),
+            bytes.fromhex("8218188419FFFF84F61A7FFFFFFF0000F5820A185A"),
             ObjectRefPattern(
                 org_pat=apiIntInterval.singleton(65535),
                 model_pat=(apiIntInterval.closed(ObjectRefPattern.DOMAIN_MIN, -1) | apiIntInterval.singleton(1)),
                 type_pat=True,
-                obj_pat=apiIntInterval.closed(10, 100)
-            )
+                obj_pat=apiIntInterval.closed(10, 100),
+            ),
         ),
     ]
 
@@ -87,15 +82,15 @@ class TestAriCbor(unittest.TestCase):
                 exp_loop = data
             elif len(row) == 3:
                 data, val, exp_loop = row
-            with self.subTest(f'Testing data: {to_diag(data)}'):
+            with self.subTest(f"Testing data: {to_diag(data)}"):
                 ari = dec.decode(io.BytesIO(data))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, LiteralARI)
                 self.assertEqual(ari.value, val)
 
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                LOGGER.info("Got data: %s", to_diag(loop.getvalue()))
                 self.assertEqual(loop.getvalue().hex(), exp_loop.hex())
 
     REFERENCE_DATAS = [
@@ -117,18 +112,18 @@ class TestAriCbor(unittest.TestCase):
         for data in self.REFERENCE_DATAS:
             with self.subTest(data.hex()):
                 ari = dec.decode(io.BytesIO(data))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
                 self.assertIsInstance(ari, ReferenceARI)
 
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                LOGGER.info("Got data: %s", to_diag(loop.getvalue()))
                 loop.seek(0)
-                LOGGER.info('Re-decode ARI %s', dec.decode(loop))
+                LOGGER.info("Re-decode ARI %s", dec.decode(loop))
                 self.assertEqual(loop.getvalue().hex(), data.hex())
 
     INVALID_DATAS = [
-        b'',
+        b"",
         cbor2.dumps([]),
     ]
 
@@ -139,15 +134,15 @@ class TestAriCbor(unittest.TestCase):
                 with self.assertRaises(ari_cbor.ParseError):
                     dec.decode(io.BytesIO(data))
 
-#    def test_complex_decode(self):
-#        text = 'ari:/IANA:Amp.Agent/Ctrl.gen_rpts([ari:/IANA:DTN.bpsec/Rptt.source_report("ipn:1.1")],[])'
-#        dec = ari_text.Decoder()
-#        ari = dec.decode(text)
-#        LOGGER.info('Got ARI %s', ari)
-#        self.assertIsInstance(ari, (ReferenceARI, LiteralARI))
-#        self.assertEqual(ari.ident.ns_id, 'IANA:Amp.Agent')
-#        self.assertEqual(ari.ident.obj_id, 'Ctrl.gen_rpts')
-#        self.assertIsInstance(ari.params[0], AC)
+    #    def test_complex_decode(self):
+    #        text = 'ari:/IANA:Amp.Agent/Ctrl.gen_rpts([ari:/IANA:DTN.bpsec/Rptt.source_report("ipn:1.1")],[])'
+    #        dec = ari_text.Decoder()
+    #        ari = dec.decode(text)
+    #        LOGGER.info('Got ARI %s', ari)
+    #        self.assertIsInstance(ari, (ReferenceARI, LiteralARI))
+    #        self.assertEqual(ari.ident.ns_id, 'IANA:Amp.Agent')
+    #        self.assertEqual(ari.ident.obj_id, 'Ctrl.gen_rpts')
+    #        self.assertIsInstance(ari.params[0], AC)
 
     def test_ari_cbor_encode_objref_path_text(self):
         TEST_CASE = [
@@ -167,14 +162,13 @@ class TestAriCbor(unittest.TestCase):
             org_id, model_id, type_id, obj_id, expect = row
             with self.subTest(expect):
                 ari = ReferenceARI(
-                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
-                    params=None
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id), params=None
                 )
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
                 # LOGGER.info('Got text_dn: %s', loop.getvalue())
                 # self.assertEqual(expect, loop.getvalue())
-                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                LOGGER.info("Got data: %s", to_diag(loop.getvalue()))
                 self.assertEqual(loop.getvalue().hex(), expect.casefold())
 
     def test_ari_cbor_encode_objref_path_int(self):
@@ -189,24 +183,31 @@ class TestAriCbor(unittest.TestCase):
         for row in TEST_CASE:
             org_id, model_id, type_id, obj_id, expect = row
             ari = ReferenceARI(
-                ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
-                params=None
+                ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id), params=None
             )
             buf = io.BytesIO()
             enc.encode(ari, buf)
-            LOGGER.info('Got data: %s', to_diag(buf.getvalue()))
+            LOGGER.info("Got data: %s", to_diag(buf.getvalue()))
             self.assertEqual(buf.getvalue().hex(), expect.casefold())
 
     def test_ari_cbor_encode_objref_AM(self):
         TEST_CASE = [
-            ("example", "adm", StructType.EDD, "myEDD", {
-                LiteralARI(value=True, type_id=None):
-                LiteralARI(value=True, type_id=StructType.BOOL)},
-                '85676578616D706C656361646D23656D79454444A1F58201F5'),
-            (65535, 18, StructType.IDENT, "34", {
-                LiteralARI(value=101, type_id=None):
-                LiteralARI(value=11, type_id=StructType.IDENT)},
-                '8519FFFF1220623334A1186582200B')
+            (
+                "example",
+                "adm",
+                StructType.EDD,
+                "myEDD",
+                {LiteralARI(value=True, type_id=None): LiteralARI(value=True, type_id=StructType.BOOL)},
+                "85676578616D706C656361646D23656D79454444A1F58201F5",
+            ),
+            (
+                65535,
+                18,
+                StructType.IDENT,
+                "34",
+                {LiteralARI(value=101, type_id=None): LiteralARI(value=11, type_id=StructType.IDENT)},
+                "8519FFFF1220623334A1186582200B",
+            ),
         ]
 
         enc = ari_cbor.Encoder()
@@ -214,12 +215,11 @@ class TestAriCbor(unittest.TestCase):
             org_id, model_id, type_id, obj_id, params, expect = row
             with self.subTest(expect):
                 ari = ReferenceARI(
-                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id),
-                    params=params
+                    ident=Identity(org_id=org_id, model_id=model_id, type_id=type_id, obj_id=obj_id), params=params
                 )
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                LOGGER.info("Got data: %s", to_diag(loop.getvalue()))
                 self.assertEqual(loop.getvalue().hex(), expect.casefold())
 
     def test_ari_cbor_decode_objref_path_text(self):
@@ -235,7 +235,7 @@ class TestAriCbor(unittest.TestCase):
         for row in TEST_CASE:
             data, expect_org_id, expect_model_id, expect_type_id, expect_obj_id = row
             data = bytes.fromhex(data)
-            LOGGER.info('Testing data: %s', to_diag(data))
+            LOGGER.info("Testing data: %s", to_diag(data))
             ari = dec.decode(io.BytesIO(data))
             self.assertEqual(ari.ident.org_id, expect_org_id)
             self.assertEqual(ari.ident.model_id, expect_model_id)
@@ -275,28 +275,22 @@ class TestAriCbor(unittest.TestCase):
                 self.assertEqual(ari.value.nonce.value, expect_nonce)
 
                 delta = ari.value.ref_time - ari_cbor.DTN_EPOCH
-                sec = delta // numpy.timedelta64(1, 's')
-                delta -= numpy.timedelta64(sec, 's')
-                nsec = delta // numpy.timedelta64(1, 'ns')
+                sec = delta // numpy.timedelta64(1, "s")
+                delta -= numpy.timedelta64(sec, "s")
+                nsec = delta // numpy.timedelta64(1, "ns")
                 self.assertEqual(sec, expect_sec)
                 self.assertEqual(nsec, expect_nsec)
                 self.assertEqual(len(ari.value.reports), expect_reports)
 
     def test_ari_cbor_encode_rptset(self):
-        TEST_CASE = [
-            ("8215821904D2820301", 1234, 1000, 0)
-        ]
+        TEST_CASE = [("8215821904D2820301", 1234, 1000, 0)]
 
         enc = ari_cbor.Encoder()
         for row in TEST_CASE:
             expect, nonce, sec, nsec = row
             with self.subTest(str(expect)):
-                tval = ari_cbor.DTN_EPOCH + numpy.timedelta64(sec, 's') + numpy.timedelta64(nsec, 'ns')
-                rptset = ReportSet(
-                    nonce=LiteralARI(nonce),
-                    ref_time=tval,
-                    reports=tuple()
-                )
+                tval = ari_cbor.DTN_EPOCH + numpy.timedelta64(sec, "s") + numpy.timedelta64(nsec, "ns")
+                rptset = ReportSet(nonce=LiteralARI(nonce), ref_time=tval, reports=tuple())
 
                 ari = LiteralARI(value=rptset, type_id=StructType.RPTSET)
                 loop = io.BytesIO()
@@ -359,9 +353,9 @@ class TestAriCbor(unittest.TestCase):
         TEST_CASE = [
             ("F90000", 0.0),
             ("F93E00", 1.5),
-            ("F97E00", (float('nan'))),
-            ("F97C00", (float('infinity'))),
-            ("F9FC00", (float('-infinity'))),
+            ("F97E00", (float("nan"))),
+            ("F97C00", (float("infinity"))),
+            ("F9FC00", (float("-infinity"))),
         ]
 
         dec = ari_cbor.Decoder()
@@ -377,10 +371,7 @@ class TestAriCbor(unittest.TestCase):
                 self.assertEqual(ari.type_id, None)
 
     def test_ari_cbor_decode_lit_prim_tstr(self):
-        TEST_CASE = [
-            ("60", ""),
-            ("626869", "hi")
-        ]
+        TEST_CASE = [("60", ""), ("626869", "hi")]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
@@ -392,10 +383,7 @@ class TestAriCbor(unittest.TestCase):
                 self.assertEqual(ari.type_id, None)
 
     def test_ari_cbor_decode_lit_prim_bstr(self):
-        TEST_CASE = [
-            ("40", b''),
-            ("426869", b"hi")
-        ]
+        TEST_CASE = [("40", b""), ("426869", b"hi")]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
@@ -407,10 +395,7 @@ class TestAriCbor(unittest.TestCase):
                 self.assertEqual(ari.type_id, None)
 
     def test_ari_cbor_decode_lit_typed_bool(self):
-        TEST_CASE = [
-            ("8201F4", False),
-            ("8201F5", True)
-        ]
+        TEST_CASE = [("8201F4", False), ("8201F5", True)]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
@@ -428,7 +413,7 @@ class TestAriCbor(unittest.TestCase):
             ("82041864", StructType.INT, 100),
             ("82051864", StructType.UINT, 100),
             ("82061864", StructType.VAST, 100),
-            ("82071864", StructType.UVAST, 100)
+            ("82071864", StructType.UVAST, 100),
         ]
 
         dec = ari_cbor.Decoder()
@@ -441,9 +426,7 @@ class TestAriCbor(unittest.TestCase):
                 self.assertEqual(ari.type_id, expect_type)
 
     def test_ari_cbor_decode_lit_typed_real64(self):
-        TEST_CASE = [
-            ("8209F93E00", 1.5)
-        ]
+        TEST_CASE = [("8209F93E00", 1.5)]
 
         dec = ari_cbor.Decoder()
         for row in TEST_CASE:
@@ -585,16 +568,16 @@ class TestAriCbor(unittest.TestCase):
         dec = ari_cbor.Decoder()
         enc = ari_cbor.Encoder()
         for data in TEST_CASE:
-            with self.subTest(f'data {data}'):
+            with self.subTest(f"data {data}"):
                 data = bytes.fromhex(data)
-                LOGGER.info('Testing data: %s', to_diag(data))
+                LOGGER.info("Testing data: %s", to_diag(data))
 
                 ari = dec.decode(io.BytesIO(data))
-                LOGGER.info('Got ARI %s', ari)
+                LOGGER.info("Got ARI %s", ari)
 
                 loop = io.BytesIO()
                 enc.encode(ari, loop)
-                LOGGER.info('Got data: %s', to_diag(loop.getvalue()))
+                LOGGER.info("Got data: %s", to_diag(loop.getvalue()))
                 loop.seek(0)
-                LOGGER.info('Re-decode ARI %s', dec.decode(loop))
+                LOGGER.info("Re-decode ARI %s", dec.decode(loop))
                 self.assertEqual(loop.getvalue().hex(), data.hex())

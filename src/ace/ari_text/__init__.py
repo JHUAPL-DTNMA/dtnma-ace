@@ -20,11 +20,12 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' CODEC for converting ARI to and from text URI form.
-'''
+"""CODEC for converting ARI to and from text URI form."""
+
 import logging
 import os
 from typing import TextIO
+
 try:
     import xdg_base_dirs
 except ImportError:
@@ -36,48 +37,45 @@ from .parsemod import new_parser
 from .encode import Encoder, EncodeOptions, percent_encode
 
 __all__ = (
-    'Encoder', 'EncodeOptions', 'percent_encode',
-    'Decoder',
+    "Encoder",
+    "EncodeOptions",
+    "percent_encode",
+    "Decoder",
 )
 
 LOGGER = logging.getLogger(__name__)
 
 
 class ParseError(RuntimeError):
-    ''' Indicate an error in ARI parsing. '''
+    """Indicate an error in ARI parsing."""
 
 
 class Decoder:
-    ''' The decoder portion of this CODEC. '''
+    """The decoder portion of this CODEC."""
 
     def __init__(self):
-        self._cache_path = os.path.join(xdg_base_dirs.xdg_cache_home(), 'ace', 'ply')
+        self._cache_path = os.path.join(xdg_base_dirs.xdg_cache_home(), "ace", "ply")
         if not os.path.exists(self._cache_path):
             os.makedirs(self._cache_path)
-        LOGGER.debug('cache at %s', self._cache_path)
-        self._pickle_path = os.path.join(self._cache_path, 'parse.pickle')
+        LOGGER.debug("cache at %s", self._cache_path)
+        self._pickle_path = os.path.join(self._cache_path, "parse.pickle")
 
     def decode(self, buf: TextIO) -> ARI:
-        ''' Decode an ARI from UTF8 text.
+        """Decode an ARI from UTF8 text.
 
         :param buf: The buffer to read from.
         :return: The decoded ARI.
         :throw ParseError: If there is a problem with the input text.
-        '''
+        """
         text = buf.read()
 
         lexer = new_lexer()
-        parser = new_parser(
-            debug=False,
-            errorlog=LOGGER,
-            outputdir=self._cache_path,
-            picklefile=self._pickle_path
-        )
+        parser = new_parser(debug=False, errorlog=LOGGER, outputdir=self._cache_path, picklefile=self._pickle_path)
         try:
             res = parser.parse(text, lexer=lexer)
         except Exception as err:
             msg = f'Failed to parse "{text}": {err}'
-            LOGGER.error('%s', msg)
+            LOGGER.error("%s", msg)
             raise ParseError(msg) from err
 
         return res

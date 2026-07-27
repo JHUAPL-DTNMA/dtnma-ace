@@ -34,13 +34,13 @@ from .models import Ident
 
 @dataclass
 class StringLength(Constraint):
-    ''' Limit the length of string values.
+    """Limit the length of string values.
     For textstr this is a count of characters, for bytestr this is a
     count of bytes.
-    '''
+    """
 
     ranges: portion.Interval
-    ''' The Interval representing valid lengths. '''
+    """ The Interval representing valid lengths. """
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.TEXTSTR, StructType.BYTESTR, StructType.CBOR])
@@ -54,11 +54,10 @@ class StringLength(Constraint):
 
 @dataclass
 class TextPattern(Constraint):
-    ''' Limit the content of text string values.
-    '''
+    """Limit the content of text string values."""
 
     pattern: str
-    ''' The regular expression pattern. '''
+    """ The regular expression pattern. """
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.TEXTSTR])
@@ -73,22 +72,23 @@ class TextPattern(Constraint):
 
 @dataclass
 class NumericRange(Constraint):
-    ''' Limit the range of numeric values.
-    '''
+    """Limit the range of numeric values."""
 
     ranges: portion.Interval
-    ''' The Interval representing valid ranges, integers or floats. '''
+    """ The Interval representing valid ranges, integers or floats. """
 
     def applicable(self) -> Set[StructType]:
-        return set([
-            StructType.BYTE,
-            StructType.INT,
-            StructType.UINT,
-            StructType.VAST,
-            StructType.UVAST,
-            StructType.REAL32,
-            StructType.REAL64,
-        ])
+        return set(
+            [
+                StructType.BYTE,
+                StructType.INT,
+                StructType.UINT,
+                StructType.VAST,
+                StructType.UVAST,
+                StructType.REAL32,
+                StructType.REAL64,
+            ]
+        )
 
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, (int, float)):
@@ -99,29 +99,30 @@ class NumericRange(Constraint):
 
 @dataclass
 class IntegerEnums(Constraint):
-    ''' Named enumerated values.
-    '''
+    """Named enumerated values."""
 
     values: Dict[int, str]
-    ''' Named values. '''
+    """ Named values. """
 
     def as_value_range(self) -> IntInterval:
-        ''' Convert the valid set of values into an numeric range,
+        """Convert the valid set of values into an numeric range,
         ignoring names.
-        '''
+        """
         accum = IntInterval()
         for val in self.values.keys():
             accum |= apiIntInterval.singleton(val)
         return accum
 
     def applicable(self) -> Set[StructType]:
-        return set([
-            StructType.BYTE,
-            StructType.INT,
-            StructType.UINT,
-            StructType.VAST,
-            StructType.UVAST,
-        ])
+        return set(
+            [
+                StructType.BYTE,
+                StructType.INT,
+                StructType.UINT,
+                StructType.VAST,
+                StructType.UVAST,
+            ]
+        )
 
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):
@@ -132,22 +133,23 @@ class IntegerEnums(Constraint):
 
 @dataclass
 class IntegerBits(Constraint):
-    ''' Label enumerated values and bit positions.
-    '''
+    """Label enumerated values and bit positions."""
 
     positions: Dict[int, str]
-    ''' Named bit positions. '''
+    """ Named bit positions. """
     mask: int
-    ''' Mask for all named bits. '''
+    """ Mask for all named bits. """
 
     def applicable(self) -> Set[StructType]:
-        return set([
-            StructType.BYTE,
-            StructType.INT,
-            StructType.UINT,
-            StructType.VAST,
-            StructType.UVAST,
-        ])
+        return set(
+            [
+                StructType.BYTE,
+                StructType.INT,
+                StructType.UINT,
+                StructType.VAST,
+                StructType.UVAST,
+            ]
+        )
 
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):
@@ -159,11 +161,10 @@ class IntegerBits(Constraint):
 
 @dataclass
 class CborCddl(Constraint):
-    ''' CDDL pattern for embedded CBOR item.
-    '''
+    """CDDL pattern for embedded CBOR item."""
 
     text: str
-    ''' CDDL expression. '''
+    """ CDDL expression. """
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.CBOR])
@@ -181,15 +182,14 @@ class CborCddl(Constraint):
 
 @dataclass
 class IdentRefBase(Constraint):
-    ''' Limit the base of Ident object references.
-    '''
+    """Limit the base of Ident object references."""
 
     base_text: str
-    ''' Original required base text. '''
+    """ Original required base text. """
     base_ari: ReferenceARI
-    ''' The  base object reference. '''
+    """ The  base object reference. """
     base_ident: Optional[Ident] = None
-    ''' ADM object lookup session '''
+    """ ADM object lookup session """
 
     def applicable(self) -> Set[StructType]:
         return set([StructType.IDENT])

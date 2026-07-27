@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Verify behavior of the :mod:`ace.adm_yang` module tree.
-'''
+"""Verify behavior of the :mod:`ace.adm_yang` module tree."""
+
 import io
 import logging
 import os
@@ -39,23 +39,22 @@ SELFDIR = os.path.dirname(__file__)
 
 
 class TestAdmYangHelpers(unittest.TestCase):
-
     RANGES = (
-        ('5', portion.singleton(5)),
-        ('5..20', portion.closed(5, 20)),
-        ('5..20 | 30..50', portion.closed(5, 20) | portion.closed(30, 50)),
-        ('min..10', portion.closed(-float('inf'), 10)),
-        ('10..max', portion.closed(10, float('inf'))),
+        ("5", portion.singleton(5)),
+        ("5..20", portion.closed(5, 20)),
+        ("5..20 | 30..50", portion.closed(5, 20) | portion.closed(30, 50)),
+        ("min..10", portion.closed(-float("inf"), 10)),
+        ("10..max", portion.closed(10, float("inf"))),
         # normalizing
-        ('5..20 | 10..30', portion.closed(5, 30), 'from'),
+        ("5..20 | 10..30", portion.closed(5, 30), "from"),
     )
 
     def test_range_from_text(self):
         for row in self.RANGES:
             row = list(row)
-            if len(row) > 2 and row.pop(2) != 'from':
+            if len(row) > 2 and row.pop(2) != "from":
                 continue
-            with self.subTest(f'{row}'):
+            with self.subTest(f"{row}"):
                 text, expect = row
 
                 got = adm_yang.range_from_text(text)
@@ -64,9 +63,9 @@ class TestAdmYangHelpers(unittest.TestCase):
     def test_range_to_text(self):
         for row in self.RANGES:
             row = list(row)
-            if len(row) > 2 and row.pop(2) != 'to':
+            if len(row) > 2 and row.pop(2) != "to":
                 continue
-            with self.subTest(f'{row}'):
+            with self.subTest(f"{row}"):
                 expect, ranges = row
 
                 got = adm_yang.range_to_text(ranges)
@@ -74,17 +73,17 @@ class TestAdmYangHelpers(unittest.TestCase):
 
 
 class BaseYang(unittest.TestCase):
-    ''' Common test fixture for all YANG-based test classes. '''
+    """Common test fixture for all YANG-based test classes."""
 
     maxDiff = None
 
     def setUp(self):
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         self._db_eng = create_engine("sqlite:///:memory:")
         models.Base.metadata.create_all(self._db_eng)
         self._db_sess = Session(self._db_eng)
 
-        self._adm_dec = adm_yang.Decoder(FileRepository(path=os.path.join(SELFDIR, 'adms')))
+        self._adm_dec = adm_yang.Decoder(FileRepository(path=os.path.join(SELFDIR, "adms")))
         self._ari_dec = ari_text.Decoder()
 
     def tearDown(self):
@@ -99,7 +98,7 @@ class BaseYang(unittest.TestCase):
     def _from_text(self, text: str) -> ari.ARI:
         return self._ari_dec.decode(io.StringIO(text))
 
-    NOOBJECT_MODULE_HEAD = '''\
+    NOOBJECT_MODULE_HEAD = """\
 module example-mod {
   yang-version 1.1;
   namespace "ari://example/mod/";
@@ -119,10 +118,10 @@ module example-mod {
       "Initial test";
   }
   amm:enum 1;
-'''
-    NOOBJECT_MODULE_TAIL = '''\
+"""
+    NOOBJECT_MODULE_TAIL = """\
 }
-'''
+"""
 
     def _get_mod_buf(self, body: str) -> TextIO:
         buf = io.StringIO()
@@ -134,7 +133,7 @@ module example-mod {
         return buf
 
     def _filter_logs(self, output: List) -> List:
-        ''' Remove known isolated module set log message. '''
+        """Remove known isolated module set log message."""
 
         def incl(msg):
             return msg != 'ERROR:ace.adm_yang:<text>:6: module "ietf-amm" not found in search path'
@@ -143,14 +142,14 @@ module example-mod {
 
 
 class TestAdmYang(BaseYang):
-    ''' Tests of the YANG-based syntax handler separate from ADM logic. '''
+    """Tests of the YANG-based syntax handler separate from ADM logic."""
 
-    EMPTY_MODULE = '''\
+    EMPTY_MODULE = """\
 module example-empty {
   namespace "ari://example/empty/";
   prefix empty;
 }
-'''
+"""
 
     def test_decode_empty(self):
         buf = io.StringIO(self.EMPTY_MODULE)
@@ -161,35 +160,32 @@ module example-empty {
                 'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an amm:enum statement',
                 'WARNING:ace.adm_yang:<text>:1: The ADM module "example-empty" must contain an organization with an amm:enum statement',
             ],
-            self._filter_logs(logs.output)
+            self._filter_logs(logs.output),
         )
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
 
-        self.assertEqual('example-empty', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-empty", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertIsNone(adm.ns_org_enum)
-        self.assertEqual('empty', adm.ns_model_name)
+        self.assertEqual("empty", adm.ns_model_name)
         self.assertIsNone(adm.ns_model_enum)
 
     def test_decode_noobject(self):
-        buf = self._get_mod_buf('')
+        buf = self._get_mod_buf("")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
 
         self.assertEqual(1, len(adm.imports))
@@ -204,7 +200,7 @@ module example-empty {
         self.assertEqual(0, len(adm.tbr))
 
     def test_decode_minimal(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:edd edd1 {
     amm:enum 4;
     description
@@ -226,22 +222,19 @@ module example-empty {
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
-''')
+""")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -252,22 +245,16 @@ module example-empty {
         self.assertEqual("test1", obj.name)
         self.assertEqual(2, len(obj.parameters.items))
         self.assertEqual("id", obj.parameters.items[0].name)
-        self.assertEqual(
-            self._from_text('//ietf/amm/typedef/any'),
-            obj.parameters.items[0].typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("//ietf/amm/typedef/any"), obj.parameters.items[0].typeobj.type_ari)
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual(
-            self._from_text('/aritype/int'),
-            obj.typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("/aritype/int"), obj.typeobj.type_ari)
 
     def test_decode_groupings(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:edd edd1 {
     amm:enum 4;
     description
@@ -293,22 +280,19 @@ module example-empty {
       "";
     uses paramgrp;
   }
-''')
+""")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -321,36 +305,24 @@ module example-empty {
         self.assertEqual(2, len(obj.parameters.items))
         param = obj.parameters.items[0]
         self.assertEqual("id", param.name)
-        self.assertEqual(
-            self._from_text('//ietf/amm/typedef/any'),
-            param.typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("//ietf/amm/typedef/any"), param.typeobj.type_ari)
         self.assertIsNone(param.default_value)
         self.assertIsNone(param.default_ari)
         param = obj.parameters.items[1]
         self.assertEqual("def", param.name)
-        self.assertEqual(
-            self._from_text('//ietf/amm/typedef/expr'),
-            param.typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("//ietf/amm/typedef/expr"), param.typeobj.type_ari)
         self.assertEqual("ari:/AC/()", param.default_value)
-        self.assertEqual(
-            self._from_text('ari:/AC/()'),
-            param.default_ari
-        )
+        self.assertEqual(self._from_text("ari:/AC/()"), param.default_ari)
 
         self.assertEqual(1, len(adm.edd))
         obj = adm.edd[0]
         self.assertIsInstance(obj, models.Edd)
         self.assertEqual("edd1", obj.name)
-        self.assertEqual(
-            self._from_text('/aritype/int'),
-            obj.typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("/aritype/int"), obj.typeobj.type_ari)
 
     # As close to real YANG syntax as possible
     LOOPBACK_CASELIST = [
-        '''\
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -359,8 +331,8 @@ module example-empty {
       range "10..40";
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -369,8 +341,8 @@ module example-empty {
       amm:base "./IDENT/name1";
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -386,8 +358,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -403,8 +375,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -413,8 +385,8 @@ module example-empty {
       amm:cddl "uint / tstr";
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -427,8 +399,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -440,8 +412,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -459,8 +431,8 @@ module example-empty {
       amm:type "/ARITYPE/TEXTSTR";
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -474,8 +446,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -486,8 +458,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -498,8 +470,8 @@ module example-empty {
       }
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:typedef typeobj {
     amm:enum 2;
     description
@@ -510,9 +482,8 @@ module example-empty {
       }
     }
   }
-''',
-
-        '''\
+""",
+        """\
   amm:ident name1 {
     amm:enum 2;
     description
@@ -526,8 +497,8 @@ module example-empty {
     amm:abstract false;
     amm:base "./IDENT/name1";
   }
-''',
-        '''\
+""",
+        """\
   amm:ident base1 {
     amm:enum 1;
     description
@@ -547,9 +518,8 @@ module example-empty {
     amm:base "./IDENT/base1";
     amm:base "./IDENT/base2";
   }
-''',
-
-        '''\
+""",
+        """\
   amm:const val {
     amm:enum 2;
     description
@@ -557,9 +527,8 @@ module example-empty {
     amm:init-value "hi";
     amm:type "/ARITYPE/TEXTSTR";
   }
-''',
-
-        '''\
+""",
+        """\
   amm:edd val {
     amm:enum 2;
     description
@@ -568,8 +537,8 @@ module example-empty {
       pattern '.*hello.*';
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:edd val {
     amm:enum 2;
     description
@@ -581,16 +550,16 @@ module example-empty {
     }
     amm:type "/ARITYPE/TEXTSTR";
   }
-''',
-        '''\
+""",
+        """\
   amm:var val {
     amm:enum 2;
     description
       "";
     amm:type "/ARITYPE/INT";
   }
-''',
-        '''\
+""",
+        """\
   amm:var val {
     amm:enum 2;
     description
@@ -598,9 +567,8 @@ module example-empty {
     amm:init-value "3";
     amm:type "/ARITYPE/INT";
   }
-''',
-
-        '''\
+""",
+        """\
   amm:ctrl dothing {
     amm:enum 2;
     description
@@ -616,8 +584,8 @@ module example-empty {
       amm:type "//ietf/amm/TYPEDEF/expr";
     }
   }
-''',
-        '''\
+""",
+        """\
   amm:ctrl dothing {
     amm:enum 2;
     description
@@ -633,9 +601,8 @@ module example-empty {
       amm:type "/ARITYPE/INT";
     }
   }
-''',
-
-        '''\
+""",
+        """\
   amm:oper sum {
     amm:enum 2;
     description
@@ -658,7 +625,7 @@ module example-empty {
       amm:type "//ietf/amm/TYPEDEF/numeric";
     }
   }
-''',
+""",
     ]
 
     def test_loopback_caselist(self):
@@ -667,14 +634,11 @@ module example-empty {
         for body in self.LOOPBACK_CASELIST:
             with self.subTest(body):
                 buf_in = self._get_mod_buf(body)
-                LOGGER.info('input:\n%s', buf_in.getvalue())
+                LOGGER.info("input:\n%s", buf_in.getvalue())
 
                 with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
                     adm = self._adm_dec.decode(buf_in)
-                self.assertEqual(
-                    [],
-                    self._filter_logs(logs.output)
-                )
+                self.assertEqual([], self._filter_logs(logs.output))
                 self.assertIsInstance(adm, models.AdmModule)
                 self._db_sess.add(adm)
                 self._db_sess.commit()
@@ -684,39 +648,48 @@ module example-empty {
 
                 buf_out = io.StringIO()
                 enc.encode(adm, buf_out)
-                LOGGER.info('output:\n%s', buf_out.getvalue())
+                LOGGER.info("output:\n%s", buf_out.getvalue())
                 self.assertEqual(buf_in.getvalue(), buf_out.getvalue())
 
 
 class TestAdmContents(BaseYang):
-
     TYPE_CONSTRAINT = (
         # RANGE (Allowed: INTEGER, FLOAT)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 1;
     description
       "";
     amm:type "/ARITYPE/INT" { range "10..40"; }
   }
-''', True),
-        ('''\
+""",
+            True,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 2;
     description
       "";
     amm:type "/ARITYPE/REAL64" { range "10..40"; }
   }
-''', True),
-        ('''\
+""",
+            True,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 3;
     description
       "";
     amm:type "/ARITYPE/UINT" { range "0..255"; }
   }
-''', True),
-        ('''\
+""",
+            True,
+        ),
+        (
+            """\
   amm:typedef base {
     amm:enum 4;
     description
@@ -729,81 +702,105 @@ class TestAdmContents(BaseYang):
       "";
     amm:type "./TYPEDEF/base" { range "10..40"; }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: range on TEXTSTR
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 6;
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" { range "10..40"; }
   }
-''', False),
-
+""",
+            False,
+        ),
         # LENGTH (Allowed: TEXTSTR, BYTESTR, CBOR)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 7;
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" { length "10..40"; }
   }
-''', True),
-        ('''\
+""",
+            True,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 8;
     description
       "";
     amm:type "/ARITYPE/BYTESTR" { length "10..40"; }
   }
-''', True),
-        ('''\
+""",
+            True,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 9;
     description
       "";
     amm:type "/ARITYPE/CBOR" { length "1..1024"; }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: length on INT
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 10;
     description
       "";
     amm:type "/ARITYPE/INT" { length "10..40"; }
   }
-''', False),
-
+""",
+            False,
+        ),
         # PATTERN (Allowed: TEXTSTR only)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 11;
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" { pattern "a.*"; }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: pattern on BYTESTR or INT
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 12;
     description
       "";
     amm:type "/ARITYPE/BYTESTR" { pattern "a.*"; }
   }
-''', False),
-        ('''\
+""",
+            False,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 13;
     description
       "";
     amm:type "/ARITYPE/INT" { pattern "hello"; }
   }
-''', False),
-
+""",
+            False,
+        ),
         # AMM:INT-LABELS (Allowed: INTEGER only)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 14;
     description
@@ -815,9 +812,12 @@ class TestAdmContents(BaseYang):
       }
     }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: int-labels on TEXTSTR
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 15;
     description
@@ -828,74 +828,87 @@ class TestAdmContents(BaseYang):
       }
     }
   }
-''', False),
-
+""",
+            False,
+        ),
         # AMM:CDDL (Allowed: CBOR only)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 16;
     description
       "";
     amm:type "/ARITYPE/CBOR" { amm:cddl "hi"; }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: cddl on INT or BYTESTR
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 17;
     description
       "";
     amm:type "/ARITYPE/INT" { amm:cddl "hi"; }
   }
-''', False),
-        ('''\
+""",
+            False,
+        ),
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 18;
     description
       "";
     amm:type "/ARITYPE/BYTESTR" { amm:cddl "hi"; }
   }
-''', False),
-
+""",
+            False,
+        ),
         # AMM:BASE (Allowed: IDENT only)
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 19;
     description
       "";
     amm:type "/ARITYPE/IDENT" { amm:base "//ietf/amm/IDENT/somename"; }
   }
-''', True),
+""",
+            True,
+        ),
         # Negative: base on TEXTSTR
-        ('''\
+        (
+            """\
   amm:typedef typeobj {
     amm:enum 20;
     description
       "";
     amm:type "/ARITYPE/TEXTSTR" { amm:base "//ietf/amm/IDENT/somename"; }
   }
-''', False),
+""",
+            False,
+        ),
     )
 
     def test_type_constraint(self):
         for body, valid in self.TYPE_CONSTRAINT:
             with self.subTest(body):
                 buf_in = self._get_mod_buf(body)
-                LOGGER.info('input:\n%s', buf_in.getvalue())
+                LOGGER.info("input:\n%s", buf_in.getvalue())
 
                 with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
                     adm = self._adm_dec.decode(buf_in)
-                self.assertEqual(
-                    [],
-                    self._filter_logs(logs.output)
-                )
+                self.assertEqual([], self._filter_logs(logs.output))
                 self.assertIsInstance(adm, models.AdmModule)
                 self._db_sess.add(adm)
                 self._db_sess.commit()
 
                 typedef = adm.typedef[0]
 
-                def action(): return lookup.TypeResolver().resolve(typedef.typeobj, adm)
+                def action():
+                    return lookup.TypeResolver().resolve(typedef.typeobj, adm)
 
                 if valid:
                     self.assertIsNotNone(action())
@@ -904,7 +917,7 @@ class TestAdmContents(BaseYang):
                         action()
 
     def test_ident_base_constraint(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:ident ident-a {
     amm:enum 1;
     description "A base ident";
@@ -938,22 +951,19 @@ class TestAdmContents(BaseYang):
       amm:base "./IDENT/ident-a";
     }
   }
-''')
+""")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -962,25 +972,25 @@ class TestAdmContents(BaseYang):
         self.assertEqual(2, len(adm.typedef))
 
         type_any = adm.typedef[0]
-        self.assertEqual('type-any', type_any.norm_name)
+        self.assertEqual("type-any", type_any.norm_name)
         typeobj_any = lookup.TypeResolver().resolve(type_any.typeobj, adm)
-        self.assertIsNone(typeobj_any.get(self._from_text('hi')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-b')))
-        self.assertIsNotNone(typeobj_any.get(self._from_text('//example/mod/IDENT/ident-c')))
+        self.assertIsNone(typeobj_any.get(self._from_text("hi")))
+        self.assertIsNotNone(typeobj_any.get(self._from_text("//example/mod/IDENT/ident-z")))
+        self.assertIsNotNone(typeobj_any.get(self._from_text("//example/mod/IDENT/ident-a")))
+        self.assertIsNotNone(typeobj_any.get(self._from_text("//example/mod/IDENT/ident-b")))
+        self.assertIsNotNone(typeobj_any.get(self._from_text("//example/mod/IDENT/ident-c")))
 
         type_a = adm.typedef[1]
-        self.assertEqual('type-a', type_a.norm_name)
+        self.assertEqual("type-a", type_a.norm_name)
         typeobj_a = lookup.TypeResolver().resolve(type_a.typeobj, adm)
-        self.assertIsNone(typeobj_a.get(self._from_text('hi')))
-        self.assertIsNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-z')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-a')))
-        self.assertIsNotNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-b')))
-        self.assertIsNone(typeobj_a.get(self._from_text('//example/mod/IDENT/ident-c')))
+        self.assertIsNone(typeobj_a.get(self._from_text("hi")))
+        self.assertIsNone(typeobj_a.get(self._from_text("//example/mod/IDENT/ident-z")))
+        self.assertIsNotNone(typeobj_a.get(self._from_text("//example/mod/IDENT/ident-a")))
+        self.assertIsNotNone(typeobj_a.get(self._from_text("//example/mod/IDENT/ident-b")))
+        self.assertIsNone(typeobj_a.get(self._from_text("//example/mod/IDENT/ident-c")))
 
     def test_ident_params(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:ident ident-a {
     amm:enum 1;
     description "A base ident";
@@ -995,22 +1005,19 @@ class TestAdmContents(BaseYang):
     amm:base "./IDENT/ident-a";
     description "A derived ident";
   }
-''')
+""")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -1019,15 +1026,15 @@ class TestAdmContents(BaseYang):
         self.assertEqual(0, len(adm.typedef))
 
         obj = adm.ident[0]
-        self.assertEqual('ident-a', obj.norm_name)
+        self.assertEqual("ident-a", obj.norm_name)
         self.assertEqual(0, len(obj.parameters.items))
 
         obj = adm.ident[1]
-        self.assertEqual('ident-b', obj.norm_name)
+        self.assertEqual("ident-b", obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
 
     def test_edd_params(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:edd edd_no_param {
     amm:type /ARITYPE/int;
     description "An EDD without parameters";
@@ -1039,34 +1046,31 @@ class TestAdmContents(BaseYang):
     }
     description "An EDD with parameters";
   }
-  ''')
+  """)
         adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual("example-mod", adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
         self.assertEqual(2, len(adm.edd))
 
         obj = adm.edd[0]
-        self.assertEqual('edd_no_param', obj.norm_name)
+        self.assertEqual("edd_no_param", obj.norm_name)
         self.assertEqual(0, len(obj.parameters.items))
 
         obj = adm.edd[1]
-        self.assertEqual('edd_with_param', obj.norm_name)
+        self.assertEqual("edd_with_param", obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
         param = obj.parameters.items[0]
-        self.assertEqual(
-            self._from_text('/aritype/int'),
-            param.typeobj.type_ari
-        )
+        self.assertEqual(self._from_text("/aritype/int"), param.typeobj.type_ari)
 
     def test_const_params(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:const const_no_param {
     amm:type /ARITYPE/int;
     description "A CONST without parameters";
@@ -1078,29 +1082,29 @@ class TestAdmContents(BaseYang):
     }
     description "A CONST with parameters";
   }
-  ''')
+  """)
         adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual("example-mod", adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
         self.assertEqual(2, len(adm.const))
 
         obj = adm.const[0]
-        self.assertEqual('const_no_param', obj.norm_name)
+        self.assertEqual("const_no_param", obj.norm_name)
         self.assertEqual(0, len(obj.parameters.items))
 
         obj = adm.const[1]
-        self.assertEqual('const_with_param', obj.norm_name)
+        self.assertEqual("const_with_param", obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
 
     def test_var_params(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:var var_no_param {
     amm:type /ARITYPE/int;
     description "A VAR without parameters";
@@ -1112,29 +1116,29 @@ class TestAdmContents(BaseYang):
     }
     description "A VAR with parameters";
   }
-  ''')
+  """)
         adm = self._adm_dec.decode(buf)
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.norm_name)
+        self.assertEqual("example-mod", adm.norm_name)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
 
         self.assertEqual(2, len(adm.var))
 
         obj = adm.var[0]
-        self.assertEqual('var_no_param', obj.norm_name)
+        self.assertEqual("var_no_param", obj.norm_name)
         self.assertEqual(0, len(obj.parameters.items))
 
         obj = adm.var[1]
-        self.assertEqual('var_with_param', obj.norm_name)
+        self.assertEqual("var_with_param", obj.norm_name)
         self.assertEqual(1, len(obj.parameters.items))
 
     def test_decode_rules(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
   amm:sbr sbr1 {
     amm:enum 8;
     description
@@ -1172,22 +1176,19 @@ class TestAdmContents(BaseYang):
     amm:action "/AC/(./CTRL/first,./CTRL/second)";
     amm:period "/TD/PT30S";
   }
-''')
+""")
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING) as logs:
             adm = self._adm_dec.decode(buf)
-        self.assertEqual(
-            [],
-            self._filter_logs(logs.output)
-        )
+        self.assertEqual([], self._filter_logs(logs.output))
         self.assertIsInstance(adm, models.AdmModule)
         self._db_sess.add(adm)
         self._db_sess.commit()
         self.assertIsNone(adm.source.abs_file_path)
 
-        self.assertEqual('example-mod', adm.module_name)
-        self.assertEqual('example', adm.ns_org_name)
+        self.assertEqual("example-mod", adm.module_name)
+        self.assertEqual("example", adm.ns_org_name)
         self.assertEqual(65535, adm.ns_org_enum)
-        self.assertEqual('mod', adm.ns_model_name)
+        self.assertEqual("mod", adm.ns_model_name)
         self.assertEqual(1, adm.ns_model_enum)
         self.assertEqual(1, len(adm.imports))
         self.assertEqual(1, len(adm.revisions))
@@ -1235,7 +1236,7 @@ class TestAdmContents(BaseYang):
         self.assertEqual(0, adm.tbr[1].max_count)
 
     def test_ari_components(self):
-        buf = self._get_mod_buf('''
+        buf = self._get_mod_buf("""
         amm:sbr sbr1 {
           amm:enum 8;
           description
@@ -1273,7 +1274,7 @@ class TestAdmContents(BaseYang):
           amm:action "/AC/(./CTRL/first,./CTRL/second)";
           amm:period "/TD/PT30S";
         }
-      ''')
+      """)
         with self.assertLogs(adm_yang.LOGGER, level=logging.WARNING):
             adm = self._adm_dec.decode(buf)
         # Build expected ARI structure
@@ -1281,26 +1282,18 @@ class TestAdmContents(BaseYang):
             value=(
                 ari.ReferenceARI(
                     ident=ari.Identity(
-                        org_id='example',
-                        model_id='mod',
-                        model_rev=None,
-                        type_id=ari.StructType.CTRL,
-                        obj_id='first'
+                        org_id="example", model_id="mod", model_rev=None, type_id=ari.StructType.CTRL, obj_id="first"
                     ),
-                    params=None
+                    params=None,
                 ),
                 ari.ReferenceARI(
                     ident=ari.Identity(
-                        org_id='example',
-                        model_id='mod',
-                        model_rev=None,
-                        type_id=ari.StructType.CTRL,
-                        obj_id='second'
+                        org_id="example", model_id="mod", model_rev=None, type_id=ari.StructType.CTRL, obj_id="second"
                     ),
-                    params=None
-                )
+                    params=None,
+                ),
             ),
-            type_id=ari.StructType.AC
+            type_id=ari.StructType.AC,
         )
 
         # Get decoded ARI object

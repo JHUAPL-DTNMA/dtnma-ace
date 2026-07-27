@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Perform conversion to and from nickname content in ARIs.
-'''
+"""Perform conversion to and from nickname content in ARIs."""
+
 import enum
 import logging
 from sqlalchemy.orm.session import Session
@@ -33,7 +33,8 @@ LOGGER = logging.getLogger(__name__)
 
 @enum.unique
 class Mode(enum.Enum):
-    ''' The :class:`Converter` conversion direction '''
+    """The :class:`Converter` conversion direction"""
+
     # : Obtain nickname enums
     TO_NN = enum.auto()
     # : Interpret nickname enums
@@ -41,14 +42,14 @@ class Mode(enum.Enum):
 
 
 class Converter:
-    ''' This class traverses an ARI and converts all contents to or from
+    """This class traverses an ARI and converts all contents to or from
     nickname data based on an :class:`AdmSet` database.
 
     :param mode: The conversion mode.
     :param db_sess: The :class:`AdmSet` to look up nicknames.
     :param must_nickname: If true, the conversion will fail if no nickname
     is available.
-    '''
+    """
 
     def __init__(self, mode: Mode, db_sess: Session, must_nickname: bool = False):
         self._mode = mode
@@ -56,7 +57,7 @@ class Converter:
         self._must = must_nickname
 
     def __call__(self, ari: ARI) -> ARI:
-        LOGGER.debug('Converting object %s', ari)
+        LOGGER.debug("Converting object %s", ari)
         return ari.map(self._convert_ari)
 
     def _convert_ari(self, ari: ARI) -> ARI:
@@ -75,7 +76,7 @@ class Converter:
             adm = obj.module
         else:
             adm = find_adm(ari.ident.org_id, ari.ident.model_id, ari.ident.model_rev, self._db_sess)
-        LOGGER.debug('ARI for %s resolved to ADM %s, obj %s', ari.ident, adm, obj)
+        LOGGER.debug("ARI for %s resolved to ADM %s, obj %s", ari.ident, adm, obj)
 
         ns_is_private = Identity.part_is_private(ari.ident.org_id) or Identity.part_is_private(ari.ident.model_id)
         if adm is None and ns_is_private:
@@ -88,10 +89,10 @@ class Converter:
             if adm is None or adm.ns_org_enum is None:
                 if self._must:
                     if adm is None:
-                        err = 'does not exist'
+                        err = "does not exist"
                     else:
-                        err = 'does not have an enumeration'
-                    msg = f'The ADM organization named {org_id} {err}'
+                        err = "does not have an enumeration"
+                    msg = f"The ADM organization named {org_id} {err}"
                     raise RuntimeError(msg)
             else:
                 org_id = adm.ns_org_enum
@@ -100,10 +101,10 @@ class Converter:
             if adm is None or adm.ns_model_enum is None:
                 if self._must:
                     if adm is None:
-                        err = 'does not exist'
+                        err = "does not exist"
                     else:
-                        err = 'does not have an enumeration'
-                    msg = f'The ADM model named {model_id} {err}'
+                        err = "does not have an enumeration"
+                    msg = f"The ADM model named {model_id} {err}"
                     raise RuntimeError(msg)
             else:
                 model_id = adm.ns_model_enum
@@ -113,10 +114,10 @@ class Converter:
                 if obj is None or obj.enum is None:
                     if self._must:
                         if obj is None:
-                            err = 'does not exist'
+                            err = "does not exist"
                         else:
-                            err = 'does not have an enumeration'
-                        msg = f'The ADM object named {obj_id} {err}'
+                            err = "does not have an enumeration"
+                        msg = f"The ADM object named {obj_id} {err}"
                         raise RuntimeError(msg)
                 else:
                     obj_id = obj.enum
@@ -127,14 +128,14 @@ class Converter:
                 model_id=model_id,
                 model_rev=ari.ident.model_rev,
                 type_id=ari.ident.type_id,
-                obj_id=obj_id
+                obj_id=obj_id,
             )
 
         elif self._mode == Mode.FROM_NN:
             org_id = ari.ident.org_id
             if adm is None:
                 if self._must:
-                    msg = f'The ADM organization named {org_id} does not exist'
+                    msg = f"The ADM organization named {org_id} does not exist"
                     raise RuntimeError(msg)
             else:
                 org_id = adm.ns_org_name
@@ -142,7 +143,7 @@ class Converter:
             model_id = ari.ident.model_id
             if adm is None:
                 if self._must:
-                    msg = f'The ADM model named {model_id} does not exist'
+                    msg = f"The ADM model named {model_id} does not exist"
                     raise RuntimeError(msg)
             else:
                 model_id = adm.ns_model_name
@@ -150,7 +151,7 @@ class Converter:
             obj_id = ari.ident.obj_id
             if obj is None:
                 if self._must:
-                    msg = f'The ADM object named {obj_id} does not exist'
+                    msg = f"The ADM object named {obj_id} does not exist"
                     raise RuntimeError(msg)
             else:
                 obj_id = obj.norm_name
@@ -161,12 +162,9 @@ class Converter:
                 model_id=model_id,
                 model_rev=ari.ident.model_rev,
                 type_id=ari.ident.type_id,
-                obj_id=obj_id
+                obj_id=obj_id,
             )
 
-        LOGGER.debug('got ident %s', new_ident)
-        ari = ReferenceARI(
-            ident=new_ident,
-            params=ari.params
-        )
+        LOGGER.debug("got ident %s", new_ident)
+        ari = ReferenceARI(ident=new_ident, params=ari.params)
         return ari

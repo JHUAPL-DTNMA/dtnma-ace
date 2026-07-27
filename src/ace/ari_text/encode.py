@@ -20,8 +20,8 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' CODEC for converting ARI to and from text URI form.
-'''
+"""CODEC for converting ARI to and from text URI form."""
+
 from dataclasses import dataclass
 import datetime
 import logging
@@ -32,8 +32,15 @@ import urllib.parse
 import cbor2
 from ace.ari import (
     DTN_EPOCH,
-    StructType, IntInterval, ARI, LiteralARI, ReferenceARI,
-    ExecutionSet, ReportSet, Report, ObjectRefPattern
+    StructType,
+    IntInterval,
+    ARI,
+    LiteralARI,
+    ReferenceARI,
+    ExecutionSet,
+    ReportSet,
+    Report,
+    ObjectRefPattern,
 )
 from ace.cborutil import to_diag
 from .util import t_identity, SINGLETONS
@@ -42,79 +49,79 @@ LOGGER = logging.getLogger(__name__)
 
 
 def percent_encode(text):
-    ''' URL-escape each ID and value segment
+    """URL-escape each ID and value segment
 
     :param text: The text to escape.
     :return: The percent-encoded text.
-    '''
+    """
     return urllib.parse.quote(text, safe="'")
 
 
 def encode_decfrac(value: numpy.timedelta64) -> str:
-    diff_ns = value // numpy.timedelta64(1, 'ns')
+    diff_ns = value // numpy.timedelta64(1, "ns")
     digits_ns = str(diff_ns)
-    subsec = digits_ns[-9:].rstrip('0')
-    text = digits_ns[:-9] + ('.' + subsec if subsec else '')
+    subsec = digits_ns[-9:].rstrip("0")
+    text = digits_ns[:-9] + ("." + subsec if subsec else "")
     return text
 
 
 def encode_datetime(value: numpy.timedelta64) -> str:
-    ''' Encode a human-friendly offset from DTN_EPOCH. '''
-    delta_secs = int(value // numpy.timedelta64(1, 's'))
-    delta_subsec = (value - numpy.timedelta64(delta_secs, 's')) // numpy.timedelta64(1, 'ns')
+    """Encode a human-friendly offset from DTN_EPOCH."""
+    delta_secs = int(value // numpy.timedelta64(1, "s"))
+    delta_subsec = (value - numpy.timedelta64(delta_secs, "s")) // numpy.timedelta64(1, "ns")
 
     secs = DTN_EPOCH.item() + datetime.timedelta(seconds=delta_secs)
 
-    text = secs.strftime('%Y%m%dT%H%M%S')
+    text = secs.strftime("%Y%m%dT%H%M%S")
     if delta_subsec:
-        text += '.' + str(delta_subsec).rstrip('0')
-    text += 'Z'
+        text += "." + str(delta_subsec).rstrip("0")
+    text += "Z"
 
     return text
 
 
 def encode_timedelta(value: numpy.timedelta64) -> str:
-    ''' Encode a human-friendly time delta '''
+    """Encode a human-friendly time delta"""
     if value == 0:
-        return 'PT0S'
+        return "PT0S"
     neg = value < 0
     diff = -value if neg else value
 
-    days = diff // numpy.timedelta64(1, 'D')
-    diff -= numpy.timedelta64(days, 'D')
-    hours = diff // numpy.timedelta64(1, 'h')
-    diff -= numpy.timedelta64(hours, 'h')
-    minutes = diff // numpy.timedelta64(1, 'm')
-    diff -= numpy.timedelta64(minutes, 'm')
-    secs = diff // numpy.timedelta64(1, 's')
-    diff -= numpy.timedelta64(secs, 's')
+    days = diff // numpy.timedelta64(1, "D")
+    diff -= numpy.timedelta64(days, "D")
+    hours = diff // numpy.timedelta64(1, "h")
+    diff -= numpy.timedelta64(hours, "h")
+    minutes = diff // numpy.timedelta64(1, "m")
+    diff -= numpy.timedelta64(minutes, "m")
+    secs = diff // numpy.timedelta64(1, "s")
+    diff -= numpy.timedelta64(secs, "s")
 
-    nsec = diff // numpy.timedelta64(1, 'ns')
+    nsec = diff // numpy.timedelta64(1, "ns")
     pad = 9
     while nsec and nsec % 10 == 0:
         nsec //= 10
         pad -= 1
 
-    text = ''
+    text = ""
     if neg:
-        text += '-'
-    text += 'P'
+        text += "-"
+    text += "P"
     if days:
-        text += f'{days}D'
-    text += 'T'
+        text += f"{days}D"
+    text += "T"
     if hours:
-        text += f'{hours}H'
+        text += f"{hours}H"
     if minutes:
-        text += f'{minutes}M'
+        text += f"{minutes}M"
     if nsec:
-        text += f'{secs}.{nsec:0>{pad}}S'
+        text += f"{secs}.{nsec:0>{pad}}S"
     elif secs:
-        text += f'{secs}S'
+        text += f"{secs}S"
     return text
 
 
 def can_unquote(text):
-    ''' Determine if text can match an identity pattern. '''
+    """Determine if text can match an identity pattern."""
     try:
         SINGLETONS(text)
         return False
@@ -125,45 +132,45 @@ def can_unquote(text):
 
 @dataclass
 class EncodeOptions:
-    ''' Preferences for text encoding variations. '''
+    """Preferences for text encoding variations."""
 
     scheme_prefix: bool = True
-    ''' True if the scheme is present at the start. '''
+    """ True if the scheme is present at the start. """
     int_base: int = 10
-    ''' One of 2, 10, or 16 '''
-    float_form: str = 'g'
-    ''' One of 'f', 'e', 'g', or 'a' for standard format'''
+    """ One of 2, 10, or 16 """
+    float_form: str = "g"
+    """ One of 'f', 'e', 'g', or 'a' for standard format"""
     text_identity: bool = True
-    ''' True if specific text can be left unquoted. '''
+    """ True if specific text can be left unquoted. """
     time_text: bool = True
-    ''' True if time values should be in text form. '''
+    """ True if time values should be in text form. """
     cbor_diag: bool = False
-    ''' True if CBOR values should be in diagnostic form. '''
+    """ True if CBOR values should be in diagnostic form. """
 
 
 class Encoder:
-    ''' The encoder portion of this CODEC. '''
+    """The encoder portion of this CODEC."""
 
     def __init__(self, options: EncodeOptions = None, **kwargs):
         self._options = options or EncodeOptions(**kwargs)
 
     def encode(self, obj: ARI, buf: TextIO):
-        ''' Encode an ARI into UTF8 text.
+        """Encode an ARI into UTF8 text.
 
         :param obj: The ARI object to encode.
         :param buf: The buffer to write into.
-        '''
+        """
         self._encode_obj(buf, obj, prefix=self._options.scheme_prefix)
 
     def _encode_obj(self, buf: TextIO, obj: ARI, prefix: bool = False):
         if isinstance(obj, LiteralARI):
-            LOGGER.debug('Encode literal %s', obj)
+            LOGGER.debug("Encode literal %s", obj)
             if prefix:
-                buf.write('ari:')
+                buf.write("ari:")
             if obj.type_id is not None:
-                buf.write('/')
+                buf.write("/")
                 buf.write(obj.type_id.name)
-                buf.write('/')
+                buf.write("/")
 
             if obj.type_id is StructType.AC:
                 self._encode_list(buf, obj.value)
@@ -190,9 +197,9 @@ class Encoder:
                 buf.write(str(obj.value))
             elif obj.type_id is StructType.CBOR:
                 if self._options.cbor_diag:
-                    buf.write(percent_encode('<<'))
+                    buf.write(percent_encode("<<"))
                     buf.write(percent_encode(to_diag(cbor2.loads(obj.value))))
-                    buf.write(percent_encode('>>'))
+                    buf.write(percent_encode(">>"))
                 else:
                     self._encode_bytes(buf, obj.value)
             elif obj.type_id is StructType.ARITYPE:
@@ -204,14 +211,14 @@ class Encoder:
                     buf.write(str(int(obj.value)))
             elif isinstance(obj.value, ExecutionSet):
                 params = {
-                    'n': obj.value.nonce,
+                    "n": obj.value.nonce,
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.targets)
             elif isinstance(obj.value, ReportSet):
                 params = {
-                    'n': obj.value.nonce,
-                    'r': LiteralARI(obj.value.ref_time - DTN_EPOCH, StructType.TP),
+                    "n": obj.value.nonce,
+                    "r": LiteralARI(obj.value.ref_time - DTN_EPOCH, StructType.TP),
                 }
                 self._encode_struct(buf, params)
                 self._encode_list(buf, obj.value.reports)
@@ -219,7 +226,7 @@ class Encoder:
 
                 def encode_part(part: ObjectRefPattern.PartType) -> str:
                     if part is True:
-                        enc = '*'
+                        enc = "*"
                     elif isinstance(part, IntInterval):
                         # all integer patterns are handled here
                         enc_parts = []
@@ -227,19 +234,19 @@ class Encoder:
                             if intvl.lower == intvl.upper:
                                 enc_part = str(intvl.lower)
                             else:
-                                enc_part = ''
+                                enc_part = ""
                                 if intvl.lower != ObjectRefPattern.DOMAIN_MIN:
                                     enc_part += str(intvl.lower)
-                                enc_part += '..'
+                                enc_part += ".."
                                 if intvl.upper != ObjectRefPattern.DOMAIN_MAX:
                                     enc_part += str(intvl.upper)
                             enc_parts.append(enc_part)
-                        enc = ','.join(enc_parts)
+                        enc = ",".join(enc_parts)
                     elif isinstance(part, str):
                         enc = str(part)
                     else:
-                        raise TypeError(f'invalid pattern part: {part}')
-                    return '(' + enc + ')'
+                        raise TypeError(f"invalid pattern part: {part}")
+                    return "(" + enc + ")"
 
                 buf.write(encode_part(obj.value.org_pat))
                 buf.write(encode_part(obj.value.model_pat))
@@ -249,11 +256,11 @@ class Encoder:
                 if isinstance(obj.value, int) and not isinstance(obj.value, bool):
                     sign = "-" if obj.value < 0 else ""
                     if self._options.int_base == 2:
-                        fmt = '0b{0:b}'
+                        fmt = "0b{0:b}"
                     elif self._options.int_base == 16:
-                        fmt = '0x{0:X}'
+                        fmt = "0x{0:X}"
                     else:
-                        fmt = '{0:d}'
+                        fmt = "{0:d}"
                     buf.write(sign)
                     buf.write(fmt.format(abs(obj.value)))
                     return
@@ -261,17 +268,17 @@ class Encoder:
                     if not math.isfinite(obj.value):
                         buf.write(to_diag(obj.value))
                         return
-                    elif self._options.float_form == 'a':
+                    elif self._options.float_form == "a":
                         buf.write(obj.value.hex())
                         return
-                    elif self._options.float_form in {'f', 'e', 'g'}:
-                        text = f'{{0:{self._options.float_form}}}'.format(obj.value)
-                        if self._options.float_form == 'g' and '.' not in text and 'e' not in text:
-                            text += '.0'
+                    elif self._options.float_form in {"f", "e", "g"}:
+                        text = f"{{0:{self._options.float_form}}}".format(obj.value)
+                        if self._options.float_form == "g" and "." not in text and "e" not in text:
+                            text += ".0"
                         buf.write(text)
                         return
                     else:
-                        raise ValueError(f'Invalid float form: {self._options.float_form}')
+                        raise ValueError(f"Invalid float form: {self._options.float_form}")
                 elif isinstance(obj.value, str):
                     if can_unquote(obj.value) and self._options.text_identity:
                         # Shortcut for identity text
@@ -285,26 +292,26 @@ class Encoder:
 
         elif isinstance(obj, ReferenceARI):
             if prefix:
-                buf.write('ari:')
+                buf.write("ari:")
             if obj.ident.org_id is None:
                 if obj.ident.model_id is None:
-                    buf.write('.')
+                    buf.write(".")
                 else:
-                    buf.write('..')
+                    buf.write("..")
             else:
-                buf.write('//')
+                buf.write("//")
                 buf.write(str(obj.ident.org_id))
             if obj.ident.model_id is not None:
-                buf.write('/')
+                buf.write("/")
                 buf.write(str(obj.ident.model_id))
             if obj.ident.model_rev is not None:
-                buf.write('@')
+                buf.write("@")
                 buf.write(obj.ident.model_rev.isoformat())
-            buf.write('/')
+            buf.write("/")
 
             if obj.ident.type_id is not None and obj.ident.obj_id is not None:
                 buf.write(obj.ident.type_id.name)
-                buf.write('/')
+                buf.write("/")
                 buf.write(str(obj.ident.obj_id))
                 if isinstance(obj.params, (tuple, list)):
                     self._encode_list(buf, obj.params)
@@ -313,51 +320,51 @@ class Encoder:
 
         elif isinstance(obj, Report):
             params = {
-                't': LiteralARI(obj.rel_time, StructType.TD),
-                's': obj.source,
+                "t": LiteralARI(obj.rel_time, StructType.TD),
+                "s": obj.source,
             }
             self._encode_struct(buf, params)
             self._encode_list(buf, obj.items)
 
         else:
-            raise TypeError(f'Unhandled object type {type(obj)} instance: {obj}')
+            raise TypeError(f"Unhandled object type {type(obj)} instance: {obj}")
 
     def _encode_bytes(self, buf: TextIO, value: bytes):
         # already guaranteed URL safe
         buf.write(f"h'{value.hex().upper()}'")
 
     def _encode_list(self, buf: TextIO, items: List):
-        buf.write('(')
+        buf.write("(")
 
         first = True
         if items:
             for part in items:
                 if not first:
-                    buf.write(',')
+                    buf.write(",")
                 first = False
                 self._encode_obj(buf, part)
 
-        buf.write(')')
+        buf.write(")")
 
     def _encode_map(self, buf: TextIO, mapobj: Dict):
-        buf.write('(')
+        buf.write("(")
 
         first = True
         if mapobj:
             for key, val in mapobj.items():
                 if not first:
-                    buf.write(',')
+                    buf.write(",")
                 first = False
 
                 self._encode_obj(buf, key)
-                buf.write('=')
+                buf.write("=")
                 self._encode_obj(buf, val)
 
-        buf.write(')')
+        buf.write(")")
 
-    def _encode_tbl(self, buf: TextIO, array: 'numpy.ndarray'):
+    def _encode_tbl(self, buf: TextIO, array: "numpy.ndarray"):
         params = {
-            'c': LiteralARI(array.shape[1]),
+            "c": LiteralARI(array.shape[1]),
         }
         self._encode_struct(buf, params)
         for row_ix in range(array.shape[0]):
@@ -366,6 +373,6 @@ class Encoder:
     def _encode_struct(self, buf, obj: ARI):
         for key, val in obj.items():
             buf.write(key)
-            buf.write('=')
+            buf.write("=")
             self._encode_obj(buf, val, False)
-            buf.write(';')
+            buf.write(";")
