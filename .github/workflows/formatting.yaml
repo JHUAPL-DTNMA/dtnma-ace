@@ -48,7 +48,7 @@ jobs:
           python-version: "3.10"
           cache: "pip"
       - name: Prep
-        run: pip3 install --only-deps '.[format]'
+        run: pip3 install -e '.[format]'
       - name: Check code formatting
         run: ./check_format.sh
 
@@ -67,6 +67,6 @@ jobs:
           python-version: "3.10"
           cache: "pip"
       - name: Prep
-        run: pip3 install --only-deps '.[format]'
+        run: pip3 install -e '.[format]'
       - name: Check
         run: ruff check --diff .
