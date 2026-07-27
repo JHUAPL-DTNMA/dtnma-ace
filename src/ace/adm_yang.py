@@ -398,7 +398,7 @@ class Decoder:
         self._ctx.strict = True
         self._ctx.opts = opts
 
-        # adding a warning ignore 
+        # adding a warning ignore
         self._ctx.ignore_error_tags = ["UNUSED_IMPORT"]
         self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
 
