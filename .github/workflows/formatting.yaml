@@ -42,15 +42,17 @@ jobs:
         with:
           fetch-depth: 0
           submodules: false
-      - name: Set up OS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-pip
-          pip3 install autopep8 licenseheaders
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+          cache: "pip"
+      - name: Prep
+        run: pip3 install --only-deps '.[format]'
       - name: Check code formatting
         run: ./check_format.sh
 
-  flake8:
+  ruff-check:
     permissions:
       contents: read
     runs-on: ubuntu-24.04
@@ -63,7 +65,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+          cache: "pip"
       - name: Prep
-        run: pip3 install -e '.[flake8]'
-      - name: Run flake8
-        run: flake8 src test
+        run: pip3 install --only-deps '.[format]'
+      - name: Check
+        run: ruff check --diff .

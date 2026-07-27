@@ -48,6 +48,10 @@ flake8 = [
   "flake8_pyproject",
   "flake8_formatter_junit_xml",
 ]
+format = [
+  "ruff ==0.16.0",
+  "licenseheaders ==0.8.8",
+]
 docs = [
   "sphinx <6",
   "sphinx_rtd_theme",
@@ -76,10 +80,13 @@ max-line-length=100
 min-public-methods=1
 
 [tool.autopep8]
-max_line_length = 160
+max_line_length = 120
 
 [tool.flake8]
-max-line-length=160
+max-line-length=120
+
+[tool.ruff]
+line-length=120
 
 [project.scripts]
 ace_ari = "ace.tools.ace_ari:main"
