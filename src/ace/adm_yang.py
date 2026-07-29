@@ -403,7 +403,7 @@ class Decoder:
         self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
         self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND_REV")
         self._ctx.ignore_error_tags.append("MODULE_NOT_IMPORTED")
-                                           
+
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
@@ -715,9 +715,9 @@ class Decoder:
         self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
             LOGGER.info("%s", etag)
-            if etag in  self._ctx.ignore_error_tags:
+            if etag in self._ctx.ignore_error_tags:
                 continue
-            
+
             elevel = pyang.error.err_level(etag)
             if pyang.error.is_warning(elevel):
                 kind = logging.WARNING
