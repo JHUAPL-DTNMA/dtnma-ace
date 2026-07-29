@@ -401,7 +401,9 @@ class Decoder:
         # adding a warning ignore
         self._ctx.ignore_error_tags = ["UNUSED_IMPORT"]
         self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
-
+        self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND_REV")
+        self._ctx.ignore_error_tags.append("MODULE_NOT_IMPORTED")
+                                           
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
             p.pre_load_modules(self._ctx)
@@ -712,6 +714,10 @@ class Decoder:
         # LOGGER.debug('errors: %s', [(e[0].ref, e[0].line) for e in self._ctx.errors])
         self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
+            LOGGER.info("%s", etag)
+            if etag in  self._ctx.ignore_error_tags:
+                continue
+            
             elevel = pyang.error.err_level(etag)
             if pyang.error.is_warning(elevel):
                 kind = logging.WARNING
@@ -721,7 +727,7 @@ class Decoder:
             if isinstance(epos.ref, tuple):
                 epos.ref = epos.ref[1]
             try:
-                LOGGER.log(kind, '%s: %s',  str(epos.label(True)), emsg)
+                LOGGER.log(kind, 'test2 %s: %s',  str(epos.label(True)), emsg)
             except Exception as e:
                 LOGGER.error('Error %s, while printing msg %s .', e, emsg)
 
