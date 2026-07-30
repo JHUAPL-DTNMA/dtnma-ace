@@ -132,8 +132,10 @@ class TestAriCbor(unittest.TestCase):
     def test_invalid_enc_failure(self):
         dec = ari_cbor.Decoder()
         for data in self.INVALID_DATAS:
-            with self.subTest(data.hex()), self.assertRaises(ari_cbor.ParseError):
-                dec.decode(io.BytesIO(data))
+            with self.subTest(data.hex()):
+                buf = io.BytesIO(data)
+                with self.assertRaises(ari_cbor.ParseError):
+                    dec.decode(buf)
 
     #    def test_complex_decode(self):
     #        text = 'ari:/IANA:Amp.Agent/Ctrl.gen_rpts([ari:/IANA:DTN.bpsec/Rptt.source_report("ipn:1.1")],[])'

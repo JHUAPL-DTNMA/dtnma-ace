@@ -1068,9 +1068,10 @@ class TestAriText(unittest.TestCase):
 
         text_dec = ari_text.Decoder()
         for text in invalid_cases:
-            with self.subTest(f"Should fail: {text}"), self.assertRaises(RuntimeError):
-                ari = text_dec.decode(io.StringIO(text))
-                LOGGER.error("Got ARI %s", ari)
+            with self.subTest(f"Should fail: {text}"):
+                buf = io.StringIO(text)
+                with self.assertRaises(RuntimeError):
+                    text_dec.decode(buf)
 
     def test_ari_text_decode_lit_typed_ac(self):
         TEST_CASE = [
@@ -1280,9 +1281,10 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text = row
-            with self.subTest(text), self.assertRaises(ari_text.ParseError):
-                ari = dec.decode(io.StringIO(text))
-                LOGGER.info("Got ARI %s", ari)
+            with self.subTest(text):
+                buf = io.StringIO(text)
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(buf)
 
     def test_ari_text_decode_nsref(self):
         TEST_CASE = [
@@ -1501,8 +1503,10 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text = row
-            with self.subTest(text), self.assertRaises(ari_text.ParseError):
-                dec.decode(io.StringIO(text))
+            with self.subTest(text):
+                buf = io.StringIO(text)
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(buf)
 
     def test_ari_text_decode_invalid(self):
         TEST_CASE = [
@@ -1530,12 +1534,12 @@ class TestAriText(unittest.TestCase):
         dec = ari_text.Decoder()
         for row in TEST_CASE:
             text = row
-            with self.subTest(text), self.assertRaises(ari_text.ParseError):
-                dec.decode(io.StringIO(text))
+            with self.subTest(text):
+                buf = io.StringIO(text)
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(buf)
 
     def test_invalid_decimal_fractions(self):
-        decoder = ari_text.Decoder()
-
         invalid_cases = [
             # Magnitude errors (1ns beyond the 64-bit signed limit)
             "ari:/TD/9223372036.854775808",
@@ -1547,7 +1551,9 @@ class TestAriText(unittest.TestCase):
             "ari:/TD/100000000000.0",
         ]
 
+        dec = ari_text.Decoder()
         for text in invalid_cases:
-            with self.subTest(text=text), self.assertRaises(RuntimeError):
-                ari = decoder.decode(io.StringIO(text))
-                LOGGER.error("Got ARI %s", ari)
+            with self.subTest(text):
+                buf = io.StringIO(text)
+                with self.assertRaises(ari_text.ParseError):
+                    dec.decode(buf)
