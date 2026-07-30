@@ -712,8 +712,8 @@ class Decoder:
                 epos.ref = epos.ref[1]
             try:
                 LOGGER.log(kind, "%s: %s", str(epos.label(True)), emsg)
-            except Exception as e:
-                LOGGER.error("Error %s, while printing msg %s .", e, emsg)
+            except Exception:
+                LOGGER.exception("Error while logging msg %s", emsg)
 
         src = AdmSource()
         src.file_text = file_text
@@ -899,7 +899,7 @@ class Encoder:
         return (prefix, name)
 
     def _add_substmt(
-        self, parent: pyang.statements.Statement, keyword: str, arg: str = None
+        self, parent: pyang.statements.Statement, keyword: Union[str, Tuple[str, str]], arg: str = None
     ) -> pyang.statements.Statement:
         sub_stmt = pyang.statements.new_statement(self._module, parent, None, keyword, arg)
         parent.substmts.append(sub_stmt)

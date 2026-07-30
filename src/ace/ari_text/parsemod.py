@@ -75,7 +75,7 @@ def p_ssp_primitive(p):
     try:
         value = util.PRIMITIVE(p[1])
     except Exception as err:
-        LOGGER.error("Primitive value invalid: %s", err)
+        LOGGER.exception("Primitive value invalid: %s", p[1])
         raise RuntimeError(err) from err
     p[0] = LiteralARI(
         value=value,
@@ -261,20 +261,20 @@ def p_typedlit_single(p):
     try:
         typ = util.get_structtype(p[2])
     except Exception as err:
-        LOGGER.error("Literal value type invalid: %s", err)
+        LOGGER.exception("Literal value type invalid: %s", p[2])
         raise RuntimeError(err) from err
 
     # Literal value handled based on type-specific parsing
     try:
         value = util.TYPEDLIT[typ](p[4])
     except Exception as err:
-        LOGGER.error("Literal %s value failure: %s", typ, err)
+        LOGGER.exception("Literal %s value invalid: %s", typ, p[4])
         raise RuntimeError(err) from err
 
     try:
         p[0] = BUILTINS_BY_ENUM[typ].convert(LiteralARI(type_id=typ, value=value))
     except Exception as err:
-        LOGGER.error("Literal type mismatch: %s", err)
+        LOGGER.exception("Literal type mismatch: %s", err)
         raise RuntimeError(err) from err
 
 
@@ -337,7 +337,7 @@ def p_objpath_with_ns(p):
         if typ >= 0 or typ == StructType.OBJECT:
             raise RuntimeError(f"Invalid AMM type: {typeseg}")
     except Exception as err:
-        LOGGER.error("Object type invalid: %s", err)
+        LOGGER.exception("Object type invalid")
         raise RuntimeError(err) from err
 
     obj = util.IDSEGMENT(p[9])
@@ -392,14 +392,14 @@ def p_objpath_relative(p):
         if typ >= 0 or typ == StructType.OBJECT:
             raise RuntimeError(f"Invalid AMM type: {typeseg}")
     except Exception as err:
-        LOGGER.error("Object type invalid: %s", err)
+        LOGGER.exception("Object type invalid")
         raise RuntimeError(err) from err
 
     objseg = p[got - 1]
     try:
         obj = util.IDSEGMENT(objseg)
     except Exception as err:
-        LOGGER.error("Object ID invalid: %s", err)
+        LOGGER.exception("Object ID invalid: %s", objseg)
         raise RuntimeError(err) from err
 
     p[0] = Identity(org_id=None, model_id=mod[0], model_rev=mod[1], type_id=typ, obj_id=obj)

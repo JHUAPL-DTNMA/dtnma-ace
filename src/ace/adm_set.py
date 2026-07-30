@@ -26,7 +26,6 @@ a cache database.
 
 import logging
 import os
-import traceback
 from typing import BinaryIO, List, Set, Union
 
 from pyang.repository import Repository
@@ -345,8 +344,7 @@ class AdmSet:
             with open(file_path, "r") as adm_file:
                 adm_new = dec.decode(adm_file)
         except Exception as err:
-            LOGGER.error("Failed to open or read the file %s: %s", file_path, err)
-            LOGGER.debug("%s", traceback.format_exc())
+            LOGGER.exception("Failed to open or read the file %s: %s", file_path, err)
             raise
 
         self._post_load(adm_new, del_dupe)
