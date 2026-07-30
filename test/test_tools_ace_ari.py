@@ -26,9 +26,8 @@ import argparse
 import io
 import logging
 import os
-import sys
 import unittest
-from contextlib import redirect_stdout
+from unittest.mock import patch
 
 from ace import ari_cbor, ari_text, cborutil
 from ace.ari import ARI
@@ -91,9 +90,9 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO(text_in)
+                stdin = io.StringIO(text_in)
                 stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 cborhex_out = stdout.getvalue()
                 LOGGER.info("Got encoded %s", cborhex_out)
@@ -109,10 +108,10 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO(text_in)
+                stdin = io.StringIO(text_in)
                 stdout = io.StringIO()
                 stdout.buffer = io.BytesIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 cbor_out = stdout.buffer.getvalue()
                 expect_cbor = self._cborhex_to_bytes(cborhex_in)
@@ -128,10 +127,9 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO(cborhex_in)
+                stdin = io.StringIO(cborhex_in)
                 stdout = io.StringIO()
-                stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 text_out = stdout.getvalue()
                 LOGGER.info("Got text %s", text_out)
@@ -147,10 +145,10 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO()
-                sys.stdin.buffer = io.BufferedReader(io.BytesIO(self._cborhex_to_bytes(cborhex_in)))
+                stdin = io.StringIO()
+                stdin.buffer = io.BufferedReader(io.BytesIO(self._cborhex_to_bytes(cborhex_in)))
                 stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 text_out = stdout.getvalue()
                 LOGGER.info("Got text %s", text_out)
@@ -166,10 +164,10 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO(text_in)
-                sys.stdin.buffer = io.BufferedReader(io.BytesIO(text_in.encode("utf8")))
+                stdin = io.StringIO(text_in)
+                stdin.buffer = io.BufferedReader(io.BytesIO(text_in.encode("utf8")))
                 stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 cborhex_out = stdout.getvalue()
                 LOGGER.info("Got encoded %s", cborhex_out)
@@ -185,10 +183,10 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO()
-                sys.stdin.buffer = io.BufferedReader(io.BytesIO(self._cborhex_to_bytes(cborhex_in)))
+                stdin = io.StringIO()
+                stdin.buffer = io.BufferedReader(io.BytesIO(self._cborhex_to_bytes(cborhex_in)))
                 stdout = io.StringIO()
-                with redirect_stdout(stdout):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout):
                     ace_ari.run(args)
                 text_out = stdout.getvalue()
                 LOGGER.info("Got text %s", text_out)
@@ -212,9 +210,9 @@ class TestAriRoundtrip(unittest.TestCase):
                     output="-",
                     must_nickname=True,
                 )
-                sys.stdin = io.StringIO(cborhex_in)
+                stdin = io.StringIO(cborhex_in)
                 stdout = io.StringIO()
-                with redirect_stdout(stdout), self.assertRaises(ari_cbor.ParseError):
+                with patch("sys.stdin", stdin), patch("sys.stdout", stdout), self.assertRaises(ari_cbor.ParseError):
                     ace_ari.run(args)
                 text_out = stdout.getvalue()
                 LOGGER.info("Got text %s", text_out)
@@ -236,9 +234,9 @@ class TestAriRoundtrip(unittest.TestCase):
                 output="-",
                 must_nickname=True,
             )
-            sys.stdin = io.StringIO(text_in)
+            stdin = io.StringIO(text_in)
             stdout = io.StringIO()
-            with redirect_stdout(stdout), self.assertRaises(ari_text.ParseError):
+            with patch("sys.stdin", stdin), patch("sys.stdout", stdout), self.assertRaises(ari_text.ParseError):
                 ace_ari.run(args)
             cborhex_out = stdout.getvalue()
             LOGGER.info("Got encoded %s", cborhex_out)
