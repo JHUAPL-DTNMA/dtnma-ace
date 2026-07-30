@@ -116,15 +116,13 @@ class IntegerEnums(Constraint):
         return accum
 
     def applicable(self) -> Set[StructType]:
-        return set(
-            [
-                StructType.BYTE,
-                StructType.INT,
-                StructType.UINT,
-                StructType.VAST,
-                StructType.UVAST,
-            ]
-        )
+        return {
+            StructType.BYTE,
+            StructType.INT,
+            StructType.UINT,
+            StructType.VAST,
+            StructType.UVAST,
+        }
 
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):
@@ -143,15 +141,13 @@ class IntegerBits(Constraint):
     """ Mask for all named bits. """
 
     def applicable(self) -> Set[StructType]:
-        return set(
-            [
-                StructType.BYTE,
-                StructType.INT,
-                StructType.UINT,
-                StructType.VAST,
-                StructType.UVAST,
-            ]
-        )
+        return {
+            StructType.BYTE,
+            StructType.INT,
+            StructType.UINT,
+            StructType.VAST,
+            StructType.UVAST,
+        }
 
     def is_valid(self, obj: ARI) -> bool:
         if isinstance(obj.value, int):

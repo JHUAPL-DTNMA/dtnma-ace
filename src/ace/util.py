@@ -29,7 +29,8 @@ LOGGER = logging.getLogger(__name__)
 
 
 def is_printable(name: bytes) -> bool:
-    return name and name[:1].isalpha() and all([chr(char) in string.printable for char in name])
+    """Determine if an encoded name is fully printable text."""
+    return name and name[:1].isalpha() and all(chr(char) in string.printable for char in name)
 
 
 def normalize_ident(text: str) -> str:
