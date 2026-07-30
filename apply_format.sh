@@ -31,4 +31,6 @@ SELFDIR=$(realpath $(dirname "${BASH_SOURCE[0]}"))
 cd ${SELFDIR}
 
 # Python source and test fixtures
-ruff format src test docs
+SRC_DIRS="src test docs"
+ruff format ${SRC_DIRS}
+ruff check --fix ${SRC_DIRS}

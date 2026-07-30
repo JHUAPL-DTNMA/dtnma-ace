@@ -60,12 +60,13 @@ docs = [
 
 [tool.pytest.ini_options]
 addopts = [
-    "--log-cli-level=critical",
     "--import-mode=importlib",
 ]
 testpaths = [
     "test",
 ]
+log_cli = true
+log_cli_level = "WARNING"
 
 [tool.coverage.run]
 relative_files = true
@@ -88,7 +89,7 @@ max-line-length=120
 [tool.ruff]
 line-length=120
 [tool.ruff.lint]
-select = ["E", "W", "F"]
+select = ["E", "F", "I", "W"]
 
 [project.scripts]
 ace_ari = "ace.tools.ace_ari:main"
