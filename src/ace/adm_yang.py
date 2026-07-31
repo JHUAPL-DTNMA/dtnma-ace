@@ -400,7 +400,7 @@ class Decoder:
 
         # adding a warning ignore
         self._ctx.ignore_error_tags = []
-        if (errors_to_ignore):
+        if errors_to_ignore:
             for errs in errors_to_ignore:
                 self._ctx.ignore_error_tags.append(errs)
 
