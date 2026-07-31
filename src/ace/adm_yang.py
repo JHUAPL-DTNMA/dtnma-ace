@@ -727,7 +727,7 @@ class Decoder:
             if isinstance(epos.ref, tuple):
                 epos.ref = epos.ref[1]
             try:
-                LOGGER.log(kind, 'test2 %s: %s',  str(epos.label(True)), emsg)
+                LOGGER.log(kind, '%s: %s',  str(epos.label(True)), emsg)
             except Exception as e:
                 LOGGER.error('Error %s, while printing msg %s .', e, emsg)
 
