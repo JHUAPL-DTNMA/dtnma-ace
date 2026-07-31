@@ -20,22 +20,22 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' This tool wraps the pyang package CLI with local plugins.
-'''
-import subprocess
+"""This tool wraps the pyang package CLI with local plugins."""
+
 import os
+import subprocess
 import sys
 
 SELFDIR = os.path.dirname(__file__)
-''' Directory containing this file '''
+""" Directory containing this file """
 
 
 def main():
     env = os.environ
-    env['PYANG_PLUGINPATH'] = os.path.abspath(os.path.join(SELFDIR, '..', 'pyang'))
-    env['YANG_MODPATH'] = os.environ.get('ADM_PATH', '')
-    return subprocess.call(['pyang'] + sys.argv[1:], env=env)
+    env["PYANG_PLUGINPATH"] = os.path.abspath(os.path.join(SELFDIR, "..", "pyang"))
+    env["YANG_MODPATH"] = os.environ.get("ADM_PATH", "")
+    return subprocess.call(["pyang"] + sys.argv[1:], env=env)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

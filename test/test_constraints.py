@@ -20,25 +20,27 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Test the adm_set module and AdmSet class.
-'''
+"""Test the adm_set module and AdmSet class."""
+
 import io
 import logging
 import os
 import unittest
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
-from ace import ari, ari_text, models, typing, constraints
+
+from ace import ari, ari_text, constraints, models, typing
 
 SELFDIR = os.path.dirname(__file__)
 LOGGER = logging.getLogger(__name__)
 
 
 class BaseTest(unittest.TestCase):
-    ''' Each test case run constructs a separate in-memory DB '''
+    """Each test case run constructs a separate in-memory DB"""
 
     def setUp(self):
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
         self._db_eng = create_engine("sqlite:///:memory:")
         models.Base.metadata.create_all(self._db_eng)
         self._db_sess = Session(self._db_eng, autoflush=False)
@@ -71,12 +73,12 @@ class BaseTest(unittest.TestCase):
     def _add_mod(self, abs_file_path, org_name, org_enum, model_name, model_enum):
         src = models.AdmSource(
             abs_file_path=abs_file_path,
-            file_text='',
+            file_text="",
         )
         adm = models.AdmModule(
             source=src,
-            module_name=f'{org_name}-{model_name}',
-            norm_name=f'{org_name}-{model_name}',
+            module_name=f"{org_name}-{model_name}",
+            norm_name=f"{org_name}-{model_name}",
             ns_org_name=org_name,
             ns_org_enum=org_enum,
             ns_model_name=model_name,
@@ -85,7 +87,7 @@ class BaseTest(unittest.TestCase):
         )
         adm.revisions = [
             models.AdmRevision(
-                name='2023-01-02',
+                name="2023-01-02",
             )
         ]
         self._db_sess.add_all([src, adm])
@@ -93,13 +95,12 @@ class BaseTest(unittest.TestCase):
 
 
 class TestConstraintsBasic(BaseTest):
-
     def test_file_name(self):
         adm = self._add_mod(
-            abs_file_path='othername.yang',
-            org_name='example',
+            abs_file_path="othername.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='myadm',
+            model_name="myadm",
             model_enum=200,
         )
         self._db_sess.commit()
@@ -110,27 +111,27 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-myadm',
-            check_name='ace.constraints.basic.same_file_name',
+            module_name="example-myadm",
+            check_name="ace.constraints.basic.same_file_name",
             obj_ref=adm,
-            detail_re=r'different',
+            detail_re=r"different",
         )
 
     def test_duplicate_adm_names(self):
         adm_a = self._add_mod(
-            abs_file_path='dir-a/example-myadm.yang',
-            org_name='example',
+            abs_file_path="dir-a/example-myadm.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='myadm',
+            model_name="myadm",
             model_enum=200,
         )
         self.assertIsInstance(adm_a, models.AdmModule)
 
         adm_b = self._add_mod(
-            abs_file_path='dir-b/example-myadm.yang',
-            org_name='example',
+            abs_file_path="dir-b/example-myadm.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='myadm',
+            model_name="myadm",
             model_enum=201,
         )
         self.assertIsInstance(adm_b, models.AdmModule)
@@ -142,22 +143,22 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(2, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-myadm',
-            check_name='ace.constraints.basic.unique_adm_names',
+            module_name="example-myadm",
+            check_name="ace.constraints.basic.unique_adm_names",
             obj_ref=adm_a,
             detail_re=r'Multiple ADMs with metadata "norm_name" of "example-myadm"',
         )
 
     def test_duplicate_object_names(self):
         adm = self._add_mod(
-            abs_file_path='example-myadm.yang',
-            org_name='example',
+            abs_file_path="example-myadm.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='myadm',
+            model_name="myadm",
             model_enum=200,
         )
-        adm.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
-        adm.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
+        adm.ctrl.append(models.Ctrl(name="control_a", norm_name="control_a"))
+        adm.ctrl.append(models.Ctrl(name="control_a", norm_name="control_a"))
         self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
@@ -166,27 +167,26 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-myadm',
-            check_name='ace.constraints.basic.unique_object_names',
+            module_name="example-myadm",
+            check_name="ace.constraints.basic.unique_object_names",
             obj_ref=adm.ctrl[-1],
-            detail_re=r'duplicate',
+            detail_re=r"duplicate",
         )
 
     def test_valid_type_name(self):
         adm = self._add_mod(
-            abs_file_path='example-myadm.yang',
-            org_name='example',
+            abs_file_path="example-myadm.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='myadm',
+            model_name="myadm",
             model_enum=200,
         )
-        val = 'ari:/INT/10'
-        adm.var.append(models.Var(
-            name='someval',
-            typeobj=typing.TypeUse(type_ari='asdf'),
-            init_value=val,
-            init_ari=self._from_text(val)
-        ))
+        val = "ari:/INT/10"
+        adm.var.append(
+            models.Var(
+                name="someval", typeobj=typing.TypeUse(type_ari="asdf"), init_value=val, init_ari=self._from_text(val)
+            )
+        )
         self._db_sess.commit()
 
         eng = constraints.Checker(self._db_sess)
@@ -195,38 +195,40 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-myadm',
-            check_name='ace.constraints.basic.valid_type_name',
+            module_name="example-myadm",
+            check_name="ace.constraints.basic.valid_type_name",
             obj_ref=adm.var[0],
             detail_re=r'Within the object named "someval" the type names are not known',
         )
 
     def test_valid_reference_ari(self):
         adm_a = self._add_mod(
-            abs_file_path='example-adm-a.yang',
-            org_name='example',
+            abs_file_path="example-adm-a.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='adm-a',
+            model_name="adm-a",
             model_enum=200,
         )
 
-        adm_a.ctrl.append(models.Ctrl(name='control_a', norm_name='control_a'))
+        adm_a.ctrl.append(models.Ctrl(name="control_a", norm_name="control_a"))
 
         adm_b = self._add_mod(
-            abs_file_path='example-adm-b.yang',
-            org_name='example',
+            abs_file_path="example-adm-b.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='adm-b',
+            model_name="adm-b",
             model_enum=201,
         )
 
-        val = 'ari:/AC/(//example/adm-a/CTRL/control_a,//example/adm-a/CTRL/control_c,//example/adm-c/CTRL/control_a)'
-        adm_b.const.append(models.Const(
-            name='macro',
-            typeobj=self._get_typeuse('/aritype/ac'),
-            init_value=val,
-            init_ari=self._from_text(val),
-        ))
+        val = "ari:/AC/(//example/adm-a/CTRL/control_a,//example/adm-a/CTRL/control_c,//example/adm-c/CTRL/control_a)"
+        adm_b.const.append(
+            models.Const(
+                name="macro",
+                typeobj=self._get_typeuse("/aritype/ac"),
+                init_value=val,
+                init_ari=self._from_text(val),
+            )
+        )
 
         self._db_sess.commit()
 
@@ -240,43 +242,43 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(2, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-adm-b',
-            check_name='ace.constraints.basic.valid_reference_ari',
+            module_name="example-adm-b",
+            check_name="ace.constraints.basic.valid_reference_ari",
             obj_ref=adm_b.const[0],
             detail_re=r'Within the object named "macro" the reference ARI for .*\bcontrol_c\b.* is not resolvable',
         )
         self.assertIssuePattern(
             issues[1],
-            module_name='example-adm-b',
-            check_name='ace.constraints.basic.valid_reference_ari',
+            module_name="example-adm-b",
+            check_name="ace.constraints.basic.valid_reference_ari",
             obj_ref=adm_b.const[0],
             detail_re=r'Within the object named "macro" the reference ARI for .*\bcontrol_a\b.* is not resolvable',
         )
 
     def test_default_value_match_type(self):
         adm_a = self._add_mod(
-            abs_file_path='example-adm-a.yang',
-            org_name='example',
+            abs_file_path="example-adm-a.yang",
+            org_name="example",
             org_enum=65535,
-            model_name='adm-a',
+            model_name="adm-a",
             model_enum=200,
         )
 
-        ctrl = models.Ctrl(name='control_a', norm_name='control_a')
+        ctrl = models.Ctrl(name="control_a", norm_name="control_a")
         adm_a.ctrl.append(ctrl)
         # value is int, paramA type is textstr
-        default_val = '123'
+        default_val = "123"
         ctrl.parameters = models.TypeNameList(
             items=[
                 models.TypeNameItem(
-                    name='paramA',
-                    typeobj=self._get_typeuse('/aritype/textstr'),
+                    name="paramA",
+                    typeobj=self._get_typeuse("/aritype/textstr"),
                     default_value=default_val,
                     default_ari=self._from_text(default_val),
                 ),
                 models.TypeNameItem(
-                    name='paramB',
-                    typeobj=self._get_typeuse('/aritype/uint'),
+                    name="paramB",
+                    typeobj=self._get_typeuse("/aritype/uint"),
                     default_value=default_val,
                     default_ari=self._from_text(default_val),
                 ),
@@ -291,8 +293,8 @@ class TestConstraintsBasic(BaseTest):
         self.assertEqual(1, len(issues), msg=issues)
         self.assertIssuePattern(
             issues[0],
-            module_name='example-adm-a',
-            check_name='ace.constraints.basic.default_value_type_match',
+            module_name="example-adm-a",
+            check_name="ace.constraints.basic.default_value_type_match",
             obj_ref=ctrl,
             detail_re=r'Within the object named "control_a" the value "123" does not match the associated type',
         )

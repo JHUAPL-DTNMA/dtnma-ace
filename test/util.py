@@ -20,25 +20,26 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Shared test fixture utilities.
-'''
-from ace import typing
-from dataclasses import dataclass
+"""Shared test fixture utilities."""
+
 import os
 import tempfile
+from dataclasses import dataclass
+
+from ace import typing
 
 
 class TmpDir:
-    ''' A temporary test directory with associated XDG environment.
+    """A temporary test directory with associated XDG environment.
 
     :param kwargs: Arguments to pass down to :class:`tempfile.TemporaryDirectory`.
-    '''
+    """
 
     def __init__(self, **kwargs):
         self._dir = tempfile.TemporaryDirectory(**kwargs)  # pylint: disable=consider-using-with
-        os.environ['XDG_CACHE_HOME'] = os.path.join(self._dir.name, 'home', 'cache')
-        os.environ['XDG_DATA_HOME'] = os.path.join(self._dir.name, 'home', 'data')
-        os.environ['XDG_DATA_DIRS'] = os.path.join(self._dir.name, 'usr', 'data')
+        os.environ["XDG_CACHE_HOME"] = os.path.join(self._dir.name, "home", "cache")
+        os.environ["XDG_DATA_HOME"] = os.path.join(self._dir.name, "home", "data")
+        os.environ["XDG_DATA_DIRS"] = os.path.join(self._dir.name, "usr", "data")
 
     def __del__(self):
         self._dir.cleanup()
@@ -46,7 +47,6 @@ class TmpDir:
 
 @dataclass
 class TypeSummary:
-
     type: type
     detail: object = None
 

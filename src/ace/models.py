@@ -20,20 +20,16 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' ORM models for the ADM and its contents.
-'''
+"""ORM models for the ADM and its contents."""
+
 from typing import Optional
-from sqlalchemy import (
-    Column, ForeignKey, Boolean, Integer, String, Date, DateTime,
-    Text, PickleType
-)
-from sqlalchemy.orm import (
-    declarative_base, declarative_mixin, relationship, declared_attr, Mapped
-)
+
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, PickleType, String, Text
 from sqlalchemy.ext.orderinglist import ordering_list
+from sqlalchemy.orm import Mapped, declarative_base, declarative_mixin, declared_attr, relationship
 
 CURRENT_SCHEMA_VERSION = 24
-''' Value of :attr:`SchemaVersion.version_num` '''
+""" Value of :attr:`SchemaVersion.version_num` """
 
 Base = declarative_base()
 
@@ -41,9 +37,11 @@ Base = declarative_base()
 
 
 class SchemaVersion(Base):
-    ''' Identify the version of a DB. '''
+    """Identify the version of a DB."""
+
     __tablename__ = "schema_version"
     version_num = Column(Integer, primary_key=True)
+
 
 # These first classes are containers and are not explicitly bound to a
 # parent ADM object.
@@ -51,19 +49,21 @@ class SchemaVersion(Base):
 
 @declarative_mixin
 class CommonMixin:
-    ''' Common module substatements. '''
+    """Common module substatements."""
+
     description = Column(String)
 
 
 class MetadataItem(Base):
-    ''' A single item of module, object, or substatement metadata. '''
+    """A single item of module, object, or substatement metadata."""
+
     __tablename__ = "metadata_item"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     # Containing list
-    list_id = Column(Integer, ForeignKey('metadata_list.id'))
+    list_id = Column(Integer, ForeignKey("metadata_list.id"))
     list = relationship("MetadataList", back_populates="items")
 
     name = Column(String, nullable=False)
@@ -71,132 +71,143 @@ class MetadataItem(Base):
 
 
 class MetadataList(Base):
-    ''' A list of named metadata items.
+    """A list of named metadata items.
 
     There is no explicit relationship to the object which contains this type.
-    '''
+    """
+
     __tablename__ = "metadata_list"
     id = Column(Integer, primary_key=True)
 
+    # fmt: off
     items = relationship(
         "MetadataItem",
         order_by="MetadataItem.name",
         collection_class=ordering_list('name'),
         cascade="all, delete"
     )
+    # fmt: on
 
 
 class TypeUseMixin:
-    ''' Common attributes for containing a :class:`typing` instance. '''
+    """Common attributes for containing a :class:`typing` instance."""
+
     typeobj = Column(PickleType)
-    ''' An object derived from the :cls:`SemType` class. '''
+    """ An object derived from the :cls:`SemType` class. """
 
 
 class TypeNameList(Base):
-    ''' A list of typed, named items (e.g. parameters or columns).
+    """A list of typed, named items (e.g. parameters or columns).
 
     There is no explicit relationship to the object which contains this type.
-    '''
+    """
+
     __tablename__ = "typename_list"
     id = Column(Integer, primary_key=True)
 
+    # fmt: off
     items = relationship(
         "TypeNameItem",
         order_by="TypeNameItem.position",
         collection_class=ordering_list('position'),
         cascade="all, delete"
     )
+    # fmt: on
 
 
 class TypeNameItem(Base, TypeUseMixin):
-    ''' Each item within a TypeNameList '''
+    """Each item within a TypeNameList"""
+
     __tablename__ = "typename_item"
     id = Column(Integer, primary_key=True)
 
     # Containing list
-    list_id = Column(Integer, ForeignKey('typename_list.id'))
+    list_id = Column(Integer, ForeignKey("typename_list.id"))
     list = relationship("TypeNameList", back_populates="items")
     position = Column(Integer)
-    ''' ordinal of this item in a :class:`TypeNameList` '''
+    """ ordinal of this item in a :class:`TypeNameList` """
 
     name = Column(String, nullable=False)
-    ''' Unique name for the item, the type comes from :class:`TypeUseMixin` '''
+    """ Unique name for the item, the type comes from :class:`TypeUseMixin` """
     description = Column(String)
-    ''' Arbitrary optional text '''
+    """ Arbitrary optional text """
 
     default_value = Column(String)
-    ''' Optional default value for parameter as text ARI. '''
+    """ Optional default value for parameter as text ARI. """
     default_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for default_value. '''
+    """ Resolved and decoded ARI for default_value. """
 
 
 class AdmSource(Base):
-    ''' The original ADM file content and metadata from a successful load. '''
-    __tablename__ = 'adm_source'
+    """The original ADM file content and metadata from a successful load."""
+
+    __tablename__ = "adm_source"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
-    module = relationship('AdmModule')
-    ''' Derived ADM module content '''
+    module = relationship("AdmModule")
+    """ Derived ADM module content """
 
     abs_file_path = Column(String)
-    ''' Fully resolved path from which the ADM was loaded '''
+    """ Fully resolved path from which the ADM was loaded """
     last_modified = Column(DateTime)
-    ''' Modified Time from the source file '''
+    """ Modified Time from the source file """
 
     file_text = Column(Text)
-    ''' Cached full file content. '''
+    """ Cached full file content. """
 
 
 class Organization(Base):
-    ''' A namespace organization. '''
-    __tablename__ = 'ns_org'
+    """A namespace organization."""
+
+    __tablename__ = "ns_org"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     name = Column(String, index=True)
-    ''' Normalized name of this organization '''
+    """ Normalized name of this organization """
     enum = Column(Integer, index=True)
-    ''' Enumeration for this organization '''
+    """ Enumeration for this organization """
 
 
 class AdmModule(Base):
-    ''' The ADM itself with relations to its attributes and objects '''
+    """The ADM itself with relations to its attributes and objects"""
+
     __tablename__ = "adm_module"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
-    source_id = Column(Integer, ForeignKey('adm_source.id'))
+    source_id = Column(Integer, ForeignKey("adm_source.id"))
+    # fmt: off
     source = relationship(
         "AdmSource",
         back_populates='module',
         cascade="all, delete"
     )
+    # fmt: on
 
     module_name = Column(String)
-    ''' Original module name '''
+    """ Original module name """
     norm_name = Column(String, index=True)
-    ''' Normalized module name (for searching) '''
+    """ Normalized module name (for searching) """
 
     ns_org_name = Column(String, index=True)
-    ''' Namespace organization name '''
+    """ Namespace organization name """
     ns_org_enum = Column(Integer, index=True)
-    ''' Organization enumeration from the module '''
+    """ Organization enumeration from the module """
 
     ns_model_name = Column(String, index=True)
-    ''' Name of this model, in normalized form, within the organization '''
+    """ Name of this model, in normalized form, within the organization """
     ns_model_enum = Column(Integer, index=True)
-    ''' Enumeration for this model within the organization '''
+    """ Enumeration for this model within the organization """
 
-    metadata_id = Column(Integer, ForeignKey('metadata_list.id'), nullable=False)
-    metadata_list = relationship(
-        "MetadataList",
-        cascade="all, delete"
-    )
+    metadata_id = Column(Integer, ForeignKey("metadata_list.id"), nullable=False)
+    metadata_list = relationship("MetadataList", cascade="all, delete")
 
+    # fmt: off
     revisions = relationship(
         "AdmRevision",
         back_populates="module",
@@ -204,11 +215,13 @@ class AdmModule(Base):
         cascade="all, delete"
     )
     ''' An ordered list of revisions of this module '''
+    # fmt: on
 
     latest_revision_date = Column(Date, index=True)
-    ''' An indexed form of the latest of all associated
-    AdmRevision objects. '''
+    """ An indexed form of the latest of all associated
+    AdmRevision objects. """
 
+    # fmt: off
     imports = relationship(
         "AdmImport",
         back_populates="module",
@@ -223,105 +236,127 @@ class AdmModule(Base):
     )
 
     # references a list of contained objects
-    typedef = relationship("Typedef",
-                           back_populates="module",
-                           order_by='asc(Typedef.position)',
-                           cascade="all, delete")
-    ident = relationship("Ident",
-                         back_populates="module",
-                         order_by='asc(Ident.position)',
-                         cascade="all, delete")
-    const = relationship("Const",
-                         back_populates="module",
-                         order_by='asc(Const.position)',
-                         cascade="all, delete")
-    ctrl = relationship("Ctrl",
-                        back_populates="module",
-                        order_by='asc(Ctrl.position)',
-                        cascade="all, delete")
-    edd = relationship("Edd",
-                       back_populates="module",
-                       order_by='asc(Edd.position)',
-                       cascade="all, delete")
-    oper = relationship("Oper",
-                        back_populates="module",
-                        order_by='asc(Oper.position)',
-                        cascade="all, delete")
-    var = relationship("Var",
-                       back_populates="module",
-                       order_by='asc(Var.position)',
-                       cascade="all, delete")
-    sbr = relationship("Sbr",
-                       back_populates="module",
-                       order_by='asc(Sbr.position)',
-                       cascade="all, delete")
-    tbr = relationship("Tbr",
-                       back_populates="module",
-                       order_by='asc(Tbr.position)',
-                       cascade="all, delete")
+    typedef = relationship(
+        "Typedef",
+        back_populates="module",
+        order_by='asc(Typedef.position)',
+        cascade="all, delete"
+    )
+    ident = relationship(
+        "Ident",
+        back_populates="module",
+        order_by='asc(Ident.position)',
+        cascade="all, delete"
+    )
+    const = relationship(
+        "Const",
+        back_populates="module",
+        order_by='asc(Const.position)',
+        cascade="all, delete"
+    )
+    ctrl = relationship(
+        "Ctrl",
+        back_populates="module",
+        order_by='asc(Ctrl.position)',
+        cascade="all, delete"
+    )
+    edd = relationship(
+        "Edd",
+        back_populates="module",
+        order_by='asc(Edd.position)',
+        cascade="all, delete"
+    )
+    oper = relationship(
+        "Oper",
+        back_populates="module",
+        order_by='asc(Oper.position)',
+        cascade="all, delete"
+    )
+    var = relationship(
+        "Var",
+        back_populates="module",
+        order_by='asc(Var.position)',
+        cascade="all, delete"
+    )
+    sbr = relationship(
+        "Sbr",
+        back_populates="module",
+        order_by='asc(Sbr.position)',
+        cascade="all, delete"
+    )
+    tbr = relationship(
+        "Tbr",
+        back_populates="module",
+        order_by='asc(Tbr.position)',
+        cascade="all, delete"
+    )
+    # fmt: on
 
     def __repr__(self):
-        repr_attrs = ('id', 'norm_name')
+        repr_attrs = ("id", "norm_name")
         parts = [f"{attr}={getattr(self, attr)}" for attr in repr_attrs]
-        return "ADM(" + ', '.join(parts) + ")"
+        return "ADM(" + ", ".join(parts) + ")"
 
 
 class AdmRevision(Base, CommonMixin):
-    ''' Each "revision" of an ADM '''
+    """Each "revision" of an ADM"""
+
     __tablename__ = "adm_revision"
     id = Column(Integer, primary_key=True)
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="revisions")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
     position = Column(Integer)
-    ''' ordinal of this item in the list '''
+    """ ordinal of this item in the list """
 
     name = Column(String, index=True)
-    ''' Original exact text, indexed for sorting '''
+    """ Original exact text, indexed for sorting """
     date = Column(Date, index=True)
-    ''' Parsed date '''
+    """ Parsed date """
 
 
 class AdmImport(Base, CommonMixin):
-    ''' Each "import" of an ADM '''
+    """Each "import" of an ADM"""
+
     __tablename__ = "adm_import"
     id = Column(Integer, primary_key=True)
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="imports")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
     position = Column(Integer)
-    ''' ordinal of this item in the list '''
+    """ ordinal of this item in the list """
 
     name = Column(String)
-    ''' Original exact text '''
+    """ Original exact text """
     prefix = Column(String)
-    ''' Prefix within the module '''
+    """ Prefix within the module """
 
 
 class Feature(Base, CommonMixin):
-    ''' Feature definition, which is a module-only object not an AMM object. '''
+    """Feature definition, which is a module-only object not an AMM object."""
+
     __tablename__ = "feature"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="feature")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
     # ordinal of this item in the module
     position = Column(Integer)
 
@@ -331,280 +366,305 @@ class Feature(Base, CommonMixin):
 
 @declarative_mixin
 class AdmObjMixin(CommonMixin):
-    ''' Common attributes of an ADM-defined object. '''
+    """Common attributes of an ADM-defined object."""
 
     __tablename__: Optional[str] = None
-    ''' Placeholder for derived class overload attribute '''
+    """ Placeholder for derived class overload attribute """
     module: Optional[AdmModule] = None
-    ''' Placeholder for derived class overload attribute '''
+    """ Placeholder for derived class overload attribute """
 
     position = Column(Integer)
-    ''' ordinal of this item in the module (within each object type) '''
+    """ ordinal of this item in the module (within each object type) """
 
     name = Column(String, nullable=False)
-    ''' Unique name (within each object type) '''
+    """ Unique name (within each object type) """
     norm_name = Column(String, index=True)
-    ''' Normalized object name (for searching) '''
+    """ Normalized object name (for searching) """
 
     enum = Column(Integer, index=True)
-    ''' Enumeration for this object '''
+    """ Enumeration for this object """
 
     if_feature_expr = Column(PickleType)
-    ''' Feature-matching parsed expression.
+    """ Feature-matching parsed expression.
     See :func:`pyang.syntax.parse_if_feature_expr`.
-    '''
+    """
 
 
 class ParamMixin:
-    ''' Attributes for formal parameters of an object. '''
+    """Attributes for formal parameters of an object."""
 
     # Parameters of this object
     @declared_attr
     def parameters_id(self):
-        return Column(Integer, ForeignKey('typename_list.id'))
+        return Column(Integer, ForeignKey("typename_list.id"))
 
     # Relationship to the :class:`TypeNameList`
     @declared_attr
     def parameters(self) -> Mapped["TypeNameList"]:
-        return relationship(
-            "TypeNameList",
-            foreign_keys=[self.parameters_id],
-            cascade="all, delete"
-        )
+        return relationship("TypeNameList", foreign_keys=[self.parameters_id], cascade="all, delete")
+
 
 # These following classes are all proper ADM top-level object sections.
 
 
 class Typedef(Base, AdmObjMixin, TypeUseMixin):
-    ''' Type definition (named semantic type) '''
+    """Type definition (named semantic type)"""
+
     __tablename__ = "typedef"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="typedef")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
 
 class Ident(Base, AdmObjMixin, ParamMixin):
-    ''' Identity object (named, derived object) '''
+    """Identity object (named, derived object)"""
+
     __tablename__ = "ident"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="ident")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
     abstract = Column(Boolean)
-    ''' Explicit abstract marking '''
+    """ Explicit abstract marking """
 
+    # fmt: off
     bases = relationship(
         "IdentBase",
         order_by="IdentBase.position",
         collection_class=ordering_list('position'),
         cascade="all, delete"
     )
+    # fmt: on
 
 
 class IdentBase(Base):
-    ''' Each Identity base reference '''
+    """Each Identity base reference"""
+
     __tablename__ = "ident_base"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def ident_id(self):
-        return Column(Integer, ForeignKey('ident.id'))
+        return Column(Integer, ForeignKey("ident.id"))
 
-    ''' ID of the file from which this came '''
+    """ ID of the file from which this came """
     ident = relationship("Ident", back_populates="bases")
-    ''' Relationship to the :class:`Ident` '''
+    """ Relationship to the :class:`Ident` """
     position = Column(Integer)
-    ''' ordinal of this item in a :class:`TypeNameList` '''
+    """ ordinal of this item in a :class:`TypeNameList` """
 
     base_text = Column(String)
-    ''' The object from which the parent Ident is derived as text ARI '''
+    """ The object from which the parent Ident is derived as text ARI """
     base_ari = Column(PickleType)
-    ''' Resolved and decoded ARI '''
+    """ Resolved and decoded ARI """
 
 
 class Edd(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
-    ''' Externally Defined Data (EDD) '''
+    """Externally Defined Data (EDD)"""
+
     __tablename__ = "edd"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="edd")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
 
 class Const(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
-    ''' Constant value (CONST) '''
+    """Constant value (CONST)"""
+
     __tablename__ = "const"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="const")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
     init_value = Column(String)
-    ''' The initial and constant value as text ARI '''
+    """ The initial and constant value as text ARI """
     init_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`init_value`. '''
+    """ Resolved and decoded ARI for ivar:`init_value`. """
 
 
 class Ctrl(Base, AdmObjMixin, ParamMixin):
-    ''' Control '''
+    """Control"""
+
     __tablename__ = "ctrl"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="ctrl")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
-    result_id = Column(Integer, ForeignKey('typename_item.id'))
-    result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
+    result_id = Column(Integer, ForeignKey("typename_item.id"))
+    # fmt: off
+    result = relationship(
+        "TypeNameItem",
+        foreign_keys=[result_id],
+        cascade="all, delete"
+    )
     ''' Optional result descriptor. '''
+    # fmt: on
 
 
 class Oper(Base, AdmObjMixin, ParamMixin):
-    ''' Operator (Oper) used in EXPR postfix '''
+    """Operator (Oper) used in EXPR postfix"""
+
     __tablename__ = "oper"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="oper")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
-    operands_id = Column(Integer, ForeignKey('typename_list.id'), nullable=False)
-    operands = relationship("TypeNameList",
-                            foreign_keys=[operands_id],
-                            cascade="all, delete")
+    operands_id = Column(Integer, ForeignKey("typename_list.id"), nullable=False)
+    # fmt: off
+    operands = relationship(
+        "TypeNameList",
+        foreign_keys=[operands_id],
+        cascade="all, delete"
+    )
+    # fmt: on
 
-    result_id = Column(Integer, ForeignKey('typename_item.id'), nullable=False)
-    result = relationship("TypeNameItem", foreign_keys=[result_id], cascade="all, delete")
+    result_id = Column(Integer, ForeignKey("typename_item.id"), nullable=False)
+    # fmt: off
+    result = relationship(
+        "TypeNameItem",
+        foreign_keys=[result_id],
+        cascade="all, delete"
+    )
+    # fmt: on
 
 
 class Var(Base, AdmObjMixin, ParamMixin, TypeUseMixin):
-    ''' Variable value (VAR)'''
+    """Variable value (VAR)"""
+
     __tablename__ = "var"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="var")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
     init_value = Column(String)
-    ''' The initial value as text ARI '''
+    """ The initial value as text ARI """
     init_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`init_value`. '''
+    """ Resolved and decoded ARI for ivar:`init_value`. """
 
 
 class Sbr(Base, AdmObjMixin):
-    ''' State Based Rule (SBR) '''
+    """State Based Rule (SBR)"""
+
     __tablename__ = "sbr"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="sbr")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
     action_value = Column(String)
-    ''' The action as text ARI '''
+    """ The action as text ARI """
     action_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`action`. '''
+    """ Resolved and decoded ARI for ivar:`action`. """
 
     condition_value = Column(String)
-    ''' The condition as text ARI '''
+    """ The condition as text ARI """
     condition_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`condition`. '''
+    """ Resolved and decoded ARI for ivar:`condition`. """
 
     min_interval_value = Column(String)
-    ''' The min_interval as text ARI '''
+    """ The min_interval as text ARI """
     min_interval_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`min_interval`. '''
+    """ Resolved and decoded ARI for ivar:`min_interval`. """
 
     max_count = Column(Integer)
     init_enabled = Column(Boolean)
 
 
 class Tbr(Base, AdmObjMixin):
-    ''' Time Based Rule (TBR) '''
+    """Time Based Rule (TBR)"""
+
     __tablename__ = "tbr"
 
     id = Column(Integer, primary_key=True)
-    ''' Unique ID of the row '''
+    """ Unique ID of the row """
 
     @declared_attr
     def module_id(self):
-        ''' ID of the file from which this came '''
-        return Column(Integer, ForeignKey('adm_module.id'))
+        """ID of the file from which this came"""
+        return Column(Integer, ForeignKey("adm_module.id"))
 
     module = relationship("AdmModule", back_populates="tbr")
-    ''' Relationship to the :class:`AdmModule` '''
+    """ Relationship to the :class:`AdmModule` """
 
     action_value = Column(String)
-    ''' The action as text ARI '''
+    """ The action as text ARI """
     action_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`action`. '''
+    """ Resolved and decoded ARI for ivar:`action`. """
 
     period_value = Column(String)
-    ''' The period as text ARI '''
+    """ The period as text ARI """
     period_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`period`. '''
+    """ Resolved and decoded ARI for ivar:`period`. """
 
     start_value = Column(String)
-    ''' The start as text ARI '''
+    """ The start as text ARI """
     start_ari = Column(PickleType)
-    ''' Resolved and decoded ARI for ivar:`start`. '''
+    """ Resolved and decoded ARI for ivar:`start`. """
 
     max_count = Column(Integer)
     init_enabled = Column(Boolean)

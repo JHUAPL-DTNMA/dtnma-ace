@@ -20,5 +20,4 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Entrypoints for command line tools of the ACE package.
-'''
+"""Entrypoints for command line tools of the ACE package."""

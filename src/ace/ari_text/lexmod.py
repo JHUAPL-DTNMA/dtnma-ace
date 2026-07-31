@@ -20,37 +20,38 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Lexer configuration for ARI text decoding.
-'''
+"""Lexer configuration for ARI text decoding."""
+
 import logging
 import re
 from urllib.parse import unquote
+
 from ply import lex
 
 # make linters happy
 __all__ = [
-    'tokens',
-    'new_lexer',
+    "new_lexer",
+    "tokens",
 ]
 
 LOGGER = logging.getLogger(__name__)
 
 # List of token names.   This is always required
 tokens = (
-    'ARI_PREFIX',
-    'SLASH',
-    'COMMA',
-    'SC',
-    'LPAREN',
-    'RPAREN',
-    'EQ',
-    'AC',
-    'AM',
-    'TBL',
-    'EXECSET',
-    'RPTSET',
-    'OBJPAT',
-    'VALSEG',
+    "ARI_PREFIX",
+    "SLASH",
+    "COMMA",
+    "SC",
+    "LPAREN",
+    "RPAREN",
+    "EQ",
+    "AC",
+    "AM",
+    "TBL",
+    "EXECSET",
+    "RPTSET",
+    "OBJPAT",
+    "VALSEG",
 )
 
 # Function tokens are searched in declaration order
@@ -58,69 +59,70 @@ tokens = (
 
 
 def t_ARI_PREFIX(tok):
-    r'ari:'
+    r"ari:"
     return tok
 
 
 def t_AC(tok):
-    r'(AC|17)/'
+    r"(AC|17)/"
     return tok
 
 
 def t_AM(tok):
-    r'(AM|18)/'
+    r"(AM|18)/"
     return tok
 
 
 def t_TBL(tok):
-    r'(TBL|19)/'
+    r"(TBL|19)/"
     return tok
 
 
 def t_EXECSET(tok):
-    r'(EXECSET|20)/'
+    r"(EXECSET|20)/"
     return tok
 
 
 def t_RPTSET(tok):
-    r'(RPTSET|21)/'
+    r"(RPTSET|21)/"
     return tok
 
 
 def t_OBJPAT(tok):
-    r'(OBJPAT|24)/'
+    r"(OBJPAT|24)/"
     return tok
 
 
 # This is the same as RFC 3986 'segment-nz' production with some excluded
 # for AC/AM recursion: "(" ")" ";" "="
 def t_VALSEG(tok):
-    r'([a-zA-Z0-9\-\._~\!\'\*\+\:@]|%[0-9a-fA-F]{2})+'
+    r"([a-zA-Z0-9\-\._~\!\'\*\+\:@]|%[0-9a-fA-F]{2})+"
     tok.value = unquote(tok.value)
     return tok
 
 
 # Regular expression rules for simple tokens
-t_SLASH = r'/'
-t_COMMA = r','
-t_SC = r';'
-t_LPAREN = r'\('
-t_RPAREN = r'\)'
-t_EQ = r'='
+t_SLASH = r"/"
+t_COMMA = r","
+t_SC = r";"
+t_LPAREN = r"\("
+t_RPAREN = r"\)"
+t_EQ = r"="
 
 # All space is ignored for lexing purposes
-t_ignore = ' \t\n'
+t_ignore = " \t\n"
 
 
 def t_error(t):
     # Error handling rule
     LOGGER.error("Illegal character '%s' at position %s", t.value[0], t.lexpos)
-    raise SyntaxError(f'Illegal character \'{t.value[0]}\' present')
+    raise SyntaxError(f"Illegal character '{t.value[0]}' present")
+
 
 # pylint: enable=invalid-name
 
 
 def new_lexer(**kwargs):
-    kwargs.setdefault('reflags', re.IGNORECASE)
+    kwargs.setdefault("reflags", re.IGNORECASE)
     obj = lex.lex(**kwargs)
     return obj
