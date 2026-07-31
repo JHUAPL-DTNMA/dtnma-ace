@@ -400,7 +400,7 @@ class Decoder:
 
         # adding a warning ignore
         self._ctx.ignore_error_tags = []
-        self._ctx.ignore_error_tag.append("UNUSED_IMPORT")
+        self._ctx.ignore_error_tags.append("UNUSED_IMPORT")
         self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
         self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND")
 
