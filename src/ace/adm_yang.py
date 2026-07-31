@@ -400,9 +400,9 @@ class Decoder:
 
         # adding a warning ignore
         self._ctx.ignore_error_tags = []
-        self._ctx.ignore_error_tags.append("UNUSED_IMPORT")
-        self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
-        self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND")
+        if (errors_to_ignore):
+            for errs in errors_to_ignore:
+                self._ctx.ignore_error_tags.append(errs)
 
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
