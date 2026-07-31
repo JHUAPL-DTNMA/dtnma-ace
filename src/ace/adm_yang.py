@@ -383,7 +383,7 @@ class Decoder:
     ''' The decoder portion of this CODEC.
     '''
 
-    def __init__(self, repos: pyang.repository.Repository):
+    def __init__(self, repos: pyang.repository.Repository, errors_to_ignore=None):
         # Initializer copied from pyang.scripts.pyang_tool.run()
         if not pyang.plugin.plugins:
             plugindirs = [os.path.join(SELFDIR, 'pyang')]
@@ -399,10 +399,10 @@ class Decoder:
         self._ctx.opts = opts
 
         # adding a warning ignore
-        self._ctx.ignore_error_tags = ["UNUSED_IMPORT"]
+        self._ctx.ignore_error_tags = []
+        self._ctx.ignore_error_tag.append("UNUSED_IMPORT")
         self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
-        self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND_REV")
-        self._ctx.ignore_error_tags.append("MODULE_NOT_IMPORTED")
+        self._ctx.ignore_error_tags.append("MODULE_NOT_FOUND")
 
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
