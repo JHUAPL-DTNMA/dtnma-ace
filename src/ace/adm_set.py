@@ -101,7 +101,7 @@ class AdmSet:
         If False, the cache is kept in-memory.
     '''
 
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: str = None, errors_to_ignore: list = None):
         if cache_dir is False:
             self.cache_path = None
         else:
@@ -135,6 +135,8 @@ class AdmSet:
 
         # track dependencies
         self.pending_adms = {}
+
+        self.errors_to_ignore = errors_to_ignore
 
     def _db_open(self):
         if self.cache_path:
@@ -286,7 +288,7 @@ class AdmSet:
 
         adm_cnt = 0
         try:
-            dec = adm_yang.Decoder(DbRepository(self._db_sess, file_entries))
+            dec = adm_yang.Decoder(DbRepository(self._db_sess, file_entries), self.errors_to_ignore)
             LOGGER.debug('Attempting to read %d items', len(file_entries))
             for item in file_entries:
                 self._read_file(dec, item.path, True)
@@ -313,7 +315,7 @@ class AdmSet:
         file_path = os.path.realpath(file_path)
         LOGGER.debug('Loading from file %s', file_path)
         try:
-            dec = adm_yang.Decoder(DbRepository(self._db_sess))
+            dec = adm_yang.Decoder(DbRepository(self._db_sess), self.errors_to_ignore)
             self._db_sess.expire_on_commit = False
             adm_new = self._read_file(dec, file_path, del_dupe)
             self._db_sess.commit()
@@ -332,7 +334,7 @@ class AdmSet:
             not have a "name" metadata object.
         '''
         try:
-            dec = adm_yang.Decoder(DbRepository(self._db_sess))
+            dec = adm_yang.Decoder(DbRepository(self._db_sess), self.errors_to_ignore)
             self._db_sess.expire_on_commit = False
             adm_new = dec.decode(buf)
             self._post_load(adm_new, del_dupe)
