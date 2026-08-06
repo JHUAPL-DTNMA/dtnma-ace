@@ -373,7 +373,7 @@ class EmptyRepos(pyang.repository.Repository):
 class Decoder:
     """The decoder portion of this CODEC."""
 
-    def __init__(self, repos: pyang.repository.Repository):
+    def __init__(self, repos: pyang.repository.Repository, errors_to_ignore=None):
         # Initializer copied from pyang.scripts.pyang_tool.run()
         if not pyang.plugin.plugins:
             plugindirs = [os.path.join(SELFDIR, "pyang")]
@@ -389,8 +389,10 @@ class Decoder:
         self._ctx.opts = opts
 
         # adding a warning ignore
-        self._ctx.ignore_error_tags = ["UNUSED_IMPORT"]
-        self._ctx.ignore_error_tags.append("EXTENSION_NOT_DEFINED")
+        self._ctx.ignore_error_tags = []
+        if errors_to_ignore:
+            for errs in errors_to_ignore:
+                self._ctx.ignore_error_tags.append(errs)
 
         for p in pyang.plugin.plugins:
             p.setup_ctx(self._ctx)
@@ -702,6 +704,10 @@ class Decoder:
         # LOGGER.debug('errors: %s', [(e[0].ref, e[0].line) for e in self._ctx.errors])
         self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
+            LOGGER.info("%s", etag)
+            if etag in self._ctx.ignore_error_tags:
+                continue
+
             elevel = pyang.error.err_level(etag)
             if pyang.error.is_warning(elevel):
                 kind = logging.WARNING
