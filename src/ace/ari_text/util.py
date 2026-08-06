@@ -20,24 +20,25 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Utilities for text processing.
-'''
+"""Utilities for text processing."""
+
 import base64
 import datetime
 import decimal
 import logging
 import re
 from typing import List
-import numpy
+
 import cbor_diag
-from ace.ari import INT_ENVELOPE, UNDEFINED, DTN_EPOCH, StructType
+import numpy
+
+from ace.ari import DTN_EPOCH, INT_ENVELOPE, UNDEFINED, StructType
 
 LOGGER = logging.getLogger(__name__)
 
 
 class TypeMatch:
-    ''' Container for each literal leaf type.
-    '''
+    """Container for each literal leaf type."""
 
     def __init__(self, pattern, parser):
         self.regex = re.compile(pattern)
@@ -45,7 +46,7 @@ class TypeMatch:
 
     @staticmethod
     def apply(pattern):
-        ''' Decorator for parsing functions. '''
+        """Decorator for parsing functions."""
 
         def wrap(func):
             return TypeMatch(pattern, func)
@@ -54,56 +55,55 @@ class TypeMatch:
 
 
 class TypeSeq:
-    ''' An ordered list of TypeMatch to check against.
-    '''
+    """An ordered list of TypeMatch to check against."""
 
     def __init__(self, matchers: List[TypeMatch]):
         self._matchers = matchers
 
     def __call__(self, text):
-        ''' Apply matchers in order, first one wins and parses. '''
+        """Apply matchers in order, first one wins and parses."""
         for obj in self._matchers:
             found = obj.regex.fullmatch(text)
             if found is not None:
                 return obj.parser(found)
-        raise ValueError(f'No possible literal type matched text: {text}')
+        raise ValueError(f"No possible literal type matched text: {text}")
 
 
-@TypeMatch.apply(r'(?i)undefined')
+@TypeMatch.apply(r"(?i)undefined")
 def t_undefined(_found):
     return UNDEFINED.value
 
 
-@TypeMatch.apply(r'(?i)null')
+@TypeMatch.apply(r"(?i)null")
 def t_null(_found):
     return None
 
 
-@TypeMatch.apply(r'(?i)true|false')
+@TypeMatch.apply(r"(?i)true|false")
 def t_bool(found):
-    return (found[0].casefold() == 'true')
+    return found[0].casefold() == "true"
 
 
-@TypeMatch.apply(r'([+-])?(\d*)\.(\d*)')
+@TypeMatch.apply(r"([+-])?(\d*)\.(\d*)")
 def t_decfrac(found):
     # text conversion happens in constructor
     return decimal.Decimal(found[0])
 
 
 # float either contains a decimal point or exponent or both
-@TypeMatch.apply(r'(?i)[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN')
+@TypeMatch.apply(r"(?i)[+-]?((\d+|\d*\.\d*)([eE][+-]?\d+)|\d*\.\d*|Infinity)|NaN")
 def t_float(found):
     return float(found[0])
 
 
 # float as hex-encoded IEEE-754 binary
-@TypeMatch.apply(r'[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-]?[0-9a-fA-F]+)')
+@TypeMatch.apply(r"[+-]?0x([0-9a-fA-F]+|[0-9a-fA-F]*\.[0-9a-fA-F]*)[pP]([+-]?[0-9a-fA-F]+)")
 def t_floathex(found):
     return float.fromhex(found[0])
 
 
 # int is decimal, binary, or hexadecimal
-@TypeMatch.apply(r'[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)')
+@TypeMatch.apply(r"[+-]?(0[bB][01]+|0[xX][0-9a-fA-F]+|\d+)")
 def t_int(found):
     value = int(found[0], 0)
 
@@ -113,18 +113,18 @@ def t_int(found):
     return value
 
 
-@TypeMatch.apply(r'!?[a-zA-Z_][a-zA-Z0-9_\-\.]*')
+@TypeMatch.apply(r"!?[a-zA-Z_][a-zA-Z0-9_\-\.]*")
 def t_identity(found):
     return found[0]
 
 
-@TypeMatch.apply(r'(?P<name>\!?[a-zA-Z_][a-zA-Z0-9_\-\.]*|[+-]?\d+)(@(?P<rev>\d{4}-\d{2}-\d{2}))?')
+@TypeMatch.apply(r"(?P<name>\!?[a-zA-Z_][a-zA-Z0-9_\-\.]*|[+-]?\d+)(@(?P<rev>\d{4}-\d{2}-\d{2}))?")
 def t_modseg(found):
-    mod_id = found['name']
-    if mod_id[0].isdigit() or mod_id[0] in {'+', '-'}:
+    mod_id = found["name"]
+    if mod_id[0].isdigit() or mod_id[0] in {"+", "-"}:
         mod_id = int(mod_id)
 
-    mod_rev = found['rev']
+    mod_rev = found["rev"]
     if mod_rev is not None:
         mod_rev = datetime.date.fromisoformat(mod_rev)
 
@@ -132,29 +132,28 @@ def t_modseg(found):
 
 
 def unescape(esc: str) -> str:
-    ''' unescape tstr/bstr text
-    '''
+    """unescape tstr/bstr text"""
     esc_it = iter(esc)
-    txt = ''
+    txt = ""
     while True:
         try:
             char = next(esc_it)
         except StopIteration:
             break
-        if char == '\\':
+        if char == "\\":
             char = next(esc_it)
-            if char == 'b':
+            if char == "b":
                 char = "\b"
-            elif char == 'f':
+            elif char == "f":
                 char = "\f"
-            elif char == 'n':
+            elif char == "n":
                 char = "\n"
-            elif char == 'r':
+            elif char == "r":
                 char = "\r"
-            elif char == 't':
+            elif char == "t":
                 char = "\t"
-            elif char == 'u':
-                buf = ''
+            elif char == "u":
+                buf = ""
                 while len(buf) < 4:
                     try:
                         buf += next(esc_it)
@@ -172,30 +171,31 @@ def decode_unicode(hex_str):
 
 @TypeMatch.apply(r'"(?P<val>(?:[^"]|\\.)*)"')
 def t_tstr(found):
-    return unescape(found['val'])
+    return unescape(found["val"])
 
 
-@TypeMatch.apply(r'(?P<enc>h|b64)?\'(?P<val>(?:[^\']|\\.)*)\'')
+@TypeMatch.apply(r"(?P<enc>h|b64)?\'(?P<val>(?:[^\']|\\.)*)\'")
 def t_bstr(found):
-    enc = found['enc']
-    val = found['val']
+    enc = found["enc"]
+    val = found["val"]
 
-    if enc == 'h':
+    if enc == "h":
         # join space-separated hex values into a single string
-        val = ''.join(val.split())
+        val = "".join(val.split())
         return base64.b16decode(val, casefold=True)
-    elif enc == 'b64':
+    elif enc == "b64":
         rem = len(val) % 4
         if rem in {2, 3}:
-            val += '=' * (4 - rem)
+            val += "=" * (4 - rem)
         return base64.b64decode(val)
     else:
-        return bytes(unescape(val), 'ascii')
+        return bytes(unescape(val), "ascii")
 
 
-@TypeMatch.apply(r'<<.*>>')
+@TypeMatch.apply(r"<<.*>>")
 def t_cbor_diag(found):
     import cbor2
+
     data = cbor2.loads(cbor_diag.diag2cbor(found[0]))
     # workaround least-length float encoding from cbor_diag
     val = cbor2.dumps(cbor2.loads(data), canonical=True)
@@ -203,7 +203,7 @@ def t_cbor_diag(found):
 
 
 def part_to_int(digits):
-    ''' Convert a text time part into integer, defaulting to zero. '''
+    """Convert a text time part into integer, defaulting to zero."""
     if digits:
         return int(digits)
     else:
@@ -211,80 +211,84 @@ def part_to_int(digits):
 
 
 def subsec_to_nanoseconds(digits: str) -> int:
-    ''' Convert sub-seconds text (after decimal point) into nanoseconds,
+    """Convert sub-seconds text (after decimal point) into nanoseconds,
     defaulting to zero if the text is empty.
-    '''
+    """
     if digits:
         length = len(digits)
         if length > 9:
-            raise ValueError('too many decimal digits')
+            raise ValueError("too many decimal digits")
         return int(digits) * 10 ** (9 - length)
     else:
         return 0
 
 
-@TypeMatch.apply(r'(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d+))?Z')
+@TypeMatch.apply(
+    r"(?P<yr>\d{4})\-?(?P<mon>\d{2})\-?(?P<dom>\d{2})T(?P<H>\d{2}):?(?P<M>\d{2}):?(?P<S>\d{2})(\.(?P<SS>\d+))?Z"
+)
 def t_timepoint(found):
     # seconds-scale processing with datetime
     secs = datetime.datetime(
-        year=part_to_int(found.group('yr')),
-        month=part_to_int(found.group('mon')),
-        day=part_to_int(found.group('dom')),
-        hour=part_to_int(found.group('H')),
-        minute=part_to_int(found.group('M')),
-        second=part_to_int(found.group('S')),
+        year=part_to_int(found.group("yr")),
+        month=part_to_int(found.group("mon")),
+        day=part_to_int(found.group("dom")),
+        hour=part_to_int(found.group("H")),
+        minute=part_to_int(found.group("M")),
+        second=part_to_int(found.group("S")),
     )
     # subseconds separately
-    nsec = subsec_to_nanoseconds(found.group('SS'))
+    nsec = subsec_to_nanoseconds(found.group("SS"))
 
     value = numpy.timedelta64(secs - DTN_EPOCH.item())
     if nsec:
-        value += numpy.timedelta64(nsec, 'ns')
+        value += numpy.timedelta64(nsec, "ns")
 
     if numpy.isnat(value):
-        raise ValueError('Got not-a-time')
+        raise ValueError("Got not-a-time")
     return value
 
 
-@TypeMatch.apply(r'(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d+))?S)?')
+@TypeMatch.apply(r"(?P<sign>[+-])?P((?P<D>\d+)D)?T((?P<H>\d+)H)?((?P<M>\d+)M)?((?P<S>\d+)(\.(?P<SS>\d+))?S)?")
 def t_timeperiod(found):
-    neg = (found.group('sign') == '-')
-    day = part_to_int(found.group('D'))
-    hour = part_to_int(found.group('H'))
-    minute = part_to_int(found.group('M'))
-    second = part_to_int(found.group('S'))
-    nsec = subsec_to_nanoseconds(found.group('SS'))
+    neg = found.group("sign") == "-"
+    day = part_to_int(found.group("D"))
+    hour = part_to_int(found.group("H"))
+    minute = part_to_int(found.group("M"))
+    second = part_to_int(found.group("S"))
+    nsec = subsec_to_nanoseconds(found.group("SS"))
     value = (
-        numpy.timedelta64(day, 'D')
-        + numpy.timedelta64(hour, 'h')
-        + numpy.timedelta64(minute, 'm')
-        + numpy.timedelta64(second, 's')
-        + numpy.timedelta64(nsec, 'ns')
+        numpy.timedelta64(day, "D")
+        + numpy.timedelta64(hour, "h")
+        + numpy.timedelta64(minute, "m")
+        + numpy.timedelta64(second, "s")
+        + numpy.timedelta64(nsec, "ns")
     )
     if value < 0:
         # internal overflow
-        raise ValueError('Got overflow')
+        raise ValueError("Got overflow")
 
     if neg:
         value = -value
 
     if numpy.isnat(value):
-        raise ValueError('Got not-a-time')
+        raise ValueError("Got not-a-time")
     return value
 
 
 IDSEGMENT = TypeSeq([t_int, t_identity])
-''' Either an integer or identity text. '''
+""" Either an integer or identity text. """
 
 MODSEGMENT = TypeSeq([t_modseg])
-''' Model namespace segment as a tuple of ID and revision. '''
+""" Model namespace segment as a tuple of ID and revision. """
 
-SINGLETONS = TypeSeq([
-    t_undefined,
-    t_null,
-    t_bool,
-])
-''' Types that match singleton values. '''
+SINGLETONS = TypeSeq(
+    [
+        t_undefined,
+        t_null,
+        t_bool,
+    ]
+)
+""" Types that match singleton values. """
 
 
 def get_structtype(text: str) -> StructType:
@@ -295,16 +299,8 @@ def get_structtype(text: str) -> StructType:
         return StructType[value.upper()]
 
 
-PRIMITIVE = TypeSeq([
-    t_undefined,
-    t_null,
-    t_bool,
-    t_float, t_floathex,
-    t_int,
-    t_identity, t_tstr,
-    t_bstr
-])
-''' Any untyped literal value '''
+PRIMITIVE = TypeSeq([t_undefined, t_null, t_bool, t_float, t_floathex, t_int, t_identity, t_tstr, t_bstr])
+""" Any untyped literal value """
 
 TYPEDLIT = {
     StructType.NULL: TypeSeq([t_null]),
@@ -324,10 +320,10 @@ TYPEDLIT = {
     StructType.CBOR: TypeSeq([t_bstr, t_cbor_diag]),
     StructType.ARITYPE: get_structtype,
 }
-''' Map from literal types to value parsers. '''
+""" Map from literal types to value parsers. """
 
 AMKEY = TypeSeq([t_int, t_identity, t_tstr])
-''' Allowed AM key literals. '''
+""" Allowed AM key literals. """
 
 STRUCTKEY = TypeSeq([t_identity])
-''' Keys of struct parameters '''
+""" Keys of struct parameters """

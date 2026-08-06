@@ -20,39 +20,41 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' The logical data model for an ARI and associated AMP data.
+"""The logical data model for an ARI and associated AMP data.
 This is distinct from the ORM in :mod:`models` used for ADM introspection.
-'''
+"""
+
 import copy
 import datetime
-from dataclasses import dataclass, field
 import decimal
 import enum
 import math
-import portion
+from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, List, Literal, Optional, Tuple, Union
+
 import cbor2
 import numpy
+import portion
 
 DTN_EPOCH = numpy.datetime64("2000-01-01T00:00:00")
-''' Reference for absolute time points '''
+""" Reference for absolute time points """
 
 
 class IntInterval(portion.AbstractDiscreteInterval):
-    ''' An integer-domain interval class '''
+    """An integer-domain interval class"""
+
     _step = 1
 
 
 apiIntInterval = portion.create_api(IntInterval)
-''' Utility functions for :py:cls:`IntInterval` '''
+""" Utility functions for :py:cls:`IntInterval` """
 
-INT_ENVELOPE = apiIntInterval.closedopen(-(2 ** 63), 2 ** 64)
-''' Envelope for union of all valid integer types '''
+INT_ENVELOPE = apiIntInterval.closedopen(-(2**63), 2**64)
+""" Envelope for union of all valid integer types """
 
 
 def _is_nan(val) -> bool:
-    ''' Determine if a value is a NaN float.
-    '''
+    """Determine if a value is a NaN float."""
     try:
         return math.isnan(val)
     except TypeError:
@@ -61,21 +63,21 @@ def _is_nan(val) -> bool:
 
 
 class Table(numpy.ndarray):
-    ''' Wrapper class to overload some numpy behavior. '''
+    """Wrapper class to overload some numpy behavior."""
 
     def __new__(self, shape: tuple):
         return super().__new__(self, shape, dtype=ARI)
 
-    def __eq__(self, other: 'Table'):
+    def __eq__(self, other: "Table"):
         return numpy.array_equal(self, other)
 
     @staticmethod
-    def from_rows(rows: List[List['ARI']]) -> 'Table':
-        ''' Construct and initialize a table from a list of rows.
+    def from_rows(rows: List[List["ARI"]]) -> "Table":
+        """Construct and initialize a table from a list of rows.
 
         :param rows: A row-major list of lists.
         :return: A new Table object.
-        '''
+        """
         if rows:
             shape = (len(rows), len(rows[0]))
         else:
@@ -88,39 +90,42 @@ class Table(numpy.ndarray):
 
 @dataclass(frozen=True)
 class ExecutionSet:
-    ''' Internal representation of Execution-Set data. '''
-    nonce: 'LiteralARI'
-    ''' Optional nonce value '''
-    targets: Tuple['ARI']
-    ''' The targets to execute '''
+    """Internal representation of Execution-Set data."""
+
+    nonce: "LiteralARI"
+    """ Optional nonce value """
+    targets: Tuple["ARI"]
+    """ The targets to execute """
 
 
 @dataclass(frozen=True)
 class Report:
-    ''' Internal representation of Report data. '''
+    """Internal representation of Report data."""
+
     rel_time: numpy.timedelta64
-    ''' Time of the report relative to the parent :ivar:`ReportSet.ref_time`
-    value. '''
-    source: 'ARI'
-    ''' Source of the report, either a RPTT or CTRL. '''
-    items: Tuple['ARI']
-    ''' Items of the report. '''
+    """ Time of the report relative to the parent :ivar:`ReportSet.ref_time`
+    value. """
+    source: "ARI"
+    """ Source of the report, either a RPTT or CTRL. """
+    items: Tuple["ARI"]
+    """ Items of the report. """
 
 
 @dataclass(frozen=True)
 class ReportSet:
-    ''' Internal representation of Report-Set data. '''
-    nonce: 'LiteralARI'
-    ''' Optional nonce value '''
+    """Internal representation of Report-Set data."""
+
+    nonce: "LiteralARI"
+    """ Optional nonce value """
     ref_time: numpy.datetime64
-    ''' The reference time for all contained Report relative-times. '''
-    reports: Tuple['Report']
-    ''' The contained Reports '''
+    """ The reference time for all contained Report relative-times. """
+    reports: Tuple["Report"]
+    """ The contained Reports """
 
 
 @dataclass(frozen=True)
 class ObjectRefPattern:
-    ''' Container for object reference patterns '''
+    """Container for object reference patterns"""
 
     PartType: ClassVar = Union[
         # wildcard
@@ -130,24 +135,24 @@ class ObjectRefPattern:
         # integer range
         IntInterval,
     ]
-    ''' Type for each pattern part '''
+    """ Type for each pattern part """
 
-    DOMAIN_MIN: ClassVar[int] = -(2 ** 31)
-    ''' Minimum id-int value '''
-    DOMAIN_MAX: ClassVar[int] = (2 ** 31) - 1
-    ''' Maximum id-int value '''
+    DOMAIN_MIN: ClassVar[int] = -(2**31)
+    """ Minimum id-int value """
+    DOMAIN_MAX: ClassVar[int] = (2**31) - 1
+    """ Maximum id-int value """
 
     org_pat: PartType
-    ''' Organization ID matching '''
+    """ Organization ID matching """
     model_pat: PartType
-    ''' Model ID matching '''
+    """ Model ID matching """
     type_pat: PartType
-    ''' Object Type matching '''
+    """ Object Type matching """
     obj_pat: PartType
-    ''' Object ID matching '''
+    """ Object ID matching """
 
-    def is_match(self, ident: 'Identity') -> bool:
-        ''' Determine if an identity with numeric parts matches this pattern. '''
+    def is_match(self, ident: "Identity") -> bool:
+        """Determine if an identity with numeric parts matches this pattern."""
         return (
             self._part_match(self.org_pat, ident.org_id)
             and self._part_match(self.model_pat, ident.model_id)
@@ -156,7 +161,7 @@ class ObjectRefPattern:
         )
 
     @staticmethod
-    def _part_match(pat: PartType, ident: 'Identity.PartType') -> bool:
+    def _part_match(pat: PartType, ident: "Identity.PartType") -> bool:
         if pat is True:
             # wildcard
             return True
@@ -165,13 +170,13 @@ class ObjectRefPattern:
         elif isinstance(pat, IntInterval):
             return ident in pat
         else:
-            raise TypeError('bad internal state')
+            raise TypeError("bad internal state")
 
 
 @enum.unique
 class StructType(enum.IntEnum):
-    ''' The enumeration of ARI value types from Section 10.3 of ARI draft.
-    '''
+    """The enumeration of ARI value types from Section 10.3 of ARI draft."""
+
     LITERAL = 255
     # Primitive types
     NULL = 0
@@ -215,80 +220,85 @@ class StructType(enum.IntEnum):
 
 
 class ARI:
-    ''' Base class for all forms of ARI. '''
+    """Base class for all forms of ARI."""
 
-    def visit(self, visitor: Callable[['ARI'], None]) -> None:
-        ''' Call a visitor on this ARI and each child ARI.
+    def visit(self, visitor: Callable[["ARI"], None]) -> None:
+        """Call a visitor on this ARI and each child ARI.
 
         The base type calls the visitor on itself, so only composing types
         need to override this function.
 
         :param visitor: The callable visitor for each type object.
-        '''
+        """
         visitor(self)
 
-    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
-        ''' Call a mapping on this ARI (after each child ARI if present).
+    def map(self, func: Callable[["ARI"], "ARI"]) -> "ARI":
+        """Call a mapping on this ARI (after each child ARI if present).
 
         :param func: The callable visitor for each type object.
-        '''
+        """
         raise NotImplementedError
 
 
 UndefinedPrimitiveType = type(cbor2.undefined)
-''' Alias to the primitive type for undefined '''
+""" Alias to the primitive type for undefined """
 NoneType = type(None)
-''' Alias to the type for native None value '''
+""" Alias to the type for native None value """
 
 TimePrimitiveType = Union[numpy.timedelta64, decimal.Decimal, int]
-''' Primitive type for TP and TD values.
+""" Primitive type for TP and TD values.
 TP as offset from :py:data:`DTN_EPOCH` and TD as relative offset.
-'''
+"""
 AriListType = Tuple[ARI]
-''' Primitive type for AC, parameter list, and similar values '''
-AriMapType = Dict['LiteralARI', ARI]
-''' Primitive type for AM, parameter map, and similar values '''
+""" Primitive type for AC, parameter list, and similar values """
+AriMapType = Dict["LiteralARI", ARI]
+""" Primitive type for AM, parameter map, and similar values """
 LiteralPrimitiveType = Union[
     UndefinedPrimitiveType,
     # enumerated types
-    NoneType, bool,
+    NoneType,
+    bool,
     # primitive numbers
-    int, float,
+    int,
+    float,
     # primitive strings
-    str, bytes,
+    str,
+    bytes,
     # times values
     TimePrimitiveType,
     # containers
-    AriListType, AriMapType, Table, ExecutionSet, ReportSet, ObjectRefPattern
+    AriListType,
+    AriMapType,
+    Table,
+    ExecutionSet,
+    ReportSet,
+    ObjectRefPattern,
 ]
-''' Narrow primitive type for literal values '''
+""" Narrow primitive type for literal values """
 
 
 @dataclass(eq=False, frozen=True)
 class LiteralARI(ARI):
-    ''' A literal value in the form of an ARI.
-    '''
-    value: LiteralPrimitiveType = field(default_factory=lambda: UNDEFINED.value)
-    ''' Literal value specific to :attr:`type_id` '''
-    type_id: Optional[StructType] = None
-    ''' ADM type of this value '''
+    """A literal value in the form of an ARI."""
 
-    def __eq__(self, other: 'LiteralARI') -> bool:
+    value: LiteralPrimitiveType = field(default_factory=lambda: UNDEFINED.value)
+    """ Literal value specific to :attr:`type_id` """
+    type_id: Optional[StructType] = None
+    """ ADM type of this value """
+
+    def __eq__(self, other: "LiteralARI") -> bool:
         # check attributes in specific order
         return (
             isinstance(other, LiteralARI)
             and self.type_id == other.type_id
-            and (
-                (self.value == other.value)
-                or (_is_nan(self.value) and _is_nan(other.value))
-            )
+            and ((self.value == other.value) or (_is_nan(self.value) and _is_nan(other.value)))
         )
 
     def __hash__(self) -> int:
         # ensure that bool is hashed differently than int
         return hash((self.type_id, type(self.value), self.value))
 
-    def visit(self, visitor: Callable[['ARI'], None]) -> None:
+    def visit(self, visitor: Callable[["ARI"], None]) -> None:
         if isinstance(self.value, (tuple, list)):
             for item in self.value:
                 item.visit(visitor)
@@ -298,15 +308,17 @@ class LiteralARI(ARI):
                 item.visit(visitor)
         elif isinstance(self.value, Table):
 
-            def func(item): return item.visit(visitor)
+            def func(item):
+                return item.visit(visitor)
 
             if self.value.size > 0:
                 numpy.vectorize(func)(self.value)
         super().visit(visitor)
 
-    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+    def map(self, func: Callable[["ARI"], "ARI"]) -> "ARI":
 
-        def lfunc(item): return item.map(func)
+        def lfunc(item):
+            return item.map(func)
 
         result = None
         if isinstance(self.value, (tuple, list)):
@@ -314,10 +326,7 @@ class LiteralARI(ARI):
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, dict):
-            rvalue = {
-                lfunc(key): lfunc(val)
-                for key, val in self.value.items()
-            }
+            rvalue = {lfunc(key): lfunc(val) for key, val in self.value.items()}
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, Table):
@@ -330,19 +339,15 @@ class LiteralARI(ARI):
 
         elif isinstance(self.value, ExecutionSet):
             rtargets = tuple(map(lfunc, self.value.targets))
-            rvalue = ExecutionSet(
-                nonce=self.value.nonce,
-                targets=rtargets
-            )
+            rvalue = ExecutionSet(nonce=self.value.nonce, targets=rtargets)
             result = LiteralARI(rvalue, self.type_id)
 
         elif isinstance(self.value, ReportSet):
 
-            def rpt_func(ireport): return Report(
-                rel_time=ireport.rel_time,
-                source=lfunc(ireport.source),
-                items=tuple(map(lfunc, ireport.items))
-            )
+            def rpt_func(ireport):
+                return Report(
+                    rel_time=ireport.rel_time, source=lfunc(ireport.source), items=tuple(map(lfunc, ireport.items))
+                )
 
             rreports = tuple(map(rpt_func, self.value.reports))
             rvalue = ReportSet(
@@ -359,83 +364,77 @@ class LiteralARI(ARI):
 
 
 UNDEFINED = LiteralARI(value=cbor2.undefined)
-''' The undefined value of the AMM '''
+""" The undefined value of the AMM """
 NULL = LiteralARI(None)
-''' The untyped null value of the AMM '''
+""" The untyped null value of the AMM """
 
 TRUE = LiteralARI(True)
-''' The untyped true value of the AMM '''
+""" The untyped true value of the AMM """
 FALSE = LiteralARI(False)
-''' The untyped false value of the AMM '''
+""" The untyped false value of the AMM """
 
 TYPED_NULL = LiteralARI(None, StructType.NULL)
-''' The typed null value of the AMM '''
+""" The typed null value of the AMM """
 
 TYPED_TRUE = LiteralARI(True, StructType.BOOL)
-''' The typed true value of the AMM '''
+""" The typed true value of the AMM """
 TYPED_FALSE = LiteralARI(False, StructType.BOOL)
-''' The typed false value of the AMM '''
+""" The typed false value of the AMM """
 
 
 def typed_byte(value: int) -> LiteralARI:
-    ''' Convert to a typed BYTE literal. '''
+    """Convert to a typed BYTE literal."""
     return LiteralARI(value, StructType.BYTE)
 
 
 def typed_int(value: int) -> LiteralARI:
-    ''' Convert to a typed INT literal. '''
+    """Convert to a typed INT literal."""
     return LiteralARI(value, StructType.INT)
 
 
 def typed_uint(value: int) -> LiteralARI:
-    ''' Convert to a typed UINT literal. '''
+    """Convert to a typed UINT literal."""
     return LiteralARI(value, StructType.UINT)
 
 
 def typed_vast(value: int) -> LiteralARI:
-    ''' Convert to a typed VAST literal. '''
+    """Convert to a typed VAST literal."""
     return LiteralARI(value, StructType.VAST)
 
 
 def typed_uvast(value: int) -> LiteralARI:
-    ''' Convert to a typed UVAST literal. '''
+    """Convert to a typed UVAST literal."""
     return LiteralARI(value, StructType.UVAST)
 
 
 def is_undefined(val: ARI) -> bool:
-    ''' Logic to compare against the UNDEFINED value.
+    """Logic to compare against the UNDEFINED value.
 
     :param val: The value to check.
     :return: True if equivalent to :obj:`UNDEFINED`.
-    '''
-    return (
-        isinstance(val, LiteralARI)
-        and val.value == UNDEFINED.value
-    )
+    """
+    return isinstance(val, LiteralARI) and val.value == UNDEFINED.value
 
 
 def is_null(val: ARI) -> bool:
-    ''' Logic to compare against the NULL value.
+    """Logic to compare against the NULL value.
 
     :param val: The value to check.
     :return: True if equivalent to :obj:`NULL`.
-    '''
-    return (
-        isinstance(val, LiteralARI)
-        and val.value == NULL.value
-    )
+    """
+    return isinstance(val, LiteralARI) and val.value == NULL.value
 
 
 def as_bool(val: ARI) -> bool:
-    ''' Logic to compare against the TRUE and FALSE values.
+    """Logic to compare against the TRUE and FALSE values.
 
     :param val: The value to check.
     :return: The corresponding python boolean value.
     :raise ValueError: if not a boolean value.
-    '''
+    """
     if isinstance(val, LiteralARI) and val.value in {True, False}:
         return val.value
-    raise ValueError('as_bool given non-boolean value')
+    raise ValueError("as_bool given non-boolean value")
 
 
 def check_decfrac(val: decimal.Decimal) -> int:
@@ -466,77 +465,72 @@ def check_decfrac(val: decimal.Decimal) -> int:
 
 @dataclass(frozen=True)
 class Identity:
-    ''' The identity of an object reference as a unique identifer-set.
-    '''
+    """The identity of an object reference as a unique identifer-set."""
 
     PartType: ClassVar = Union[str, int, None]
-    ''' Type for each part '''
+    """ Type for each part """
 
     @staticmethod
     def part_is_private(part: PartType) -> bool:
-        ''' Determine if a specific identity part is a private use value '''
-        return (
-            (isinstance(part, int) and part < 0)
-            or (isinstance(part, str) and part.startswith('!'))
-        )
+        """Determine if a specific identity part is a private use value"""
+        return (isinstance(part, int) and part < 0) or (isinstance(part, str) and part.startswith("!"))
 
     org_id: PartType = None
-    ''' The None value indicates an org-relative path. '''
+    """ The None value indicates an org-relative path. """
     model_id: PartType = None
-    ''' The None value indicates an model-relative path. '''
+    """ The None value indicates an model-relative path. """
     model_rev: Optional[datetime.date] = None
-    ''' For the text-form ARI a specific ADM revision date. '''
+    """ For the text-form ARI a specific ADM revision date. """
     type_id: Optional[StructType] = None
-    ''' ADM type of the referenced object '''
+    """ ADM type of the referenced object """
     obj_id: PartType = None
-    ''' Name with the type removed '''
+    """ Name with the type removed """
 
     @property
     def ns_id(self) -> Tuple:
-        ''' Get a tuple representing the namespace. '''
+        """Get a tuple representing the namespace."""
         return (self.org_id, self.model_id, self.model_rev)
 
     @property
     def module_name(self) -> Optional[str]:
-        ''' Get the ADM module name associated with this namespace. '''
+        """Get the ADM module name associated with this namespace."""
         if self.org_id is None or self.model_id is None:
             return None
-        return f'{self.org_id}-{self.model_id}'
+        return f"{self.org_id}-{self.model_id}"
 
     def __str__(self) -> str:
-        ''' Pretty format the identity similar to URI text encoding.
-        '''
-        text = ''
+        """Pretty format the identity similar to URI text encoding."""
+        text = ""
         if self.org_id is None:
             if self.model_id is None:
-                text += '.'
+                text += "."
             else:
-                text += '..'
+                text += ".."
         else:
-            text += f'/{self.org_id}'
+            text += f"/{self.org_id}"
         if self.model_id is not None:
-            text += f'/{self.model_id}'
+            text += f"/{self.model_id}"
         if self.model_rev:
-            text += f'@{self.model_rev}'
+            text += f"@{self.model_rev}"
         if self.type_id is not None:
-            text += f'/{self.type_id.name}'
+            text += f"/{self.type_id.name}"
         else:
-            text += '/'
+            text += "/"
         if self.obj_id is not None:
-            text += f'/{self.obj_id}'
+            text += f"/{self.obj_id}"
         return text
 
 
 @dataclass(frozen=True)
 class ReferenceARI(ARI):
-    ''' The data content of an ARI.
-    '''
-    ident: Identity
-    ''' Identity of the referenced object '''
-    params: Union[AriListType, AriMapType, None] = None
-    ''' Optional paramerization, None is different than empty list '''
+    """The data content of an ARI."""
 
-    def visit(self, visitor: Callable[['ARI'], None]) -> None:
+    ident: Identity
+    """ Identity of the referenced object """
+    params: Union[AriListType, AriMapType, None] = None
+    """ Optional paramerization, None is different than empty list """
+
+    def visit(self, visitor: Callable[["ARI"], None]) -> None:
         if isinstance(self.params, (tuple, list)):
             for val in self.params:
                 val.visit(visitor)
@@ -546,18 +540,16 @@ class ReferenceARI(ARI):
                 val.visit(visitor)
         super().visit(visitor)
 
-    def map(self, func: Callable[['ARI'], 'ARI']) -> 'ARI':
+    def map(self, func: Callable[["ARI"], "ARI"]) -> "ARI":
 
-        def lfunc(item): return item.map(func)
+        def lfunc(item):
+            return item.map(func)
 
         rparams = None
         if isinstance(self.params, (tuple, list)):
             rparams = tuple(map(lfunc, self.params))
         elif isinstance(self.params, dict):
-            rparams = {
-                lfunc(key): lfunc(val)
-                for key, val in self.params.items()
-            }
+            rparams = {lfunc(key): lfunc(val) for key, val in self.params.items()}
 
         result = ReferenceARI(self.ident, rparams)
         return func(result)

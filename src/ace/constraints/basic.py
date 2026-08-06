@@ -20,31 +20,32 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' Basic constraints enforced from the ADM definitions.
-'''
+"""Basic constraints enforced from the ADM definitions."""
+
 import logging
 import os
-from sqlalchemy import inspect, orm, func
-from typing import Iterable, Optional, List
-from ace import models, ari, typing
-from ace.lookup import dereference, TypeResolver, TypeResolverError
-from .core import register, Issue
+from collections.abc import Iterable
+from typing import List, Optional
+
+from sqlalchemy import func, inspect, orm
+
+from ace import ari, models, typing
+from ace.lookup import TypeResolver, TypeResolverError, dereference
+
+from .core import Issue, register
 
 LOGGER = logging.getLogger(__name__)
 
 
 @register
 def minimal_metadata(issuelist: List[Issue], obj: object, db_sess: orm.Session):  # pylint: disable=invalid-name
-    ''' Ensure an ADM contains minimum content. '''
+    """Ensure an ADM contains minimum content."""
     count = 0
     if obj is None:
-        for name in ('name', 'enum', 'revision'):
+        for name in ("name", "enum", "revision"):
             val = getattr(obj, name)
             if val is None:
-                issuelist.append(Issue(
-                    obj=obj,
-                    detail=f'ADM is missing required metadata "{name}"'
-                ))
+                issuelist.append(Issue(obj=obj, detail=f'ADM is missing required metadata "{name}"'))
             count += 1
 
     return count
@@ -52,7 +53,7 @@ def minimal_metadata(issuelist: List[Issue], obj: object, db_sess: orm.Session):
 
 @register
 class unique_adm_names:  # pylint: disable=invalid-name
-    ''' Ensure an ADM contains unique identification. '''
+    """Ensure an ADM contains unique identification."""
 
     is_global = True
 
@@ -66,14 +67,9 @@ class unique_adm_names:  # pylint: disable=invalid-name
             .having(func.count(models.AdmModule.id) > 1)
         )
         for row in search.all():
-            query = db_sess.query(models.AdmModule).filter(
-                attr == row[0]
-            )
+            query = db_sess.query(models.AdmModule).filter(attr == row[0])
             for adm in query.all():
-                issuelist.append(Issue(
-                    obj=adm,
-                    detail=f'Multiple ADMs with metadata "norm_name" of "{row[0]}"'
-                ))
+                issuelist.append(Issue(obj=adm, detail=f'Multiple ADMs with metadata "norm_name" of "{row[0]}"'))
         count += 1
 
         return count
@@ -81,17 +77,18 @@ class unique_adm_names:  # pylint: disable=invalid-name
 
 @register
 def same_file_name(issuelist: List[Issue], obj: object, _db_sess: orm.Session):
-    ''' Ensure an ADM name matches its source file name. '''
+    """Ensure an ADM name matches its source file name."""
     if isinstance(obj, models.AdmModule):
         if obj.source.abs_file_path is None:
             return 0
         int_name = obj.norm_name
         ext_name = os.path.splitext(os.path.basename(obj.source.abs_file_path))[0]
         if int_name != ext_name:
-            issuelist.append(Issue(
-                obj=obj,
-                detail=f'ADM name "{int_name}" stored in differently named file {obj.source.abs_file_path}'
-            ))
+            issuelist.append(
+                Issue(
+                    obj=obj, detail=f'ADM name "{int_name}" stored in differently named file {obj.source.abs_file_path}'
+                )
+            )
         return 1
 
     return 0
@@ -99,7 +96,7 @@ def same_file_name(issuelist: List[Issue], obj: object, _db_sess: orm.Session):
 
 @register
 class unique_object_names:  # pylint: disable=invalid-name
-    ''' Ensure all objects within an ADM section have unique names. '''
+    """Ensure all objects within an ADM section have unique names."""
 
     def __init__(self):
         self._list_attrs = []
@@ -109,8 +106,7 @@ class unique_object_names:  # pylint: disable=invalid-name
                 # Only care about ADM-member objects
                 if issubclass(column.entity.class_, models.AdmObjMixin):
                     self._list_attrs.append(column.key)
-        LOGGER.debug('UniqueNames checking sets in: %s',
-                     ', '.join(self._list_attrs))
+        LOGGER.debug("UniqueNames checking sets in: %s", ", ".join(self._list_attrs))
 
     def __call__(self, issuelist: List[Issue], obj: object, _db_sess: orm.Session):
         count = 0
@@ -119,16 +115,17 @@ class unique_object_names:  # pylint: disable=invalid-name
                 seen_names = set()
                 dupe_names = set()
                 obj_list = getattr(obj, list_name)
-                LOGGER.debug('UniqueNames checking list %s', obj_list)
+                LOGGER.debug("UniqueNames checking list %s", obj_list)
                 for top_obj in obj_list:
                     if top_obj.norm_name in seen_names and top_obj.norm_name not in dupe_names:
-                        issuelist.append(Issue(
-                            obj=top_obj,
-                            detail=(
-                                f'Within the set of {list_name} objects '
-                                f'the name "{top_obj.name}" is duplicated'
-                            ),
-                        ))
+                        issuelist.append(
+                            Issue(
+                                obj=top_obj,
+                                detail=(
+                                    f'Within the set of {list_name} objects the name "{top_obj.name}" is duplicated'
+                                ),
+                            )
+                        )
                         dupe_names.add(top_obj.norm_name)
                     seen_names.add(top_obj.norm_name)
                 count += 1
@@ -137,10 +134,10 @@ class unique_object_names:  # pylint: disable=invalid-name
 
 @register
 class valid_type_name:  # pylint: disable=invalid-name
-    ''' Ensure that all type names are well-fromed, but not necessarily valid in the context. '''
+    """Ensure that all type names are well-fromed, but not necessarily valid in the context."""
 
     def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session, adm=None):
-        ''' Entrypoint for this functor. '''
+        """Entrypoint for this functor."""
         count = 0
         if isinstance(obj, models.AdmModule):
             count += self._iter_call(issuelist, obj.const, db_sess, adm=obj)
@@ -168,38 +165,44 @@ class valid_type_name:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _check_typeobj(self, issuelist: List[Issue], top_obj, ctr: models.TypeUseMixin,
-                       db_sess: orm.Session, adm: models.AdmModule):
-        ''' Verify a single named type. '''
+    def _check_typeobj(
+        self, issuelist: List[Issue], top_obj, ctr: models.TypeUseMixin, db_sess: orm.Session, adm: models.AdmModule
+    ):
+        """Verify a single named type."""
         typeobj = ctr.typeobj
         if not typeobj:
             return 0
-        LOGGER.debug('Checking object %s type %s', top_obj.norm_name, typeobj)
+        LOGGER.debug("Checking object %s type %s", top_obj.norm_name, typeobj)
 
         try:
             TypeResolver().resolve(ctr.typeobj, adm)
         except TypeResolverError as err:
-            issuelist.append(Issue(
-                obj=top_obj,
-                detail=(
-                    f'Within the object named "{top_obj.name}" '
-                    f'the type names are not known: {err.badtypes}'
-                ),
-            ))
+            issuelist.append(
+                Issue(
+                    obj=top_obj,
+                    detail=(f'Within the object named "{top_obj.name}" the type names are not known: {err.badtypes}'),
+                )
+            )
 
         return 1
 
 
 @register
 class valid_reference_ari:  # pylint: disable=invalid-name
-    ''' Ensure that all ARIs embedded within ADMs point to real objects.
+    """Ensure that all ARIs embedded within ADMs point to real objects.
     Type references in TypeUseMixin are handled separately by the constraint
     :py:cls:`valid_type_name` so not handled here.
-    '''
+    """
 
-    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session,
-                 top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
-        ''' Entrypoint for this functor. '''
+    def __call__(
+        self,
+        issuelist: List[Issue],
+        obj: object,
+        db_sess: orm.Session,
+        top_obj: Optional[models.AdmObjMixin] = None,
+        adm: Optional[models.AdmModule] = None,
+    ):
+        """Entrypoint for this functor."""
         count = 0
         if isinstance(obj, models.AdmModule):
             # object types which have parameters or embedded ARIs, but not type use
@@ -237,9 +240,15 @@ class valid_reference_ari:  # pylint: disable=invalid-name
             count += self(issuelist, obj, *args, **kwargs)
         return count
 
-    def _do_check(self, issuelist: List[Issue], _value: str, val_ari: Optional[ari.ARI],
-                  top_obj: models.AdmObjMixin, db_sess: orm.Session) -> int:
-        ''' Walk the ARI for any internal references '''
+    def _do_check(
+        self,
+        issuelist: List[Issue],
+        _value: str,
+        val_ari: Optional[ari.ARI],
+        top_obj: models.AdmObjMixin,
+        db_sess: orm.Session,
+    ) -> int:
+        """Walk the ARI for any internal references"""
         if val_ari is None:
             return 0
 
@@ -247,13 +256,15 @@ class valid_reference_ari:  # pylint: disable=invalid-name
             if not isinstance(val, ari.ReferenceARI):
                 return
             if dereference(val, db_sess) is None:
-                issuelist.append(Issue(
-                    obj=top_obj,
-                    detail=(
-                        f'Within the object named "{top_obj.name}" '
-                        f'the reference ARI for {val.ident} is not resolvable'
-                    ),
-                ))
+                issuelist.append(
+                    Issue(
+                        obj=top_obj,
+                        detail=(
+                            f'Within the object named "{top_obj.name}" '
+                            f"the reference ARI for {val.ident} is not resolvable"
+                        ),
+                    )
+                )
 
         val_ari.visit(checker)
         return 1
@@ -261,15 +272,21 @@ class valid_reference_ari:  # pylint: disable=invalid-name
 
 @register
 class default_value_type_match:  # pylint: disable=invalid-name
-    ''' Ensure that all ARIs as default or initial values actually match their
+    """Ensure that all ARIs as default or initial values actually match their
     associated type.
     Default values are contained in object parameters, initial values are
     for Const and Var objects.
-    '''
+    """
 
-    def __call__(self, issuelist: List[Issue], obj: object, db_sess: orm.Session,
-                 top_obj: Optional[models.AdmObjMixin] = None, adm: Optional[models.AdmModule] = None):
-        ''' Entrypoint for this functor. '''
+    def __call__(
+        self,
+        issuelist: List[Issue],
+        obj: object,
+        db_sess: orm.Session,
+        top_obj: Optional[models.AdmObjMixin] = None,
+        adm: Optional[models.AdmModule] = None,
+    ):
+        """Entrypoint for this functor."""
         count = 0
         if isinstance(obj, models.AdmModule):
             # object types which have parameters or init values
@@ -302,9 +319,16 @@ class default_value_type_match:  # pylint: disable=invalid-name
             count += self(issuelist, obj, db_sess, top_obj=obj, adm=adm)
         return count
 
-    def _do_check(self, issuelist: List[Issue], value: str, val_ari: Optional[ari.ARI],
-                  typeobj: typing.BaseType, top_obj: models.AdmObjMixin, adm: models.AdmModule) -> int:
-        ''' Check the root ARI against its needed type '''
+    def _do_check(
+        self,
+        issuelist: List[Issue],
+        value: str,
+        val_ari: Optional[ari.ARI],
+        typeobj: typing.BaseType,
+        top_obj: models.AdmObjMixin,
+        adm: models.AdmModule,
+    ) -> int:
+        """Check the root ARI against its needed type"""
         if val_ari is None:
             return 0
 
@@ -315,12 +339,14 @@ class default_value_type_match:  # pylint: disable=invalid-name
             pass
 
         if typeobj.get(val_ari) is None:
-            issuelist.append(Issue(
-                obj=top_obj,
-                detail=(
-                    f'Within the object named "{top_obj.name}" '
-                    f'the value "{value}" does not match '
-                    f'the associated type'
-                ),
-            ))
+            issuelist.append(
+                Issue(
+                    obj=top_obj,
+                    detail=(
+                        f'Within the object named "{top_obj.name}" '
+                        f'the value "{value}" does not match '
+                        f"the associated type"
+                    ),
+                )
+            )
         return 1

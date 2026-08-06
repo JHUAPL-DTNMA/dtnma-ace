@@ -22,9 +22,10 @@
 #
 import os
 import sys
+
 from pkg_resources import get_distribution
 
-sys.path.insert(0, os.path.abspath('../src/'))
+sys.path.insert(0, os.path.abspath("../src/"))
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -34,26 +35,26 @@ sys.path.insert(0, os.path.abspath('../src/'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'ACE'
-copyright = '2020-2026, The Johns Hopkins University Applied Physics Laboratory'
-author = 'JHU/APL'
-release = get_distribution('dtnma-ace').version
+project = "ACE"
+copyright = "2020-2026, The Johns Hopkins University Applied Physics Laboratory"
+author = "JHU/APL"
+release = get_distribution("dtnma-ace").version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinxarg.ext',
-    'sphinx.ext.coverage',
+    "sphinx.ext.autodoc",
+    "sphinxarg.ext",
+    "sphinx.ext.coverage",
 ]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
+html_theme = "sphinx_rtd_theme"
+html_static_path = ["_static"]

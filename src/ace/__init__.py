@@ -20,26 +20,24 @@
 # under the prime contract 80NM0018D0004 between the Caltech and NASA under
 # subcontract 1658085.
 #
-''' A package for converting ADMs from JSON and checking them, and
+"""A package for converting ADMs from JSON and checking them, and
 converting ARIs between text URI and CBOR.
-'''
+"""
 
+from ace import ari_cbor, ari_text, nickname
 from ace.adm_set import AdmSet
-from ace.constraints import Checker
 from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
-import ace.ari_text as ari_text
-import ace.ari_cbor as ari_cbor
-import ace.nickname as nickname
+from ace.constraints import Checker
 
 # make linters happy
 __all__ = [
-    'AdmSet',
-    'ARI',
-    'Checker',
-    'LiteralARI',
-    'ReferenceARI',
-    'StructType',
-    'ari_text',
-    'ari_cbor',
-    'nickname',
+    "ARI",
+    "AdmSet",
+    "Checker",
+    "LiteralARI",
+    "ReferenceARI",
+    "StructType",
+    "ari_cbor",
+    "ari_text",
+    "nickname",
 ]
