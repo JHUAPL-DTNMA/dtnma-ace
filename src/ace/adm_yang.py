@@ -704,7 +704,6 @@ class Decoder:
         # LOGGER.debug('errors: %s', [(e[0].ref, e[0].line) for e in self._ctx.errors])
         self._ctx.errors.sort(key=lambda e: (str(e[0].ref), e[0].line))
         for epos, etag, eargs in self._ctx.errors:
-            LOGGER.info("%s", etag)
             if etag in self._ctx.ignore_error_tags:
                 continue
 
