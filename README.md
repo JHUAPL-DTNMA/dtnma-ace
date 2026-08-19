@@ -22,6 +22,7 @@ subcontract 1658085.
 -->
 # DTNMA ACE
 
+[![Documentation]([https://shields.io](https://github.com/JHUAPL-DTNMA/dtnma-ace/actions/workflows/docs.yaml/badge.svg))](https://jhuapl-dtnma.github.io/dtnma-ace/)
 [![Sonar Coverage](https://img.shields.io/sonar/coverage/JHUAPL-DTNMA_dtnma-ace?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/project/overview?id=JHUAPL-DTNMA_dtnma-ace)
 [![PyPI Project](https://img.shields.io/pypi/v/dtnma-ace.svg)](https://pypi.org/project/dtnma-ace/)
 
