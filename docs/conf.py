@@ -39,6 +39,7 @@ project = "ACE"
 copyright = "2020-2026, The Johns Hopkins University Applied Physics Laboratory"
 author = "JHU/APL"
 release = __version__
+version = ".".join(__version__.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
