@@ -24,6 +24,8 @@
 converting ARIs between text URI and CBOR.
 """
 
+import importlib.metadata
+
 from ace import ari_cbor, ari_text, nickname
 from ace.adm_set import AdmSet
 from ace.ari import ARI, LiteralARI, ReferenceARI, StructType
@@ -31,6 +33,7 @@ from ace.constraints import Checker
 
 # make linters happy
 __all__ = [
+    "__version__",
     "ARI",
     "AdmSet",
     "Checker",
@@ -41,3 +44,8 @@ __all__ = [
     "ari_text",
     "nickname",
 ]
+
+try:
+    __version__ = importlib.metadata.version("dtnma-ace")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.0.0-dev"
