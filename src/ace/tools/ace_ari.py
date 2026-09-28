@@ -36,6 +36,7 @@ import logging
 import sys
 from collections.abc import Iterable
 
+import ace
 from ace import ARI, AdmSet, Checker, ari_cbor, ari_text, cborutil, nickname
 
 LOGGER = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ LOGGER = logging.getLogger(__name__)
 def get_parser() -> argparse.ArgumentParser:
     """Construct the argument parser."""
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {ace.__version__}")
     parser.add_argument(
         "--log-level", choices=("debug", "info", "warning", "error"), default="info", help="The minimum log severity."
     )
