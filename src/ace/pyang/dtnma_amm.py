@@ -57,6 +57,14 @@ def pyang_plugin_init():
 
     # Register that we handle extensions from the associated YANG module
     grammar.register_extension_module(MODULE_NAME)
+    # ADM modules define value types as plain YANG typedefs (see the
+    # native-typing design in draft-ietf-dtn-adm-yang). Allow an
+    # amm:enum sub-statement inside a plain typedef body, mirroring the
+    # placement allowed under amm:typedef objects.
+    grammar.add_to_stmts_rules(
+        ["typedef"],
+        [((MODULE_NAME, "enum"), "?")],
+    )
     # Extension argument types
     syntax.add_arg_type("ARI", AriChecker())
 
@@ -259,6 +267,7 @@ MODULE_STMT_ALLOW = (
     "prefix",
     "reference",
     "revision",
+    "typedef",
     "yang-version",
     (MODULE_NAME, "enum"),
 ) + AMM_OBJ_NAMES
