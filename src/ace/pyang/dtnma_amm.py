@@ -260,6 +260,7 @@ MODULE_STMT_ALLOW = (
     "extension",
     "feature",
     "grouping",
+    "identity",
     "import",
     "include",
     "namespace",
@@ -283,6 +284,8 @@ def type_use(parent: str) -> List:
     opts = [
         [("uses", "1")],
         [((MODULE_NAME, "type"), "1")],
+        # native YANG type (migration: coexists with amm:type)
+        [("type", "1")],
         [((MODULE_NAME, "ulist"), "1")],
         [((MODULE_NAME, "dlist"), "1")],
         [((MODULE_NAME, "umap"), "1")],
