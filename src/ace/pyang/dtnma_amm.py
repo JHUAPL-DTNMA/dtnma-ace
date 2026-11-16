@@ -60,10 +60,17 @@ def pyang_plugin_init():
     # ADM modules define value types as plain YANG typedefs (see the
     # native-typing design in draft-ietf-dtn-adm-yang). Allow an
     # amm:enum sub-statement inside a plain typedef body, mirroring the
-    # placement allowed under amm:typedef objects.
+    # placement allowed under amm:typedef objects, and allow the
+    # semantic type statements (other than the native type, which the
+    # YANG grammar already provides) under the plain typedef.
+    # The native type is made optional: a TYPEDEF object may name its
+    # semantic type with an AMM statement (e.g. amm:ulist) instead.
+    _arg, _tdef_rules = grammar.stmt_map["typedef"]
+    _tdef_rules[:] = grammar.spec_del_kwd("type", _tdef_rules)
+    _tdef_rules.insert(0, ("type", "?"))
     grammar.add_to_stmts_rules(
         ["typedef"],
-        [((MODULE_NAME, "enum"), "?")],
+        [((MODULE_NAME, "enum"), "?")] + type_use("typedef", native_type=False),
     )
     # Extension argument types
     syntax.add_arg_type("ARI", AriChecker())
@@ -275,17 +282,22 @@ MODULE_STMT_ALLOW = (
 """ Allowed statements at the ADM module level. """
 
 
-def type_use(parent: str) -> List:
+def type_use(parent: str, native_type: bool = True) -> List:
     """Get a list of type-use substatements for a particular parent.
 
     :param parent: The parent statement keyword.
+    :param native_type: Include the native YANG type statement in the
+        choice (omit it when the parent's grammar already provides it).
     :return: Choice of semantic type substatements.
     """
     opts = [
         [("uses", "1")],
         [((MODULE_NAME, "type"), "1")],
+    ]
+    if native_type:
         # native YANG type (migration: coexists with amm:type)
-        [("type", "1")],
+        opts.append([("type", "1")])
+    opts += [
         [((MODULE_NAME, "ulist"), "1")],
         [((MODULE_NAME, "dlist"), "1")],
         [((MODULE_NAME, "umap"), "1")],
