@@ -68,10 +68,38 @@ def pyang_plugin_init():
     _arg, _tdef_rules = grammar.stmt_map["typedef"]
     _tdef_rules[:] = grammar.spec_del_kwd("type", _tdef_rules)
     _tdef_rules.insert(0, ("type", "?"))
+    # the TYPEDEF substatement table (draft-ietf-dtn-adm-yang) allows
+    # if-feature; the base YANG grammar does not provide it under typedef
+    _tdef_rules.insert(0, ("if-feature", "?"))
     grammar.add_to_stmts_rules(
         ["typedef"],
         [((MODULE_NAME, "enum"), "?")] + type_use("typedef", native_type=False),
     )
+    # AMM refinement sub-statements under the native type statement
+    # (migration: mirrors the refinements allowed under amm:type, minus
+    # units, which the native type statement does not carry).  The base
+    # YANG type refinement $choice is replaced by an interleave of the
+    # same native keywords plus the AMM ones: a $choice is consumed by
+    # the first branch that matches a sub-statement, which forbids the
+    # AMM + native refinement combinations that the amm:type interleave
+    # allowed.  The AMM keywords come first so the canonical order keeps
+    # them before the native ones, as used in converted modules
+    # (e.g. display-hint before length).
+    _amm_refines = [
+        ((MODULE_NAME, "display-hint"), "?"),
+        ((MODULE_NAME, "int-labels"), "?"),
+        ((MODULE_NAME, "cddl"), "?"),
+        ((MODULE_NAME, "base"), "*"),
+    ]
+    _arg, _type_rules = grammar.stmt_map["type"]
+    for _i, _rule in enumerate(_type_rules):
+        if isinstance(_rule, tuple) and _rule[0] == "$choice":
+            _kws = []
+            for _grp in _rule[1]:
+                for _k in _grp:
+                    if _k not in _kws:
+                        _kws.append(_k)
+            _type_rules[_i] = ("$interleave", _amm_refines + _kws)
     # Extension argument types
     syntax.add_arg_type("ARI", AriChecker())
 
