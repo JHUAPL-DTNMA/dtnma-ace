@@ -32,7 +32,7 @@ import io
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
-from pyang import context, error, grammar, plugin, statements, syntax
+from pyang import context, error, grammar, plugin, statements, syntax, util
 from pyang.util import keyword_to_str
 
 # Use ARI processing library when possible
@@ -90,6 +90,9 @@ def pyang_plugin_init():
         ((MODULE_NAME, "int-labels"), "?"),
         ((MODULE_NAME, "cddl"), "?"),
         ((MODULE_NAME, "base"), "*"),
+        # native base: an IDENT refinement on the type statement;
+        # pyang's BAD_RESTRICTION for it is relaxed below
+        ("base", "*"),
     ]
     _arg, _type_rules = grammar.stmt_map["type"]
     for _i, _rule in enumerate(_type_rules):
@@ -100,6 +103,23 @@ def pyang_plugin_init():
                     if _k not in _kws:
                         _kws.append(_k)
             _type_rules[_i] = ("$interleave", _amm_refines + _kws)
+    # AMM extensions for the native identity statement (migration:
+    # mirrors the amm:ident object substatements that have no native
+    # YANG equivalent: the code point, the abstract marking, and the
+    # formal parameters).  'base' stays a native keyword.
+    grammar.add_to_stmts_rules(
+        ["identity"],
+        [
+            ((MODULE_NAME, "enum"), "?"),
+            ((MODULE_NAME, "abstract"), "?"),
+            ((MODULE_NAME, "parameter"), "*"),
+        ],
+    )
+    # Register the native identity as a children-carrying keyword so
+    # the expand_1 phase recurses through it: AMM data keywords
+    # (parameter, tblt, column, ...) nested under a converted identity
+    # still need their i_children populated for the decoder.
+    statements.add_keyword_with_children("identity")
     # Extension argument types
     syntax.add_arg_type("ARI", AriChecker())
 
@@ -165,6 +185,26 @@ def pyang_plugin_init():
         ),
         _stmt_check_documentation,
     )
+
+    # A native 'base' under 'type' is an IDENT refinement in the AMM
+    # mapping.  The base YANG grammar only allows the 'base'
+    # restriction on 'type identityref' and rejects it elsewhere with
+    # BAD_RESTRICTION, so drop that error when the type resolves to
+    # the AMM ident ARITYPE (directly or through a chain of TYPEDEF
+    # named types).
+    _orig_v_type_type = statements._validation_map.get(("type_2", "type"))
+    if _orig_v_type_type is not None:
+
+        def _amm_v_type_type(ctx: context.Context, stmt: statements.Statement):
+            _orig_v_type_type(ctx, stmt)
+            if not _type_is_ident(ctx, stmt):
+                return
+            for base in stmt.search("base"):
+                for err in list(ctx.errors):
+                    if err[1] == "BAD_RESTRICTION" and err[0].ref == base.pos.ref and err[0].line == base.pos.line:
+                        ctx.errors.remove(err)
+
+        statements._validation_map[("type_2", "type")] = _amm_v_type_type
 
     # Register special error codes
     error.add_error_code(
@@ -827,10 +867,46 @@ def _stmt_check_intlabels(ctx: context.Context, stmt: statements.Statement):
             seen.add(got)
 
 
+def _type_is_ident(ctx: context.Context, stmt: statements.Statement) -> bool:
+    """Check a native 'type' statement for the AMM ident ARITYPE.
+
+    Follows the named type through any chain of TYPEDEF objects
+    (bounded) to see whether it resolves to the 'ident' built-in in
+    ietf-amm, the home of the AMM ARITYPE named types.
+    """
+    tdef = getattr(stmt, "i_typedef", None)
+    seen = set()
+    while tdef is not None and len(seen) < 4:
+        if tdef in seen:
+            return False
+        seen.add(tdef)
+        if tdef.i_module.arg == MODULE_NAME:
+            # ietf-amm is the home of the AMM ARITYPE named types
+            return tdef.arg == "ident"
+        # follow the TYPEDEF object's own type statement
+        inner = tdef.search_one("type")
+        if inner is None:
+            return False
+        prefix, name = util.split_identifier(inner.arg)
+        if prefix is None:
+            tdef = tdef.i_module.i_typedefs.get(name)
+        else:
+            pmod = util.prefix_to_module(tdef.i_module, prefix, inner.pos, ctx.errors)
+            tdef = pmod.i_typedefs.get(name) if pmod else None
+    return False
+
+
 def _stmt_check_enum_unique(ctx: context.Context, stmt: statements.Statement):
     for obj_kywd in AMM_OBJ_NAMES:
+        obj_stmts = stmt.search(obj_kywd)
+        # (migration) native identities with an AMM code point share
+        # the IDENT object section with amm:ident objects
+        if obj_kywd == (MODULE_NAME, "ident"):
+            obj_stmts = list(obj_stmts) + [
+                i for i in stmt.search("identity") if i.search_one((MODULE_NAME, "enum")) is not None
+            ]
         seen_enum = set()
-        for obj_stmt in stmt.search(obj_kywd):
+        for obj_stmt in obj_stmts:
             enum_stmt = obj_stmt.search_one((MODULE_NAME, "enum"))
             if enum_stmt is None:
                 continue
