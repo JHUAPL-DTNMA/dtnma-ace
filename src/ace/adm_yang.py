@@ -178,6 +178,33 @@ class AriTextDecoder:
         return ari
 
 
+def _native_base_ari(ari_dec: "AriTextDecoder", stmt: pyang.statements.Statement) -> ARI:
+    """Resolve a native 'base' statement to the ARI of its IDENT object.
+
+    :param ari_dec: The ARI text decoder (namespace-relative).
+    :param stmt: The base statement (pyang-resolved).
+    :return: The ARI of the referenced IDENT object.
+    """
+    ident_stmt = getattr(stmt, "i_identity", None)
+    if ident_stmt is None:
+        raise RuntimeError(f"base reference {stmt.arg!r} does not resolve to an identity")
+    def_mod = ident_stmt.i_module
+    if def_mod is stmt.i_module:
+        # same-module identity reference
+        ari_text = f"./IDENT/{ident_stmt.arg}"
+    else:
+        # cross-module identity reference
+        ns_stmt = def_mod.search_one("namespace")
+        if ns_stmt is None:
+            raise RuntimeError(f"base reference {stmt.arg!r} is in a module without a namespace")
+        ns = ns_stmt.arg.removeprefix("ari://").rstrip("/")
+        ari_text = f"//{ns}/IDENT/{ident_stmt.arg}"
+    ari = ari_dec.decode(ari_text)
+    if not (isinstance(ari, ReferenceARI) and ari.ident.type_id == StructType.IDENT):
+        raise ValueError(f"base reference {stmt.arg!r} must be an IDENT object")
+    return ari
+
+
 class TypingDecoder:
     """Decoder for just semantic typing structures."""
 
@@ -189,11 +216,14 @@ class TypingDecoder:
         (AMM_MOD, "int-labels"),
         (AMM_MOD, "cddl"),
         (AMM_MOD, "base"),
+        "base",
     )
 
     def __init__(self, ari_dec: AriTextDecoder):
         self._type_handlers = {
             (AMM_MOD, "type"): self._handle_type,
+            # native YANG type (migration: coexists with amm:type)
+            "type": self._handle_native_type,
             (AMM_MOD, "ulist"): self._handle_ulist,
             (AMM_MOD, "dlist"): self._handle_dlist,
             (AMM_MOD, "umap"): self._handle_umap,
@@ -241,6 +271,50 @@ class TypingDecoder:
             raise ValueError(f"Type reference must be either ARITYPE or LITERAL, got: {stmt.arg}")
         typeobj.type_ari = ari
 
+        self._apply_refinements(typeobj, stmt)
+
+        return typeobj
+
+    def _handle_native_type(self, stmt: pyang.statements.Statement) -> SemType:
+        """Decode a native YANG type statement as a semantic type.
+
+        Migration support for modules converted from amm:type.  The
+        referenced named type is resolved by pyang (stmt.i_typedef)
+        and mapped to the ARI text form that the amm:type statement
+        used: named types from ietf-amm are ARITYPE values, other
+        named types are TYPEDEF object references.
+        """
+        if stmt.arg == "union":
+            members = [t for t in stmt.substmts if t.keyword == "type"]
+            if not members:
+                raise RuntimeError("native type union has no members")
+            return TypeUnion(types=tuple(self._handle_native_type(t) for t in members))
+
+        tdef = getattr(stmt, "i_typedef", None)
+        if tdef is None:
+            raise RuntimeError(f"native type reference {stmt.arg!r} does not resolve to a named type")
+
+        if tdef.i_module.arg == AMM_MOD:
+            # AMM built-in, value-class, or object-reference type
+            text = f"/ARITYPE/{tdef.arg}"
+        elif tdef.i_module.arg == stmt.i_module.arg:
+            # local TYPEDEF object
+            text = f"./TYPEDEF/{tdef.arg}"
+        else:
+            # cross-module TYPEDEF object
+            ns = tdef.i_module.search_one("namespace").arg
+            ns = ns.removeprefix("ari://").rstrip("/")
+            text = f"//{ns}/TYPEDEF/{tdef.arg}"
+
+        typeobj = TypeUse()
+        typeobj.type_text = text
+        typeobj.type_ari = self._get_ari(text)
+
+        self._apply_refinements(typeobj, stmt)
+
+        return typeobj
+
+    def _apply_refinements(self, typeobj: TypeUse, stmt: pyang.statements.Statement):
         # keep constraints in the same order as refinement statements
         refinements = list(filter(None, [stmt.search_one(kywd) for kywd in self._TYPE_REFINE_KWDS]))
         for rfn in refinements:
@@ -272,8 +346,10 @@ class TypingDecoder:
                 text = rfn.arg
                 ari = self._get_ari(text)
                 typeobj.constraints.append(IdentRefBase(base_text=text, base_ari=ari))
-
-        return typeobj
+            elif rfn.keyword == "base":
+                # (migration) native base refinement on an ident type
+                ari = _native_base_ari(self._ari_dec, rfn)
+                typeobj.constraints.append(IdentRefBase(base_text=rfn.arg, base_ari=ari))
 
     def _handle_ulist(self, stmt: pyang.statements.Statement) -> SemType:
         typeobj = UniformList(base=self.decode(stmt))
@@ -474,7 +550,10 @@ class Decoder:
 
         if issubclass(cls, ParamMixin):
             orm_val = TypeNameList()
-            for param_stmt in stmt.search((AMM_MOD, "parameter"), children=stmt.i_children):
+            # (migration) native identity statements lack i_children;
+            # fall back to their direct substatements
+            children = getattr(stmt, "i_children", None) or stmt.substmts
+            for param_stmt in stmt.search((AMM_MOD, "parameter"), children=children):
                 try:
                     item = TypeNameItem(
                         name=param_stmt.arg,
@@ -515,6 +594,16 @@ class Decoder:
                     raise ValueError("Ident base must be another Ident")
                 base.base_ari = ari
 
+                obj.bases.append(base)
+
+            for base_stmt in stmt.search("base"):
+                # (migration) native base: a module-qualified identity
+                # reference resolved by pyang
+                base = IdentBase()
+                base.base_text = base_stmt.arg
+                ari = _native_base_ari(self._ari_dec, base_stmt)
+                ari.visit(self._check_ari)
+                base.base_ari = ari
                 obj.bases.append(base)
 
         elif issubclass(cls, (Const, Var)):
@@ -648,8 +737,25 @@ class Decoder:
         """Extract a section from the file"""
         sec_kywd = KEYWORDS[orm_cls]
 
+        if orm_cls is Typedef:
+            # TYPEDEF objects are amm:typedef objects, or (migration)
+            # native typedefs outside of ietf-amm, which is the home of
+            # the AMM built-in named types rather than TYPEDEF objects.
+            yang_stmts = module.search(sec_kywd)
+            if module.arg != AMM_MOD:
+                yang_stmts += [
+                    stmt for stmt in module.search("typedef") if stmt.search_one((AMM_MOD, "enum")) is not None
+                ]
+        elif orm_cls is Ident:
+            # IDENT objects are amm:ident objects, or (migration)
+            # native identities that carry the AMM code point.
+            yang_stmts = module.search(sec_kywd)
+            yang_stmts += [stmt for stmt in module.search("identity") if stmt.search_one((AMM_MOD, "enum")) is not None]
+        else:
+            yang_stmts = module.search(sec_kywd)
+
         enum = 0
-        for yang_stmt in module.search(sec_kywd):
+        for yang_stmt in yang_stmts:
             try:
                 obj = self.from_stmt(orm_cls, yang_stmt)
             except Exception as err:

@@ -83,7 +83,9 @@ class DbRepository(Repository):
         elif isinstance(handle[1], str):
             with open(handle[1], "r") as infile:
                 file_text = infile.read()
-            return (handle, "yang", file_text)
+            # ref must be a string (pyang Position ref); the tuple
+            # handle form crashes pyang's Position.label() formatting
+            return (handle[1], "yang", file_text)
 
 
 class AdmSet:
